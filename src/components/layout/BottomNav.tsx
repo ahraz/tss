@@ -37,6 +37,12 @@ export function BottomNav() {
             </div>
             <div className="p-2 space-y-1">
               {isOwnerOrPartner && (
+                <NavLink to="/money" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <DollarSign size={20} className="text-gray-400" />
+                  <span className="font-medium">Money</span>
+                </NavLink>
+              )}
+              {isOwnerOrPartner && (
                 <NavLink to="/team" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
                   <Users size={20} className="text-gray-400" />
                   <span className="font-medium">Team</span>
@@ -81,17 +87,10 @@ export function BottomNav() {
           <Building2 size={20} />
           <span className="text-[10px] font-medium">Sites</span>
         </NavLink>
-        {isOwnerOrPartner ? (
-          <NavLink to="/money" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-            <DollarSign size={20} />
-            <span className="text-[10px] font-medium">Money</span>
-          </NavLink>
-        ) : (
-          <NavLink to="/shifts" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-            <Clock size={20} />
-            <span className="text-[10px] font-medium">Shifts</span>
-          </NavLink>
-        )}
+        <NavLink to="/shifts" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
+          <CheckSquare size={20} />
+          <span className="text-[10px] font-medium">Shifts</span>
+        </NavLink>
         <button
           onClick={() => setIsMoreOpen(true)}
           className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isMoreOpen ? 'text-blue-600' : 'text-gray-500'}`}
