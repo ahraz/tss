@@ -119,55 +119,92 @@ export function ShiftsPage() {
           {filteredShifts.length === 0 ? (
             <EmptyState icon={FileWarning} title="No shifts found" description="Try adjusting your filters or date range to see results." />
           ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
-                  <tr>
-                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Site</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Duration</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredShifts.map(shift => {
-                    const user = state.users.find(u => u.id === shift.userId);
-                    const site = state.sites.find(s => s.id === shift.siteId);
-                    return (
-                      <tr 
-                        key={shift.id} 
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); }}
-                      >
-                        <td className="p-4 whitespace-nowrap">
-                          <p className="font-medium text-gray-900 text-sm">{formatDate(shift.clockInTime)}</p>
-                          <p className="text-xs text-gray-500">{new Date(shift.clockInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
-                        </td>
-                        <td className="p-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            {user && <UserAvatar user={user} size="sm" />}
-                            <span className="text-sm font-medium text-gray-900">{user?.name}</span>
+            <>
+              {/* Mobile View - Card List */}
+              <div className="md:hidden flex-1 overflow-y-auto divide-y divide-gray-100">
+                {filteredShifts.map(shift => {
+                  const user = state.users.find(u => u.id === shift.userId);
+                  const site = state.sites.find(s => s.id === shift.siteId);
+                  return (
+                    <div 
+                      key={shift.id}
+                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors active:bg-gray-100"
+                      onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); }}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {user && <UserAvatar user={user} size="sm" />}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+                            <p className="text-xs text-gray-500">{formatDate(shift.clockInTime)}</p>
                           </div>
-                        </td>
-                        <td className="p-4">
-                          <p className="text-sm text-gray-900 truncate max-w-[150px] sm:max-w-xs">{site?.name}</p>
-                        </td>
-                        <td className="p-4 whitespace-nowrap hidden md:table-cell text-sm text-gray-600">
-                          {shift.durationMinutes ? formatDuration(shift.durationMinutes) : '-'}
-                        </td>
-                        <td className="p-4 whitespace-nowrap">
-                          <Badge 
-                            label={shift.status} 
-                            variant={shift.status === 'active' ? 'info' : 'success'} 
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                        <Badge 
+                          label={shift.status} 
+                          variant={shift.status === 'active' ? 'info' : 'success'} 
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 mb-1">{site?.name}</p>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>{new Date(shift.clockInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                        <span>{shift.durationMinutes ? formatDuration(shift.durationMinutes) : 'In progress'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop View - Table */}
+              <div className="hidden md:flex flex-1 overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Site</th>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredShifts.map(shift => {
+                      const user = state.users.find(u => u.id === shift.userId);
+                      const site = state.sites.find(s => s.id === shift.siteId);
+                      return (
+                        <tr 
+                          key={shift.id} 
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); }}
+                        >
+                          <td className="p-4 whitespace-nowrap">
+                            <p className="font-medium text-gray-900 text-sm">{formatDate(shift.clockInTime)}</p>
+                            <p className="text-xs text-gray-500">{new Date(shift.clockInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              {user && <UserAvatar user={user} size="sm" />}
+                              <span className="text-sm font-medium text-gray-900">{user?.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm text-gray-900 truncate max-w-[150px] sm:max-w-xs">{site?.name}</p>
+                          </td>
+                          <td className="p-4 whitespace-nowrap text-sm text-gray-600">
+                            {shift.durationMinutes ? formatDuration(shift.durationMinutes) : '-'}
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            <Badge 
+                              label={shift.status} 
+                              variant={shift.status === 'active' ? 'info' : 'success'} 
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
 
