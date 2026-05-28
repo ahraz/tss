@@ -1,0 +1,74 @@
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useApp } from './context/AppContext';
+
+// Pages
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ClockPage } from './pages/ClockPage';
+import { ShiftsPage } from './pages/ShiftsPage';
+import { SitesPage } from './pages/SitesPage';
+import { SiteDetailPage } from './pages/SiteDetailPage';
+import { MoneyBookPage } from './pages/MoneyBookPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { TasksPage } from './pages/TasksPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { TeamPage } from './pages/TeamPage';
+
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
+  const { currentUser } = useApp();
+  const location = useLocation();
+
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+export default function App() {
+  const { state, dispatch } = useApp();
+  const navigate = useNavigate();
+
+  // Handle auto-logout if session is missing but user is thought to be logged in,
+  // or redirect to login if not authenticated and not already there.
+  useEffect(() => {
+    if (state.isInitialized && !state.session && window.location.hash !== '#/login') {
+       navigate('/login');
+    }
+  }, [state.isInitialized, state.session, navigate]);
+
+  if (!state.isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      
+      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/clock" element={<ProtectedRoute><ClockPage /></ProtectedRoute>} />
+      <Route path="/shifts" element={<ProtectedRoute><ShiftsPage /></ProtectedRoute>} />
+      
+      <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
+      <Route path="/sites/:id" element={<ProtectedRoute><SiteDetailPage /></ProtectedRoute>} />
+      
+      <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
+      <Route path="/money" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><MoneyBookPage /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><AnalyticsPage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute allowedRoles={['owner']}><SettingsPage /></ProtectedRoute>} />
+      
+      <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+      
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

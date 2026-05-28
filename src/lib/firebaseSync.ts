@@ -1,0 +1,378 @@
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  onSnapshot
+} from 'firebase/firestore';
+import { db } from './firebase';
+import type { 
+  User, Site, Shift, Payment, Expense, PayrollRecord, Task, AppSettings, AppAction 
+} from '../types';
+import { loadAllState } from '../utils/storage';
+
+/**
+ * Recursively removes any undefined fields from objects/arrays to satisfy Firestore's strict schema rules.
+ */
+export function sanitizeForFirestore<T>(val: T): any {
+  if (val === undefined) {
+    return null;
+  }
+  if (val === null) {
+    return null;
+  }
+  if (Array.isArray(val)) {
+    return val.map(sanitizeForFirestore);
+  }
+  if (typeof val === 'object') {
+    const res: any = {};
+    for (const key in val) {
+      if (Object.prototype.hasOwnProperty.call(val, key)) {
+        const value = val[key];
+        if (value !== undefined) {
+          res[key] = sanitizeForFirestore(value);
+        }
+      }
+    }
+    return res;
+  }
+  return val;
+}
+
+export async function fetchAllCollectionsOnce() {
+  const [
+    usersSnap,
+    sitesSnap,
+    shiftsSnap,
+    paymentsSnap,
+    expensesSnap,
+    payrollSnap,
+    tasksSnap,
+  ] = await Promise.all([
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'sites')),
+    getDocs(collection(db, 'shifts')),
+    getDocs(collection(db, 'payments')),
+    getDocs(collection(db, 'expenses')),
+    getDocs(collection(db, 'payroll')),
+    getDocs(collection(db, 'tasks')),
+  ]);
+
+  const users = usersSnap.docs.map(docSnap => {
+    const data = docSnap.data() as User;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const sites = sitesSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Site;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const shifts = shiftsSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Shift;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const payments = paymentsSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Payment;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const expenses = expensesSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Expense;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const payroll = payrollSnap.docs.map(docSnap => {
+    const data = docSnap.data() as PayrollRecord;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const tasks = tasksSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Task;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+
+  const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
+  const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
+
+  return { users, sites, shifts, payments, expenses, payroll, tasks, settings };
+}
+
+/**
+ * Migrates local storage data to Firebase Firestore if Firestore is currently empty.
+ * Ensures the user's existing offline data is safely seeded online.
+ */
+export async function migrateLocalToFirebase(): Promise<void> {
+  const migrated = localStorage.getItem('cleanops_firebase_migrated');
+  if (migrated === 'true') return;
+
+  try {
+    // Safety check: check if users collection in Firestore is already populated
+    const usersSnap = await getDocs(collection(db, 'users'));
+    if (usersSnap.size > 0) {
+      console.log('Firestore is already initialized, skipping migration.');
+      localStorage.setItem('cleanops_firebase_migrated', 'true');
+      return;
+    }
+
+    console.log('Firestore is empty. Starting migration from localStorage...');
+    const localData = loadAllState();
+
+    // 1. Migrate Users
+    for (const item of localData.users) {
+      await setDoc(doc(db, 'users', item.id), sanitizeForFirestore(item));
+    }
+    // 2. Migrate Sites
+    for (const item of localData.sites) {
+      await setDoc(doc(db, 'sites', item.id), sanitizeForFirestore(item));
+    }
+    // 3. Migrate Shifts
+    for (const item of localData.shifts) {
+      await setDoc(doc(db, 'shifts', item.id), sanitizeForFirestore(item));
+    }
+    // 4. Migrate Payments
+    for (const item of localData.payments) {
+      await setDoc(doc(db, 'payments', item.id), sanitizeForFirestore(item));
+    }
+    // 5. Migrate Expenses
+    for (const item of localData.expenses) {
+      await setDoc(doc(db, 'expenses', item.id), sanitizeForFirestore(item));
+    }
+    // 6. Migrate Payroll
+    for (const item of localData.payroll) {
+      await setDoc(doc(db, 'payroll', item.id), sanitizeForFirestore(item));
+    }
+    // 7. Migrate Tasks
+    for (const item of localData.tasks) {
+      await setDoc(doc(db, 'tasks', item.id), sanitizeForFirestore(item));
+    }
+    // 8. Migrate Settings
+    await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
+
+    console.log('Migration completed successfully!');
+    localStorage.setItem('cleanops_firebase_migrated', 'true');
+  } catch (error) {
+    console.error('Error migrating local data to Firebase:', error);
+  }
+}
+
+/**
+ * Sets up real-time onSnapshot listeners for all Firestore collections.
+ * Dispatches BULK update actions whenever a change is made, keeping the UI instantly updated.
+ */
+export function subscribeToCollections(
+  dispatch: (action: AppAction) => void,
+  onError?: (source: string, err: unknown) => void
+) {
+  const unsubUsers = onSnapshot(
+    collection(db, 'users'),
+    (snapshot) => {
+      const list: User[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as User));
+      dispatch({ type: 'SET_USERS', payload: list });
+    },
+    (err) => onError?.('users', err)
+  );
+
+  const unsubSites = onSnapshot(
+    collection(db, 'sites'),
+    (snapshot) => {
+      const list: Site[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Site));
+      dispatch({ type: 'SET_SITES', payload: list });
+    },
+    (err) => onError?.('sites', err)
+  );
+
+  const unsubShifts = onSnapshot(
+    collection(db, 'shifts'),
+    (snapshot) => {
+      const list: Shift[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Shift));
+      dispatch({ type: 'SET_SHIFTS', payload: list });
+    },
+    (err) => onError?.('shifts', err)
+  );
+
+  const unsubPayments = onSnapshot(
+    collection(db, 'payments'),
+    (snapshot) => {
+      const list: Payment[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Payment));
+      dispatch({ type: 'SET_PAYMENTS', payload: list });
+    },
+    (err) => onError?.('payments', err)
+  );
+
+  const unsubExpenses = onSnapshot(
+    collection(db, 'expenses'),
+    (snapshot) => {
+      const list: Expense[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Expense));
+      dispatch({ type: 'SET_EXPENSES', payload: list });
+    },
+    (err) => onError?.('expenses', err)
+  );
+
+  const unsubPayroll = onSnapshot(
+    collection(db, 'payroll'),
+    (snapshot) => {
+      const list: PayrollRecord[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as PayrollRecord));
+      dispatch({ type: 'SET_PAYROLL', payload: list });
+    },
+    (err) => onError?.('payroll', err)
+  );
+
+  const unsubTasks = onSnapshot(
+    collection(db, 'tasks'),
+    (snapshot) => {
+      const list: Task[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Task));
+      dispatch({ type: 'SET_TASKS', payload: list });
+    },
+    (err) => onError?.('tasks', err)
+  );
+
+  const unsubSettings = onSnapshot(
+    doc(db, 'settings', 'current'),
+    (snapshot) => {
+      if (snapshot.exists()) {
+        dispatch({ type: 'SET_SETTINGS', payload: snapshot.data() as AppSettings });
+      }
+    },
+    (err) => onError?.('settings', err)
+  );
+
+  // Return unsubscribe cleanup function
+  return () => {
+    unsubUsers();
+    unsubSites();
+    unsubShifts();
+    unsubPayments();
+    unsubExpenses();
+    unsubPayroll();
+    unsubTasks();
+    unsubSettings();
+  };
+}
+
+/**
+ * Handles database-modifying actions by executing async writes or deletes in Cloud Firestore.
+ * By using this centralized helper, the rest of the app's components do not need to change!
+ */
+export async function syncActionToFirestore(action: AppAction, currentSettings?: AppSettings): Promise<void> {
+  try {
+    switch (action.type) {
+      // Users
+      case 'ADD_USER':
+      case 'UPDATE_USER':
+        await setDoc(doc(db, 'users', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_USER':
+        await deleteDoc(doc(db, 'users', action.payload));
+        break;
+
+      // Sites
+      case 'ADD_SITE':
+      case 'UPDATE_SITE':
+        await setDoc(doc(db, 'sites', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_SITE':
+        await deleteDoc(doc(db, 'sites', action.payload));
+        break;
+
+      // Shifts
+      case 'ADD_SHIFT':
+      case 'UPDATE_SHIFT':
+        await setDoc(doc(db, 'shifts', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_SHIFT':
+        await deleteDoc(doc(db, 'shifts', action.payload));
+        break;
+
+      // Payments
+      case 'ADD_PAYMENT':
+      case 'UPDATE_PAYMENT':
+        await setDoc(doc(db, 'payments', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_PAYMENT':
+        await deleteDoc(doc(db, 'payments', action.payload));
+        break;
+
+      // Expenses
+      case 'ADD_EXPENSE':
+      case 'UPDATE_EXPENSE':
+        await setDoc(doc(db, 'expenses', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_EXPENSE':
+        await deleteDoc(doc(db, 'expenses', action.payload));
+        break;
+
+      // Payroll
+      case 'ADD_PAYROLL':
+      case 'UPDATE_PAYROLL':
+        await setDoc(doc(db, 'payroll', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_PAYROLL':
+        await deleteDoc(doc(db, 'payroll', action.payload));
+        break;
+
+      // Tasks
+      case 'ADD_TASK':
+      case 'UPDATE_TASK':
+        await setDoc(doc(db, 'tasks', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_TASK':
+        await deleteDoc(doc(db, 'tasks', action.payload));
+        break;
+
+      // Settings
+      case 'UPDATE_SETTINGS':
+        if (currentSettings) {
+          await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore({ ...currentSettings, ...action.payload }));
+        }
+        break;
+
+      // Import data (Bulk setup)
+      case 'IMPORT_DATA':
+        for (const item of action.payload.users) {
+          await setDoc(doc(db, 'users', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.sites) {
+          await setDoc(doc(db, 'sites', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.shifts) {
+          await setDoc(doc(db, 'shifts', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.payments) {
+          await setDoc(doc(db, 'payments', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.expenses) {
+          await setDoc(doc(db, 'expenses', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.payroll) {
+          await setDoc(doc(db, 'payroll', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.tasks) {
+          await setDoc(doc(db, 'tasks', item.id), sanitizeForFirestore(item));
+        }
+        await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
+        break;
+
+      case 'CLEAR_ALL_DATA':
+        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks'];
+        for (const colName of collectionsToClear) {
+          const snap = await getDocs(collection(db, colName));
+          for (const docObj of snap.docs) {
+            await deleteDoc(doc(db, colName, docObj.id));
+          }
+        }
+        await deleteDoc(doc(db, 'settings', 'current'));
+        break;
+
+      default:
+        break;
+    }
+  } catch (error) {
+    console.error('Error syncing action to Firestore:', error);
+    throw error;
+  }
+}
