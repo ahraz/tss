@@ -169,7 +169,7 @@ export function SettingsPage() {
                   <label className="text-sm font-medium text-gray-700 block mb-1">Avatar Initials</label>
                   <input 
                     type="text"
-                    maxLength="2"
+                    maxLength={2}
                     value={userProfile?.avatarInitials || ''}
                     onChange={e => setUserProfile({...userProfile!, avatarInitials: e.target.value.toUpperCase()})}
                     placeholder="E.g., AR"
