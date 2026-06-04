@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Delete } from 'lucide-react';
+import { Delete } from 'lucide-react';
+import { Logo } from '../assets/Logo';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { UserAvatar } from '../components/ui/UserAvatar';
@@ -68,11 +69,11 @@ export function LoginPage() {
       
       <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
         <div className="flex flex-col items-center mb-12 animate-fade-in">
-          <div className="bg-blue-600 p-4 rounded-2xl mb-4 shadow-lg shadow-blue-900/50">
-            <Sparkles size={48} className="text-white" />
+          <div className="p-4 rounded-2xl mb-4">
+            <Logo size={80} light />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">TSS Cleaners</h1>
-          <p className="text-blue-200 mt-2 text-lg">Business Operating System</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">THE SCRUB SQUAD</h1>
+          <p className="text-blue-200 mt-2 text-lg">Professional Cleaning Management</p>
         </div>
 
         <div className="w-full">

@@ -14,6 +14,7 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
+import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
@@ -174,14 +175,15 @@ export function QuoteDetailPage() {
 
         {/* Print-Friendly Proposal View */}
         <div ref={printRef} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-10 print:shadow-none print:border-0 print:p-0">
-          {/* Header */}
+          {/* Letterhead */}
           <div className="border-b border-gray-200 pb-6 mb-6 print:pb-4">
             <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{quote.prospectName}</h1>
-                <p className="text-gray-500 mt-1">{quote.prospectAddress}</p>
-                <p className="text-gray-500">{quote.prospectCity}, {quote.prospectProvince} {quote.prospectPostalCode}</p>
-                {quote.prospectPhone && <p className="text-gray-500">{quote.prospectPhone}</p>}
+              <div className="flex items-center gap-4">
+                <Logo size={64} />
+                <div>
+                  <div className="text-xl font-bold text-gray-900">{state.settings.businessName}</div>
+                  <div className="text-sm text-gray-500">Professional Cleaning Services</div>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold text-blue-600">{formatCAD(quote.totalMonthly)}<span className="text-lg font-normal text-gray-500">/mo</span></p>
@@ -193,10 +195,19 @@ export function QuoteDetailPage() {
             </div>
           </div>
 
+          {/* To: */}
+          <div className="mb-8">
+            <div className="text-sm text-gray-400 uppercase tracking-wide font-semibold mb-1">Prepared For</div>
+            <h1 className="text-2xl font-bold text-gray-900">{quote.prospectName}</h1>
+            <p className="text-gray-600 mt-1">{quote.prospectAddress}</p>
+            <p className="text-gray-600">{quote.prospectCity}, {quote.prospectProvince} {quote.prospectPostalCode}</p>
+            {quote.prospectPhone && <p className="text-gray-600">{quote.prospectPhone}</p>}
+          </div>
+
           {/* Quote Title */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Cleaning Service Proposal</h2>
-            <p className="text-sm text-gray-500">Prepared by {state.settings.businessName} for {quote.prospectName}</p>
+            <p className="text-sm text-gray-500">Prepared on {formatDate(new Date().toISOString())} &middot; Quote #{quote.id.slice(-6).toUpperCase()}</p>
           </div>
 
           {/* Line Items Table */}
@@ -260,7 +271,11 @@ export function QuoteDetailPage() {
 
           {/* Footer */}
           <div className="border-t border-gray-200 pt-4 mt-6 text-center text-xs text-gray-400 print:mt-4">
-            <p>{state.settings.businessName} — Professional Cleaning Services</p>
+            <div className="flex justify-center items-center gap-3 mb-2">
+              <Logo size={24} variant="icon" />
+              <span className="font-medium text-gray-500">{state.settings.businessName}</span>
+            </div>
+            <p>Professional Cleaning Services</p>
             <p>This proposal is valid until {formatDate(quote.validUntil)}. Prices subject to change.</p>
           </div>
         </div>
