@@ -21,26 +21,8 @@ export type TaskPriority = 'low' | 'medium' | 'urgent';
 export type TaskStatus = 'todo' | 'inprogress' | 'done';
 
 export type PayPeriod = 'biweekly' | 'monthly';
-export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
 
 // --- Entity Interfaces ---
-
-export interface Client {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  province: string;
-  postalCode: string;
-  contactName: string;
-  contactPhone: string;
-  contractRate: number;
-  frequency: CleaningFrequency;
-  cleaningDays: DayOfWeek[];
-  status: SiteStatus;
-  notes: string;
-  createdAt: string;
-}
 
 export interface User {
   id: string;
@@ -68,7 +50,6 @@ export interface Site {
   city: string;
   province: string;
   postalCode: string;
-  areaTags: string[];
   type: SiteType;
   contactName: string;
   contactPhone: string;
@@ -79,8 +60,6 @@ export interface Site {
   accessNotes: string;
   status: SiteStatus;
   checklist: ChecklistItem[];
-  clientId: string | null;
-  isSubSite: boolean;
   createdAt: string;
 }
 
@@ -142,35 +121,6 @@ export interface PayrollRecord {
   createdAt: string;
 }
 
-export interface QuoteLineItem {
-  id: string;
-  description: string;
-  siteId: string | null;
-  frequency: CleaningFrequency;
-  amountPerVisit: number;
-  visitsPerWeek: number;
-  monthlyAmount: number;
-}
-
-export interface Quote {
-  id: string;
-  clientId: string | null;
-  prospectName: string;
-  prospectAddress: string;
-  prospectCity: string;
-  prospectProvince: string;
-  prospectPostalCode: string;
-  prospectPhone: string;
-  lineItems: QuoteLineItem[];
-  totalMonthly: number;
-  status: QuoteStatus;
-  validUntil: string;
-  notes: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Task {
   id: string;
   title: string;
@@ -209,8 +159,6 @@ export interface AppState {
   expenses: Expense[];
   payroll: PayrollRecord[];
   tasks: Task[];
-  clients: Client[];
-  quotes: Quote[];
   settings: AppSettings;
   session: Session | null;
   isInitialized: boolean;
@@ -232,7 +180,6 @@ export type AppAction =
   | { type: 'SET_EXPENSES'; payload: Expense[] }
   | { type: 'SET_PAYROLL'; payload: PayrollRecord[] }
   | { type: 'SET_TASKS'; payload: Task[] }
-  | { type: 'SET_CLIENTS'; payload: Client[] }
   | { type: 'SET_SETTINGS'; payload: AppSettings }
   // Users
   | { type: 'ADD_USER'; payload: User }
@@ -262,15 +209,6 @@ export type AppAction =
   | { type: 'ADD_TASK'; payload: Task }
   | { type: 'UPDATE_TASK'; payload: Task }
   | { type: 'DELETE_TASK'; payload: string }
-  // Clients
-  | { type: 'ADD_CLIENT'; payload: Client }
-  | { type: 'UPDATE_CLIENT'; payload: Client }
-  | { type: 'DELETE_CLIENT'; payload: string }
-  // Quotes
-  | { type: 'SET_QUOTES'; payload: Quote[] }
-  | { type: 'ADD_QUOTE'; payload: Quote }
-  | { type: 'UPDATE_QUOTE'; payload: Quote }
-  | { type: 'DELETE_QUOTE'; payload: string }
   // Settings
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
   // Data Management
