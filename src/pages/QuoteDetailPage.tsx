@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, DollarSign, Plus, Trash2, Printer, Send, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, FileText, DollarSign, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -11,6 +13,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import toast from 'react-hot-toast';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
@@ -104,6 +107,41 @@ export function QuoteDetailPage() {
     window.print();
   };
 
+  const handleDownloadPdf = async () => {
+    const el = printRef.current;
+    if (!el) return;
+    toast.loading('Generating PDF...');
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = 210;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = 297;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Quote-${quote.prospectName.replace(/\s+/g, '_')}.pdf`);
+    } catch (err) {
+      toast.error('Failed to generate PDF. Try Print instead.');
+    }
+  };
+
   const totalAnnual = quote.totalMonthly * 12;
 
   return (
@@ -126,6 +164,7 @@ export function QuoteDetailPage() {
                     <Button size="sm" icon={XCircle} variant="danger" onClick={() => handleStatusChange('rejected')}>Reject</Button>
                   </>
                 )}
+                <Button size="sm" icon={Download} variant="secondary" onClick={handleDownloadPdf}>Download PDF</Button>
                 <Button size="sm" icon={Printer} variant="secondary" onClick={handlePrint}>Print</Button>
                 <Button size="sm" icon={Trash2} variant="danger" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
               </>
