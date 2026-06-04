@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
@@ -17,6 +17,7 @@ export function Sidebar() {
     { to: '/shifts', icon: ClipboardList, label: 'Shifts' },
     { to: '/sites', icon: Building2, label: 'Sites' },
     ...(isOwnerOrPartner ? [
+      { to: '/schedule', icon: CalendarDays, label: 'Schedule' },
       { to: '/clients', icon: Briefcase, label: 'Clients' },
       { to: '/quotes', icon: FileText, label: 'Quotes' },
       { to: '/team', icon: Users, label: 'Team' },

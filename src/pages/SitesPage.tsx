@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, DollarSign, Calendar, Search, Building2 } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Calendar, Search, Building2, Layers } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -21,6 +21,7 @@ export function SitesPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'paused' | 'cancelled'>('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'area'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Add Site Form State
@@ -88,12 +89,47 @@ export function SitesPage() {
               <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search sites..." />
             </div>
             {isOwnerOrPartner && (
+              <Button
+                icon={viewMode === 'area' ? Building2 : Layers}
+                variant="secondary"
+                onClick={() => setViewMode(viewMode === 'list' ? 'area' : 'list')}
+                className="hidden md:inline-flex"
+              >
+                {viewMode === 'area' ? 'List View' : 'By Area'}
+              </Button>
+            )}
+            {isOwnerOrPartner && (
               <Button icon={Plus} onClick={() => setShowAddModal(true)}>Add Site</Button>
             )}
           </div>
         </div>
 
-        {filteredSites.length === 0 ? (
+        {/* Mobile View Toggle */}
+        {isOwnerOrPartner && (
+          <div className="flex md:hidden bg-gray-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600'}`}
+            >
+              <Building2 size={16} className="inline mr-1" /> List
+            </button>
+            <button
+              onClick={() => setViewMode('area')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'area' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600'}`}
+            >
+              <Layers size={16} className="inline mr-1" /> By Area
+            </button>
+          </div>
+        )}
+
+        {viewMode === 'area' ? (
+          <AreaView
+            sites={filteredSites}
+            navigate={navigate}
+            formatCAD={formatCAD}
+            state={state}
+          />
+        ) : filteredSites.length === 0 ? (
           <Card className="flex-1">
             <EmptyState icon={Building2} title="No sites found" description="Try adjusting your search or filters." />
           </Card>
@@ -217,5 +253,76 @@ export function SitesPage() {
 
       </div>
     </AppShell>
+  );
+}
+
+// ─── Area View ────────────────────────────────────────────────
+function AreaView({ sites, navigate, formatCAD, state }: {
+  sites: Site[];
+  navigate: ReturnType<typeof useNavigate>;
+  formatCAD: (n: number) => string;
+  state: { users: any[]; clients: any[] };
+}) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, Site[]>();
+    for (const site of sites) {
+      const tags = site.areaTags.length > 0 ? site.areaTags : ['Uncategorized'];
+      for (const tag of tags) {
+        if (!map.has(tag)) map.set(tag, []);
+        map.get(tag)!.push(site);
+      }
+    }
+    // Sort by area name
+    return new Map([...map.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  }, [sites]);
+
+  return (
+    <div className="space-y-8">
+      {[...grouped.entries()].map(([area, areaSites]) => (
+        <div key={area}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm font-semibold">
+              {area}
+            </div>
+            <span className="text-xs text-gray-400">{areaSites.length} site{areaSites.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {areaSites.map(site => {
+              const client = site.clientId ? state.clients.find((c: any) => c.id === site.clientId) : null;
+              return (
+                <Card key={site.id} className="cursor-pointer hover:shadow-md transition-shadow border border-gray-150"
+                  onClick={() => navigate(`/sites/${site.id}`)}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={16} className="text-blue-500" />
+                      <h4 className="font-semibold text-gray-900">{site.name}</h4>
+                    </div>
+                    <Badge label={site.status} variant={site.status === 'active' ? 'success' : 'danger'} className="text-xs" />
+                  </div>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-gray-400" />
+                      <span>{site.address}, {site.postalCode}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign size={14} className="text-gray-400" />
+                      <span className="font-medium">${site.contractRate}<span className="text-gray-500 font-normal">/{site.frequency}</span></span>
+                    </div>
+                    {client && (
+                      <div className="text-xs text-indigo-600">Client: {client.name}</div>
+                    )}
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                      {site.areaTags.filter(t => t !== area).map(tag => (
+                        <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

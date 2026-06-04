@@ -13,6 +13,7 @@ import { ClientsPage } from './pages/ClientsPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
 import { QuotesPage } from './pages/QuotesPage';
 import { QuoteDetailPage } from './pages/QuoteDetailPage';
+import { SchedulePage } from './pages/SchedulePage';
 import { MoneyBookPage } from './pages/MoneyBookPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { TasksPage } from './pages/TasksPage';
@@ -60,6 +61,7 @@ export default function App() {
       
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/clock" element={<ProtectedRoute><ClockPage /></ProtectedRoute>} />
+      <Route path="/schedule" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><SchedulePage /></ProtectedRoute>} />
       <Route path="/shifts" element={<ProtectedRoute><ShiftsPage /></ProtectedRoute>} />
       
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />

@@ -68,6 +68,7 @@ export interface Site {
   city: string;
   province: string;
   postalCode: string;
+  areaTags: string[];
   type: SiteType;
   contactName: string;
   contactPhone: string;

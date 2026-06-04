@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Clock, Building2, DollarSign, Menu, BarChart3, CheckSquare, Settings, LogOut, X, Users, Briefcase, FileText } from 'lucide-react';
+import { Home, Clock, Building2, DollarSign, Menu, BarChart3, CheckSquare, Settings, LogOut, X, Users, Briefcase, FileText, CalendarDays } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export function BottomNav() {
@@ -36,6 +36,12 @@ export function BottomNav() {
               </button>
             </div>
             <div className="p-2 space-y-1">
+              {isOwnerOrPartner && (
+                <NavLink to="/schedule" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <CalendarDays size={20} className="text-gray-400" />
+                  <span className="font-medium">Schedule</span>
+                </NavLink>
+              )}
               {isOwnerOrPartner && (
                 <NavLink to="/clients" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
                   <Briefcase size={20} className="text-gray-400" />
