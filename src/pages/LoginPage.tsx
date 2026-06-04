@@ -70,7 +70,7 @@ export function LoginPage() {
       <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
         <div className="flex flex-col items-center mb-12 animate-fade-in">
           <div className="p-4 rounded-2xl mb-4">
-            <Logo size={80} light />
+            <Logo size={80} light showText={false} />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">THE SCRUB SQUAD</h1>
           <p className="text-blue-200 mt-2 text-lg">Professional Cleaning Management</p>

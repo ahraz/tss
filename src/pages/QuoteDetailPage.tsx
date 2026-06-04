@@ -179,9 +179,9 @@ export function QuoteDetailPage() {
           <div className="border-b border-gray-200 pb-6 mb-6 print:pb-4">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-4">
-                <Logo size={64} />
+                <Logo size={64} showText={false} />
                 <div>
-                  <div className="text-xl font-bold text-gray-900">{state.settings.businessName}</div>
+                  <div className="text-xl font-bold text-gray-900">THE SCRUB SQUAD</div>
                   <div className="text-sm text-gray-500">Professional Cleaning Services</div>
                 </div>
               </div>
