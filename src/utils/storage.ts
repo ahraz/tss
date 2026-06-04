@@ -417,7 +417,6 @@ export function initializeStorage(): void {
       city: 'Brampton',
       province: 'ON',
       postalCode: 'L6W 4L3',
-      areaTags: ['L6W', 'Brampton-South'],
       contactName: 'Dr. Kennedy',
       contactPhone: '905-555-0404',
       contractRate: 2000,
