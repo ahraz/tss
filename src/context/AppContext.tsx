@@ -21,6 +21,8 @@ const initialState: AppState = {
   expenses: [],
   payroll: [],
   tasks: [],
+  clients: [],
+  quotes: [],
   settings: {
     businessName: 'TSS Cleaners',
     ownerName: 'Ahraz Malik',
@@ -52,6 +54,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, payroll: action.payload };
     case 'SET_TASKS':
       return { ...state, tasks: action.payload };
+    case 'SET_CLIENTS':
+      return { ...state, clients: action.payload };
+    case 'SET_QUOTES':
+      return { ...state, quotes: action.payload };
     case 'SET_SETTINGS':
       return { ...state, settings: action.payload };
 
@@ -118,6 +124,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, tasks: state.tasks.map(t => t.id === action.payload.id ? action.payload : t) };
     case 'DELETE_TASK':
       return { ...state, tasks: state.tasks.filter(t => t.id !== action.payload) };
+
+    // Clients
+    case 'ADD_CLIENT':
+      return { ...state, clients: [...state.clients, action.payload] };
+    case 'UPDATE_CLIENT':
+      return { ...state, clients: state.clients.map(c => c.id === action.payload.id ? action.payload : c) };
+    case 'DELETE_CLIENT':
+      return { ...state, clients: state.clients.filter(c => c.id !== action.payload) };
+
+    // Quotes
+    case 'ADD_QUOTE':
+      return { ...state, quotes: [...state.quotes, action.payload] };
+    case 'UPDATE_QUOTE':
+      return { ...state, quotes: state.quotes.map(q => q.id === action.payload.id ? action.payload : q) };
+    case 'DELETE_QUOTE':
+      return { ...state, quotes: state.quotes.filter(q => q.id !== action.payload) };
 
     // Settings
     case 'UPDATE_SETTINGS':
@@ -203,6 +225,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         originalDispatch({ type: 'SET_EXPENSES', payload: remote.expenses });
         originalDispatch({ type: 'SET_PAYROLL', payload: remote.payroll });
         originalDispatch({ type: 'SET_TASKS', payload: remote.tasks });
+        originalDispatch({ type: 'SET_CLIENTS', payload: remote.clients });
+        originalDispatch({ type: 'SET_QUOTES', payload: remote.quotes });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
@@ -236,6 +260,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       expenses: state.expenses,
       payroll: state.payroll,
       tasks: state.tasks,
+      clients: state.clients,
+      quotes: state.quotes,
       settings: state.settings,
     });
   }, [
@@ -247,6 +273,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.expenses,
     state.payroll,
     state.tasks,
+    state.clients,
+    state.quotes,
     state.settings,
   ]);
 

@@ -9,6 +9,10 @@ import { ClockPage } from './pages/ClockPage';
 import { ShiftsPage } from './pages/ShiftsPage';
 import { SitesPage } from './pages/SitesPage';
 import { SiteDetailPage } from './pages/SiteDetailPage';
+import { ClientsPage } from './pages/ClientsPage';
+import { ClientDetailPage } from './pages/ClientDetailPage';
+import { QuotesPage } from './pages/QuotesPage';
+import { QuoteDetailPage } from './pages/QuoteDetailPage';
 import { MoneyBookPage } from './pages/MoneyBookPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { TasksPage } from './pages/TasksPage';
@@ -60,6 +64,12 @@ export default function App() {
       
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
       <Route path="/sites/:id" element={<ProtectedRoute><SiteDetailPage /></ProtectedRoute>} />
+      
+      <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
+      <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
+      
+      <Route path="/quotes" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuotesPage /></ProtectedRoute>} />
+      <Route path="/quotes/:id" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuoteDetailPage /></ProtectedRoute>} />
       
       <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
       <Route path="/money" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><MoneyBookPage /></ProtectedRoute>} />

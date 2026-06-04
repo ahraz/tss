@@ -3,7 +3,7 @@
 // ============================================================
 
 import type {
-  User, Site, Shift, Payment, Expense, PayrollRecord, Task, AppSettings, Session
+  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, Session
 } from '../types';
 
 // --- Storage Keys ---
@@ -15,6 +15,8 @@ const KEYS = {
   expenses: 'cleanops_expenses',
   payroll: 'cleanops_payroll',
   tasks: 'cleanops_tasks',
+  clients: 'cleanops_clients',
+  quotes: 'cleanops_quotes',
   settings: 'cleanops_settings',
   session: 'cleanops_session',
 } as const;
@@ -66,6 +68,12 @@ export const setPayroll = (v: PayrollRecord[]) => setData(KEYS.payroll, v);
 
 export const getTasks = () => getData<Task[]>(KEYS.tasks) ?? [];
 export const setTasks = (v: Task[]) => setData(KEYS.tasks, v);
+
+export const getClients = () => getData<Client[]>(KEYS.clients) ?? [];
+export const setClients = (v: Client[]) => setData(KEYS.clients, v);
+
+export const getQuotes = () => getData<Quote[]>(KEYS.quotes) ?? [];
+export const setQuotes = (v: Quote[]) => setData(KEYS.quotes, v);
 
 export const getSettings = () => getData<AppSettings>(KEYS.settings);
 export const setSettings = (v: AppSettings) => setData(KEYS.settings, v);
@@ -187,28 +195,41 @@ export function initializeStorage(): void {
       createdAt: now,
     },
     {
-      id: 'user-partner-001',
-      name: 'Harpreet Kaur',
+      id: 'user-partner-yh',
+      name: 'Yusuf Haque',
       role: 'partner',
-      pin: '2345',
-      avatarInitials: 'HK',
+      pin: '4321',
+      avatarInitials: 'YH',
       avatarColor: 'bg-purple-600',
       hourlyRate: 0,
       isActive: true,
       createdAt: now,
     },
     {
+      id: 'user-partner-sm',
+      name: 'Shadan Malik',
+      role: 'partner',
+      pin: '4321',
+      avatarInitials: 'SM',
+      avatarColor: 'bg-green-600',
+      hourlyRate: 0,
+      isActive: true,
+      createdAt: now,
+    },
+    {
       id: 'user-employee-001',
-      name: 'Mandeep Gill',
+      name: 'Sandy',
       role: 'employee',
       pin: '3456',
-      avatarInitials: 'MG',
-      avatarColor: 'bg-green-600',
+      avatarInitials: 'S',
+      avatarColor: 'bg-orange-600',
       hourlyRate: 18.50,
       isActive: true,
       createdAt: now,
     },
   ];
+
+  const partnerIds = ['user-owner-001', 'user-partner-yh', 'user-partner-sm'];
 
   const sites: Site[] = [
     {
@@ -235,6 +256,8 @@ export function initializeStorage(): void {
         { id: 'cl-005', label: 'Wipe reception desk', order: 5 },
         { id: 'cl-006', label: 'Clean glass doors', order: 6 },
       ],
+      clientId: null,
+      isSubSite: false,
       createdAt: now,
     },
     {
@@ -250,7 +273,7 @@ export function initializeStorage(): void {
       contractRate: 180,
       frequency: 'biweekly',
       cleaningDays: ['wednesday'],
-      assignedUserIds: ['user-employee-001', 'user-partner-001'],
+      assignedUserIds: ['user-employee-001', 'user-partner-yh'],
       accessNotes: 'Buzz unit 7. Sandra leaves key under mat after 5pm.',
       status: 'active',
       checklist: [
@@ -259,6 +282,8 @@ export function initializeStorage(): void {
         { id: 'cl-009', label: 'Clean kitchen area', order: 3 },
         { id: 'cl-010', label: 'Empty trash', order: 4 },
       ],
+      clientId: null,
+      isSubSite: false,
       createdAt: now,
     },
     {
@@ -284,6 +309,115 @@ export function initializeStorage(): void {
         { id: 'cl-014', label: 'Wipe waiting room chairs', order: 4 },
         { id: 'cl-015', label: 'Empty trash and replace liners', order: 5 },
       ],
+      clientId: null,
+      isSubSite: false,
+      createdAt: now,
+    },
+    // --- Kennedy Medical Clinic (3 sub-sites) ---
+    {
+      id: 'site-kmc-pharmacy',
+      name: 'KMC Pharmacy',
+      address: '7990 Kennedy Rd S',
+      city: 'Brampton',
+      province: 'ON',
+      postalCode: 'L6W 4L3',
+      type: 'retail',
+      contactName: 'Dr. Kennedy',
+      contactPhone: '905-555-0404',
+      contractRate: 700,
+      frequency: 'weekly',
+      cleaningDays: ['monday', 'tuesday', 'wednesday', 'thursday'],
+      assignedUserIds: partnerIds,
+      accessNotes: 'Enter via rear door. Alarm code 5631. Pharmacy area is locked — key in lockbox.',
+      status: 'active',
+      checklist: [
+        { id: 'cl-kmc-p1', label: 'Vacuum all carpeted areas', order: 1 },
+        { id: 'cl-kmc-p2', label: 'Mop tile floors', order: 2 },
+        { id: 'cl-kmc-p3', label: 'Sanitize counters and checkout area', order: 3 },
+        { id: 'cl-kmc-p4', label: 'Clean glass storefront', order: 4 },
+        { id: 'cl-kmc-p5', label: 'Empty all trash bins', order: 5 },
+        { id: 'cl-kmc-p6', label: 'Dust shelving units', order: 6 },
+        { id: 'cl-kmc-p7', label: 'Clean washroom', order: 7 },
+      ],
+      clientId: 'client-kmc',
+      isSubSite: true,
+      createdAt: now,
+    },
+    {
+      id: 'site-kmc-clinic',
+      name: 'KMC Clinic',
+      address: '7990 Kennedy Rd S',
+      city: 'Brampton',
+      province: 'ON',
+      postalCode: 'L6W 4L3',
+      type: 'clinic',
+      contactName: 'Dr. Kennedy',
+      contactPhone: '905-555-0404',
+      contractRate: 750,
+      frequency: 'weekly',
+      cleaningDays: ['monday', 'tuesday', 'wednesday', 'thursday'],
+      assignedUserIds: partnerIds,
+      accessNotes: 'Main entrance. Key code: 4521. Sanitize exam rooms between patients.',
+      status: 'active',
+      checklist: [
+        { id: 'cl-kmc-c1', label: 'Vacuum waiting area and hallways', order: 1 },
+        { id: 'cl-kmc-c2', label: 'Mop exam room floors', order: 2 },
+        { id: 'cl-kmc-c3', label: 'Sanitize exam tables and counters', order: 3 },
+        { id: 'cl-kmc-c4', label: 'Clean and disinfect washrooms', order: 4 },
+        { id: 'cl-kmc-c5', label: 'Empty medical waste bins', order: 5 },
+        { id: 'cl-kmc-c6', label: 'Wipe reception desk and chairs', order: 6 },
+        { id: 'cl-kmc-c7', label: 'Clean glass doors and windows', order: 7 },
+        { id: 'cl-kmc-c8', label: 'Refill hand sanitizer stations', order: 8 },
+      ],
+      clientId: 'client-kmc',
+      isSubSite: true,
+      createdAt: now,
+    },
+    {
+      id: 'site-kmc-rehab',
+      name: 'KMC Rehab',
+      address: '7990 Kennedy Rd S',
+      city: 'Brampton',
+      province: 'ON',
+      postalCode: 'L6W 4L3',
+      type: 'clinic',
+      contactName: 'Dr. Kennedy',
+      contactPhone: '905-555-0404',
+      contractRate: 550,
+      frequency: 'weekly',
+      cleaningDays: ['monday', 'tuesday', 'wednesday'],
+      assignedUserIds: partnerIds,
+      accessNotes: 'Side entrance near parking lot. Equipment must not be moved.',
+      status: 'active',
+      checklist: [
+        { id: 'cl-kmc-r1', label: 'Vacuum therapy rooms and hallways', order: 1 },
+        { id: 'cl-kmc-r2', label: 'Mop treatment area floors', order: 2 },
+        { id: 'cl-kmc-r3', label: 'Sanitize treatment beds and equipment surfaces', order: 3 },
+        { id: 'cl-kmc-r4', label: 'Clean washroom and change room', order: 4 },
+        { id: 'cl-kmc-r5', label: 'Empty all trash bins', order: 5 },
+        { id: 'cl-kmc-r6', label: 'Wipe down exercise equipment', order: 6 },
+      ],
+      clientId: 'client-kmc',
+      isSubSite: true,
+      createdAt: now,
+    },
+  ];
+
+  const clients: Client[] = [
+    {
+      id: 'client-kmc',
+      name: 'Kennedy Medical Clinic',
+      address: '7990 Kennedy Rd S',
+      city: 'Brampton',
+      province: 'ON',
+      postalCode: 'L6W 4L3',
+      contactName: 'Dr. Kennedy',
+      contactPhone: '905-555-0404',
+      contractRate: 2000,
+      frequency: 'weekly',
+      cleaningDays: ['monday', 'tuesday', 'wednesday', 'thursday'],
+      status: 'active',
+      notes: 'First major client. 3 sub-sites: Pharmacy, Clinic, Rehab. Total monthly: $2,000.',
       createdAt: now,
     },
   ];
@@ -339,7 +473,7 @@ export function initializeStorage(): void {
     },
     {
       id: 'shift-003',
-      userId: 'user-partner-001',
+      userId: 'user-partner-yh',
       siteId: 'site-002',
       clockInTime: new Date(daysAgo(1).setHours(17, 30, 0)).toISOString(),
       clockInPhotoDataUrl: '',
@@ -391,6 +525,40 @@ export function initializeStorage(): void {
       isPaid: false,
       notes: 'Awaiting payment',
       createdAt: daysAgo(1).toISOString(),
+    },
+    // KMC Payments
+    {
+      id: 'pay-kmc-1',
+      siteId: 'site-kmc-pharmacy',
+      amount: 700,
+      date: daysAgo(4).toISOString().split('T')[0],
+      method: 'etransfer',
+      forPeriod: 'Week of ' + daysAgo(7).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }),
+      isPaid: true,
+      notes: 'KMC Pharmacy - first payment',
+      createdAt: daysAgo(4).toISOString(),
+    },
+    {
+      id: 'pay-kmc-2',
+      siteId: 'site-kmc-clinic',
+      amount: 750,
+      date: daysAgo(4).toISOString().split('T')[0],
+      method: 'etransfer',
+      forPeriod: 'Week of ' + daysAgo(7).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }),
+      isPaid: true,
+      notes: 'KMC Clinic - first payment',
+      createdAt: daysAgo(4).toISOString(),
+    },
+    {
+      id: 'pay-kmc-3',
+      siteId: 'site-kmc-rehab',
+      amount: 550,
+      date: daysAgo(4).toISOString().split('T')[0],
+      method: 'etransfer',
+      forPeriod: 'Week of ' + daysAgo(7).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }),
+      isPaid: true,
+      notes: 'KMC Rehab - first payment',
+      createdAt: daysAgo(4).toISOString(),
     },
   ];
 
@@ -479,6 +647,7 @@ export function initializeStorage(): void {
   setExpenses(expenses);
   setPayroll([]);
   setTasks(tasks);
+  setClients(clients);
   setSettings(settings);
 }
 
@@ -493,6 +662,8 @@ export function loadAllState() {
     expenses: getExpenses(),
     payroll: getPayroll(),
     tasks: getTasks(),
+    clients: getClients(),
+    quotes: getQuotes(),
     settings: getSettings() || {
       businessName: 'TSS Cleaners',
       ownerName: 'Ahraz Malik',
@@ -514,6 +685,8 @@ export function persistState(state: {
   expenses: Expense[];
   payroll: PayrollRecord[];
   tasks: Task[];
+  clients: Client[];
+  quotes: Quote[];
   settings: AppSettings;
 }) {
   setUsers(state.users);
@@ -523,5 +696,7 @@ export function persistState(state: {
   setExpenses(state.expenses);
   setPayroll(state.payroll);
   setTasks(state.tasks);
+  setClients(state.clients);
+  setQuotes(state.quotes);
   setSettings(state.settings);
 }
