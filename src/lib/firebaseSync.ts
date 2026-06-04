@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { 
-  User, Site, Shift, Payment, Expense, PayrollRecord, Task, AppSettings, AppAction 
+  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction 
 } from '../types';
 import { loadAllState } from '../utils/storage';
 
@@ -50,6 +50,8 @@ export async function fetchAllCollectionsOnce() {
     expensesSnap,
     payrollSnap,
     tasksSnap,
+    clientsSnap,
+    quotesSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'sites')),
@@ -58,6 +60,8 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'expenses')),
     getDocs(collection(db, 'payroll')),
     getDocs(collection(db, 'tasks')),
+    getDocs(collection(db, 'clients')),
+    getDocs(collection(db, 'quotes')),
   ]);
 
   const users = usersSnap.docs.map(docSnap => {
@@ -88,11 +92,19 @@ export async function fetchAllCollectionsOnce() {
     const data = docSnap.data() as Task;
     return { ...data, id: data.id ?? docSnap.id };
   });
+  const clients = clientsSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Client;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
+  const quotes = quotesSnap.docs.map(docSnap => {
+    const data = docSnap.data() as Quote;
+    return { ...data, id: data.id ?? docSnap.id };
+  });
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, settings };
 }
 
 /**
@@ -143,7 +155,15 @@ export async function migrateLocalToFirebase(): Promise<void> {
     for (const item of localData.tasks) {
       await setDoc(doc(db, 'tasks', item.id), sanitizeForFirestore(item));
     }
-    // 8. Migrate Settings
+    // 8. Migrate Clients
+    for (const item of localData.clients) {
+      await setDoc(doc(db, 'clients', item.id), sanitizeForFirestore(item));
+    }
+    // 9. Migrate Quotes
+    for (const item of localData.quotes) {
+      await setDoc(doc(db, 'quotes', item.id), sanitizeForFirestore(item));
+    }
+    // 10. Migrate Settings
     await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
 
     console.log('Migration completed successfully!');
@@ -231,6 +251,26 @@ export function subscribeToCollections(
     (err) => onError?.('tasks', err)
   );
 
+  const unsubClients = onSnapshot(
+    collection(db, 'clients'),
+    (snapshot) => {
+      const list: Client[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Client));
+      dispatch({ type: 'SET_CLIENTS', payload: list });
+    },
+    (err) => onError?.('clients', err)
+  );
+
+  const unsubQuotes = onSnapshot(
+    collection(db, 'quotes'),
+    (snapshot) => {
+      const list: Quote[] = [];
+      snapshot.forEach(doc => list.push(doc.data() as Quote));
+      dispatch({ type: 'SET_QUOTES', payload: list });
+    },
+    (err) => onError?.('quotes', err)
+  );
+
   const unsubSettings = onSnapshot(
     doc(db, 'settings', 'current'),
     (snapshot) => {
@@ -250,6 +290,8 @@ export function subscribeToCollections(
     unsubExpenses();
     unsubPayroll();
     unsubTasks();
+    unsubClients();
+    unsubQuotes();
     unsubSettings();
   };
 }
@@ -324,6 +366,24 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await deleteDoc(doc(db, 'tasks', action.payload));
         break;
 
+      // Clients
+      case 'ADD_CLIENT':
+      case 'UPDATE_CLIENT':
+        await setDoc(doc(db, 'clients', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_CLIENT':
+        await deleteDoc(doc(db, 'clients', action.payload));
+        break;
+
+      // Quotes
+      case 'ADD_QUOTE':
+      case 'UPDATE_QUOTE':
+        await setDoc(doc(db, 'quotes', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_QUOTE':
+        await deleteDoc(doc(db, 'quotes', action.payload));
+        break;
+
       // Settings
       case 'UPDATE_SETTINGS':
         if (currentSettings) {
@@ -354,11 +414,17 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         for (const item of action.payload.tasks) {
           await setDoc(doc(db, 'tasks', item.id), sanitizeForFirestore(item));
         }
+        for (const item of action.payload.clients) {
+          await setDoc(doc(db, 'clients', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.quotes) {
+          await setDoc(doc(db, 'quotes', item.id), sanitizeForFirestore(item));
+        }
         await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
         break;
 
       case 'CLEAR_ALL_DATA':
-        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks'];
+        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes'];
         for (const colName of collectionsToClear) {
           const snap = await getDocs(collection(db, colName));
           for (const docObj of snap.docs) {

@@ -76,13 +76,6 @@ export function TeamPage() {
       return;
     }
 
-    // Check if PIN is already taken by another active user
-    const pinConflict = state.users.some(u => u.isActive && u.pin === pin);
-    if (pinConflict) {
-      toast.error('This PIN is already in use by another team member');
-      return;
-    }
-
     const rate = role === 'employee' ? parseFloat(hourlyRate) || 0 : 0;
     const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
@@ -165,13 +158,6 @@ export function TeamPage() {
     if (!selectedUser) return;
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
       toast.error('PIN must be exactly 4 digits');
-      return;
-    }
-
-    // Check if PIN is already taken by another active user
-    const pinConflict = state.users.some(u => u.id !== selectedUser.id && u.isActive && u.pin === newPin);
-    if (pinConflict) {
-      toast.error('This PIN is already in use by another team member');
       return;
     }
 
