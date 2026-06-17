@@ -181,11 +181,16 @@ export function subscribeToCollections(
   dispatch: (action: AppAction) => void,
   onError?: (source: string, err: unknown) => void
 ) {
+  const ensureId = <T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T => {
+    const data = snap.data();
+    return { ...data, id: data?.id ?? snap.id } as T;
+  };
+
   const unsubUsers = onSnapshot(
     collection(db, 'users'),
     (snapshot) => {
       const list: User[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as User));
+      snapshot.forEach(doc => list.push(ensureId<User>(doc)));
       dispatch({ type: 'SET_USERS', payload: list });
     },
     (err) => onError?.('users', err)
@@ -195,7 +200,7 @@ export function subscribeToCollections(
     collection(db, 'sites'),
     (snapshot) => {
       const list: Site[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Site));
+      snapshot.forEach(doc => list.push(ensureId<Site>(doc)));
       dispatch({ type: 'SET_SITES', payload: list });
     },
     (err) => onError?.('sites', err)
@@ -205,7 +210,7 @@ export function subscribeToCollections(
     collection(db, 'shifts'),
     (snapshot) => {
       const list: Shift[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Shift));
+      snapshot.forEach(doc => list.push(ensureId<Shift>(doc)));
       dispatch({ type: 'SET_SHIFTS', payload: list });
     },
     (err) => onError?.('shifts', err)
@@ -215,7 +220,7 @@ export function subscribeToCollections(
     collection(db, 'payments'),
     (snapshot) => {
       const list: Payment[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Payment));
+      snapshot.forEach(doc => list.push(ensureId<Payment>(doc)));
       dispatch({ type: 'SET_PAYMENTS', payload: list });
     },
     (err) => onError?.('payments', err)
@@ -225,7 +230,7 @@ export function subscribeToCollections(
     collection(db, 'expenses'),
     (snapshot) => {
       const list: Expense[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Expense));
+      snapshot.forEach(doc => list.push(ensureId<Expense>(doc)));
       dispatch({ type: 'SET_EXPENSES', payload: list });
     },
     (err) => onError?.('expenses', err)
@@ -235,7 +240,7 @@ export function subscribeToCollections(
     collection(db, 'payroll'),
     (snapshot) => {
       const list: PayrollRecord[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as PayrollRecord));
+      snapshot.forEach(doc => list.push(ensureId<PayrollRecord>(doc)));
       dispatch({ type: 'SET_PAYROLL', payload: list });
     },
     (err) => onError?.('payroll', err)
@@ -245,7 +250,7 @@ export function subscribeToCollections(
     collection(db, 'tasks'),
     (snapshot) => {
       const list: Task[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Task));
+      snapshot.forEach(doc => list.push(ensureId<Task>(doc)));
       dispatch({ type: 'SET_TASKS', payload: list });
     },
     (err) => onError?.('tasks', err)
@@ -255,7 +260,7 @@ export function subscribeToCollections(
     collection(db, 'clients'),
     (snapshot) => {
       const list: Client[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Client));
+      snapshot.forEach(doc => list.push(ensureId<Client>(doc)));
       dispatch({ type: 'SET_CLIENTS', payload: list });
     },
     (err) => onError?.('clients', err)
@@ -265,7 +270,7 @@ export function subscribeToCollections(
     collection(db, 'quotes'),
     (snapshot) => {
       const list: Quote[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as Quote));
+      snapshot.forEach(doc => list.push(ensureId<Quote>(doc)));
       dispatch({ type: 'SET_QUOTES', payload: list });
     },
     (err) => onError?.('quotes', err)
@@ -275,7 +280,8 @@ export function subscribeToCollections(
     doc(db, 'settings', 'current'),
     (snapshot) => {
       if (snapshot.exists()) {
-        dispatch({ type: 'SET_SETTINGS', payload: snapshot.data() as AppSettings });
+        const data = snapshot.data();
+        dispatch({ type: 'SET_SETTINGS', payload: { ...data, id: data?.id } as AppSettings });
       }
     },
     (err) => onError?.('settings', err)
