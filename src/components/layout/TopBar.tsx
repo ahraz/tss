@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Bell } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 
@@ -31,9 +31,6 @@ export function TopBar({ title }: TopBarProps) {
         </h1>
       </div>
       <div className="flex items-center gap-3">
-        <button className="text-gray-500 hover:text-gray-700">
-          <Bell size={20} />
-        </button>
         <UserAvatar user={currentUser} size="sm" />
       </div>
     </header>

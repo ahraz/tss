@@ -77,8 +77,8 @@ export function SettingsPage() {
       return;
     }
 
-    if (passwordData.newPin.length < 4) {
-      toast.error('New PIN must be at least 4 characters');
+    if (passwordData.newPin.length !== 4 || !/^\d{4}$/.test(passwordData.newPin)) {
+      toast.error('New PIN must be exactly 4 digits');
       return;
     }
 
@@ -240,23 +240,26 @@ export function SettingsPage() {
             <Input 
               label="Current PIN" 
               type="password"
+              maxLength={4}
               value={passwordData.currentPin}
-              onChange={e => setPasswordData({...passwordData, currentPin: e.target.value})}
+              onChange={e => setPasswordData({...passwordData, currentPin: e.target.value.replace(/\D/g, '')})}
               placeholder="Enter your current PIN"
             />
             <Input 
               label="New PIN" 
               type="password"
+              maxLength={4}
               value={passwordData.newPin}
-              onChange={e => setPasswordData({...passwordData, newPin: e.target.value})}
-              placeholder="Enter new PIN (minimum 4 digits)"
+              onChange={e => setPasswordData({...passwordData, newPin: e.target.value.replace(/\D/g, '')})}
+              placeholder="Enter new 4-digit PIN"
             />
             <Input 
               label="Confirm New PIN" 
               type="password"
+              maxLength={4}
               value={passwordData.confirmPin}
-              onChange={e => setPasswordData({...passwordData, confirmPin: e.target.value})}
-              placeholder="Re-enter new PIN"
+              onChange={e => setPasswordData({...passwordData, confirmPin: e.target.value.replace(/\D/g, '')})}
+              placeholder="Re-enter new 4-digit PIN"
             />
           </div>
           

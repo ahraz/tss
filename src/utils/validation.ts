@@ -45,8 +45,7 @@ export const validators = {
    */
   pin: (value: string): ValidationResult => {
     if (!value) return { isValid: false, error: 'PIN is required' };
-    if (value.length < 4) return { isValid: false, error: 'PIN must be at least 4 characters' };
-    if (value.length > 20) return { isValid: false, error: 'PIN must not exceed 20 characters' };
+    if (!/^\d{4}$/.test(value)) return { isValid: false, error: 'PIN must be exactly 4 digits' };
     return { isValid: true };
   },
 

@@ -164,15 +164,23 @@ export function ClockPage() {
     setChecklist(prev => prev.map(c => c.itemId === itemId ? { ...c, completed: !c.completed } : c));
   };
 
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
+
   const handleFallbackUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error('Photo must be under 5 MB');
+      e.target.value = '';
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhoto(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const renderCamera = () => (

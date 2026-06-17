@@ -117,7 +117,7 @@ export function clearOldPhotos(days: number = 30): number {
       return {
         ...s,
         clockInPhotoDataUrl: '',
-        clockOutPhotoDataUrl: s.clockOutPhotoDataUrl ? '' : null,
+        clockOutPhotoDataUrl: '',
       };
     }
     return s;

@@ -36,16 +36,17 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
 }
 
 export default function App() {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Handle auto-logout if session is missing but user is thought to be logged in,
   // or redirect to login if not authenticated and not already there.
   useEffect(() => {
-    if (state.isInitialized && !state.session && window.location.hash !== '#/login') {
+    if (state.isInitialized && !state.session && location.pathname !== '/login') {
        navigate('/login');
     }
-  }, [state.isInitialized, state.session, navigate]);
+  }, [state.isInitialized, state.session, location.pathname, navigate]);
 
   if (!state.isInitialized) {
     return (

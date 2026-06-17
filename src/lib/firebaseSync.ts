@@ -280,8 +280,8 @@ export function subscribeToCollections(
     doc(db, 'settings', 'current'),
     (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.data();
-        dispatch({ type: 'SET_SETTINGS', payload: { ...data, id: data?.id } as unknown as AppSettings });
+        const data = snapshot.data() as AppSettings;
+        dispatch({ type: 'SET_SETTINGS', payload: data });
       }
     },
     (err) => onError?.('settings', err)
