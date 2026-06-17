@@ -250,6 +250,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
+    // Keep a ref to the rich local user data so real-time Firestore listeners
+    // don't overwrite extended profile fields that Firestore doesn't have yet.
+    const richUsersRef = new Map<string, User>();
+    loaded.users.forEach(u => richUsersRef.set(u.id, { ...u }));
+
     // 2. Safely connect and sync with Firebase online
     let unsubscribe: (() => void) | null = null;
     
@@ -265,7 +270,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         
         // Hydrate once from Firestore to ensure cross-session consistency
         const remote = await fetchAllCollectionsOnce();
-        originalDispatch({ type: 'SET_USERS', payload: remote.users });
+        
+        // Merge remote users with local (rich) data to preserve extended profile fields
+        // that Firestore doesn't yet have (photoId, email, skills, availability, etc.)
+        const mergedUsers = remote.users.map(remoteUser => {
+          const localUser = richUsersRef.get(remoteUser.id) ?? loaded.users.find(u => u.id === remoteUser.id);
+          return localUser ? { ...remoteUser, ...localUser } : remoteUser;
+        });
+        // Update the ref with merged data so listeners can use it too
+        mergedUsers.forEach(u => richUsersRef.set(u.id, { ...u }));
+        originalDispatch({ type: 'SET_USERS', payload: mergedUsers });
         originalDispatch({ type: 'SET_SITES', payload: remote.sites });
         originalDispatch({ type: 'SET_SHIFTS', payload: remote.shifts });
         originalDispatch({ type: 'SET_PAYMENTS', payload: remote.payments });
@@ -278,8 +292,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
         
-        // Start listening to the real-time collections
-        unsubscribe = subscribeToCollections(originalDispatch, handleSnapshotError);
+        // Create a wrapped dispatch for the real-time listener that merges rich user data
+        const mergingDispatch = (action: AppAction) => {
+          if (action.type === 'SET_USERS') {
+            const merged = action.payload.map(remoteUser => {
+              const rich = richUsersRef.get(remoteUser.id);
+              return rich ? { ...remoteUser, ...rich } : remoteUser;
+            });
+            merged.forEach(u => richUsersRef.set(u.id, { ...u }));
+            originalDispatch({ type: 'SET_USERS', payload: merged });
+          } else {
+            originalDispatch(action);
+          }
+        };
+
+        // Start listening to the real-time collections with the merging dispatch
+        unsubscribe = subscribeToCollections(mergingDispatch, handleSnapshotError);
       } catch (err) {
         console.error('Failed to initialize Firebase syncing:', err);
         toast.error('Could not connect to Firestore. Working locally only.');
