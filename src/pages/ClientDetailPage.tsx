@@ -72,6 +72,7 @@ export function ClientDetailPage() {
     postalCode: client.postalCode, type: 'clinic', contactName: client.contactName,
     contactPhone: client.contactPhone, contractRate: 0, frequency: 'weekly',
     cleaningDays: [], assignedUserIds: [], accessNotes: '', status: 'active',
+    scheduleStart: '', scheduleEnd: '',
   });
 
   const handleAddSite = () => {

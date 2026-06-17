@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { formatTime } from '../utils/formatters';
 import type { DayOfWeek } from '../types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -145,7 +146,11 @@ export function SchedulePage() {
                       <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <Clock size={14} />
-                          <span className="capitalize">{site.frequency}</span>
+                          {site.scheduleStart && site.scheduleEnd ? (
+                            <span>{formatTime(site.scheduleStart)} – {formatTime(site.scheduleEnd)}</span>
+                          ) : (
+                            <span className="capitalize">{site.frequency}</span>
+                          )}
                         </div>
                         {assignedNames && (
                           <div className="flex items-center gap-1">

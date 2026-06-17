@@ -13,7 +13,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { formatCAD } from '../utils/formatters';
+import { formatCAD, formatTime } from '../utils/formatters';
 import { calculateSiteProfit } from '../utils/calculations';
 import { generateId } from '../utils/storage';
 import type { Site, SiteType, CleaningFrequency, DayOfWeek } from '../types';
@@ -108,6 +108,14 @@ export function SiteDetailPage() {
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
               <p className="text-xs text-gray-500 mb-1">Frequency</p>
               <p className="font-medium text-gray-900 capitalize">{site.frequency}</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-500 mb-1">Schedule</p>
+              <p className="font-medium text-gray-900">
+                {site.scheduleStart && site.scheduleEnd
+                  ? `${formatTime(site.scheduleStart)} – ${formatTime(site.scheduleEnd)}`
+                  : '—'}
+              </p>
             </div>
           </div>
           <div className="mt-3 flex gap-2 flex-wrap">
@@ -312,6 +320,11 @@ export function SiteDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
             <Input label="Contract Rate (CAD)" type="number" value={formData.contractRate || ''} onChange={e => setFormData({...formData, contractRate: Number(e.target.value)})} />
             <Select label="Frequency" options={['daily','weekly','biweekly','monthly'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={formData.frequency || ''} onChange={e => setFormData({...formData, frequency: e.target.value as CleaningFrequency})} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Schedule Start" type="time" value={formData.scheduleStart || ''} onChange={e => setFormData({...formData, scheduleStart: e.target.value})} />
+            <Input label="Schedule End" type="time" value={formData.scheduleEnd || ''} onChange={e => setFormData({...formData, scheduleEnd: e.target.value})} />
           </div>
 
           <Select label="Status" options={['active','paused','cancelled'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value as any})} />

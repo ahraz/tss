@@ -201,6 +201,11 @@ export function SitesPage() {
               <Select label="Frequency" options={['daily','weekly','biweekly','monthly'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={formData.frequency} onChange={e => setFormData({...formData, frequency: e.target.value as CleaningFrequency})} />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Schedule Start" type="time" value={formData.scheduleStart || ''} onChange={e => setFormData({...formData, scheduleStart: e.target.value})} />
+              <Input label="Schedule End" type="time" value={formData.scheduleEnd || ''} onChange={e => setFormData({...formData, scheduleEnd: e.target.value})} />
+            </div>
+
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-2">Cleaning Days</label>
               <div className="flex flex-wrap gap-2">

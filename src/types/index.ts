@@ -75,6 +75,8 @@ export interface Site {
   contractRate: number;
   frequency: CleaningFrequency;
   cleaningDays: DayOfWeek[];
+  scheduleStart: string;  // HH:mm format, e.g. "17:00"
+  scheduleEnd: string;    // HH:mm format, e.g. "19:00"
   assignedUserIds: string[];
   accessNotes: string;
   status: SiteStatus;
