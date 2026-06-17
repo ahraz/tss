@@ -249,10 +249,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Persist to localStorage on every state change (except session — handled in reducer)
+  // Persist to localStorage on every state change — but skip when the data
+  // hasn't actually changed (e.g. Firestore snapshot echoing back the same data).
+  const lastPersistedRef = React.useRef('');
   useEffect(() => {
     if (!state.isInitialized) return;
-    persistState({
+    const snapshot = JSON.stringify({
       users: state.users,
       sites: state.sites,
       shifts: state.shifts,
@@ -264,6 +266,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       quotes: state.quotes,
       settings: state.settings,
     });
+    if (snapshot === lastPersistedRef.current) return;
+    lastPersistedRef.current = snapshot;
+    persistState(JSON.parse(snapshot));
   }, [
     state.isInitialized,
     state.users,
