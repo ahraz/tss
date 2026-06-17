@@ -20,7 +20,7 @@ export function ClockPage() {
   const navigate = useNavigate();
   const activeShift = useActiveShift();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   
@@ -40,7 +40,7 @@ export function ClockPage() {
     if (videoRef.current && isCameraAvailable()) {
       try {
         const s = await startCamera(videoRef.current);
-        setStream(s);
+        streamRef.current = s;
         setCameraError(false);
       } catch (e) {
         console.error(e);
@@ -56,7 +56,8 @@ export function ClockPage() {
       initCamera();
     }
     return () => {
-      stopCamera(stream);
+      stopCamera(streamRef.current);
+      streamRef.current = null;
     };
   }, [photo, showSummary, initCamera]);
 
@@ -78,11 +79,11 @@ export function ClockPage() {
   }, [activeShift, state.sites]);
 
   const handleCapture = () => {
-    if (videoRef.current && stream) {
+    if (videoRef.current && streamRef.current) {
       const dataUrl = capturePhoto(videoRef.current);
       setPhoto(dataUrl);
-      stopCamera(stream);
-      setStream(null);
+      stopCamera(streamRef.current);
+      streamRef.current = null;
     }
   };
 
@@ -105,7 +106,7 @@ export function ClockPage() {
       userId: currentUser!.id,
       siteId: selectedSiteId,
       clockInTime: new Date().toISOString(),
-      clockInPhotoDataUrl: photo || '', // Fallback empty string if no camera
+      clockInPhotoDataUrl: photo || '',
       clockOutTime: null,
       clockOutPhotoDataUrl: null,
       durationMinutes: null,

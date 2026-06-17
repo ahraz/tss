@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -9,8 +9,8 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { UserAvatar } from '../components/ui/UserAvatar';
-import { formatCAD, formatRelativeTime, formatDuration } from '../utils/formatters';
-import { calculateSiteProfit, calculateEmployeePay } from '../utils/calculations';
+import { formatCAD, formatDuration } from '../utils/formatters';
+import { calculateSiteProfit } from '../utils/calculations';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 
 export function DashboardPage() {
