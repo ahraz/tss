@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, AlertCircle, Plus, Banknote, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -53,6 +53,12 @@ export function DashboardPage() {
       .reduce((sum, s) => sum + ((s.durationMinutes || 0) / 60), 0);
   }
 
+  // Payroll summary (owner/partner)
+  const pendingPayroll = state.payroll.filter(r => r.status === 'approved' && !r.isPaid);
+  const pendingPayrollTotal = pendingPayroll.reduce((s, r) => s + r.grossAmount, 0);
+  const pendingApproval = state.payroll.filter(r => r.status === 'calculated');
+  const pendingApprovalCount = pendingApproval.length;
+
   // Employee calculations
   const weekStart = startOfWeek(today);
   const weekEnd = endOfWeek(today);
@@ -76,6 +82,31 @@ export function DashboardPage() {
         <StatCard label="Active Sites" value={activeSitesCount.toString()} icon={Building2} iconColor="text-purple-600" iconBg="bg-purple-100" />
         <StatCard label="Hours Today" value={totalHoursToday.toFixed(1) + 'h'} icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-100" />
       </div>
+
+      {/* Payroll summary */}
+      {(pendingPayrollTotal > 0 || pendingApprovalCount > 0) && (
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-100 p-2.5 rounded-xl">
+                <Banknote size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Payroll Summary</p>
+                <p className="text-sm text-gray-600">
+                  {pendingPayroll.length > 0 && <span>{pendingPayroll.length} employee{pendingPayroll.length > 1 ? 's' : ''} ready to pay · <strong>{formatCAD(pendingPayrollTotal)}</strong></span>}
+                  {pendingPayroll.length > 0 && pendingApprovalCount > 0 && <span> · </span>}
+                  {pendingApprovalCount > 0 && <span>{pendingApprovalCount} pending approval</span>}
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => navigate('/payroll')}>
+              <Banknote size={16} />
+              Go to Payroll
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {activeShifts.length > 0 && (
         <div className="space-y-3">
@@ -143,6 +174,7 @@ export function DashboardPage() {
             <Button variant="secondary" className="justify-start" icon={DollarSign} onClick={() => navigate('/money')}>Add Payment</Button>
             <Button variant="secondary" className="justify-start" icon={CheckCircle2} onClick={() => navigate('/tasks')}>Add Task</Button>
             <Button variant="secondary" className="justify-start" icon={Plus} onClick={() => navigate('/money')}>New Expense</Button>
+            <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/payroll')}>Process Payroll</Button>
           </div>
         </Card>
       </div>

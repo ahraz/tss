@@ -255,11 +255,18 @@ export interface PayrollRecord {
   hoursWorked: number;
   hourlyRate: number;
   grossAmount: number;
+  status: 'calculated' | 'approved' | 'paid';
   isPaid: boolean;
   paidDate: string | null;
+  approvedAt: string | null;
+  approvedById: string | null;
+  payPeriodLabel: string;
+  shiftIds: string[];
   notes: string;
   createdAt: string;
 }
+
+export type PayrollStatus = 'calculated' | 'approved' | 'paid';
 
 export interface QuoteLineItem {
   id: string;
