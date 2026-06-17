@@ -23,6 +23,11 @@ const initialState: AppState = {
   tasks: [],
   clients: [],
   quotes: [],
+  supplyItems: [],
+  siteInventory: [],
+  inspections: [],
+  inspectionTemplates: [],
+  incidentReports: [],
   settings: {
     businessName: 'TSS Cleaners',
     ownerName: 'Ahraz Malik',
@@ -145,6 +150,48 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.payload } };
 
+    // Inventory
+    case 'SET_SUPPLY_ITEMS':
+      return { ...state, supplyItems: action.payload };
+    case 'ADD_SUPPLY_ITEM':
+      return { ...state, supplyItems: [...state.supplyItems, action.payload] };
+    case 'UPDATE_SUPPLY_ITEM':
+      return { ...state, supplyItems: state.supplyItems.map(s => s.id === action.payload.id ? action.payload : s) };
+    case 'DELETE_SUPPLY_ITEM':
+      return { ...state, supplyItems: state.supplyItems.filter(s => s.id !== action.payload) };
+    case 'SET_SITE_INVENTORY':
+      return { ...state, siteInventory: action.payload };
+    case 'ADD_SITE_INVENTORY':
+      return { ...state, siteInventory: [...state.siteInventory, action.payload] };
+    case 'UPDATE_SITE_INVENTORY':
+      return { ...state, siteInventory: state.siteInventory.map(s => s.id === action.payload.id ? action.payload : s) };
+    case 'DELETE_SITE_INVENTORY':
+      return { ...state, siteInventory: state.siteInventory.filter(s => s.id !== action.payload) };
+
+    // Inspections
+    case 'SET_INSPECTIONS':
+      return { ...state, inspections: action.payload };
+    case 'ADD_INSPECTION':
+      return { ...state, inspections: [...state.inspections, action.payload] };
+    case 'DELETE_INSPECTION':
+      return { ...state, inspections: state.inspections.filter(i => i.id !== action.payload) };
+    case 'SET_INSPECTION_TEMPLATES':
+      return { ...state, inspectionTemplates: action.payload };
+    case 'ADD_INSPECTION_TEMPLATE':
+      return { ...state, inspectionTemplates: [...state.inspectionTemplates, action.payload] };
+    case 'DELETE_INSPECTION_TEMPLATE':
+      return { ...state, inspectionTemplates: state.inspectionTemplates.filter(i => i.id !== action.payload) };
+
+    // Incident Reports
+    case 'SET_INCIDENT_REPORTS':
+      return { ...state, incidentReports: action.payload };
+    case 'ADD_INCIDENT_REPORT':
+      return { ...state, incidentReports: [...state.incidentReports, action.payload] };
+    case 'UPDATE_INCIDENT_REPORT':
+      return { ...state, incidentReports: state.incidentReports.map(r => r.id === action.payload.id ? action.payload : r) };
+    case 'DELETE_INCIDENT_REPORT':
+      return { ...state, incidentReports: state.incidentReports.filter(r => r.id !== action.payload) };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -264,6 +311,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       tasks: state.tasks,
       clients: state.clients,
       quotes: state.quotes,
+      supplyItems: state.supplyItems,
+      siteInventory: state.siteInventory,
+      inspections: state.inspections,
+      inspectionTemplates: state.inspectionTemplates,
+      incidentReports: state.incidentReports,
       settings: state.settings,
     });
     if (snapshot === lastPersistedRef.current) return;
@@ -280,6 +332,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.tasks,
     state.clients,
     state.quotes,
+    state.supplyItems,
+    state.siteInventory,
+    state.inspections,
+    state.inspectionTemplates,
+    state.incidentReports,
     state.settings,
   ]);
 

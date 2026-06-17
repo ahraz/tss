@@ -6,6 +6,7 @@ import { PwaUpdatePrompt } from './components/ui/PwaUpdatePrompt';
 // Pages (eager — always needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ClockPage } from './pages/ClockPage';
 import { ShiftsPage } from './pages/ShiftsPage';
 import { SitesPage } from './pages/SitesPage';
@@ -19,6 +20,8 @@ import { MoneyBookPage } from './pages/MoneyBookPage';
 import { TasksPage } from './pages/TasksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TeamPage } from './pages/TeamPage';
+import { InventoryPage } from './pages/InventoryPage';
+import { IncidentsPage } from './pages/IncidentsPage';
 
 // AnalyticsPage lazy-loaded because it pulls in ~300 KB of recharts
 const AnalyticsPage = lazy(() =>
@@ -67,6 +70,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/clock" element={<ProtectedRoute><ClockPage /></ProtectedRoute>} />
         <Route path="/schedule" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><SchedulePage /></ProtectedRoute>} />
         <Route path="/shifts" element={<ProtectedRoute><ShiftsPage /></ProtectedRoute>} />
@@ -81,6 +85,8 @@ export default function App() {
         <Route path="/quotes/:id" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuoteDetailPage /></ProtectedRoute>} />
         
         <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><InventoryPage /></ProtectedRoute>} />
+        <Route path="/incidents" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><IncidentsPage /></ProtectedRoute>} />
         <Route path="/money" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><MoneyBookPage /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Loading analytics…</div>}><AnalyticsPage /></Suspense></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['owner']}><SettingsPage /></ProtectedRoute>} />

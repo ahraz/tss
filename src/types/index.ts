@@ -23,6 +23,96 @@ export type TaskStatus = 'todo' | 'inprogress' | 'done';
 export type PayPeriod = 'biweekly' | 'monthly';
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
 
+// --- Inventory ---
+export type SupplyCategory = 'paper' | 'chemical' | 'plastic' | 'equipment' | 'safety' | 'other';
+export type SupplyUnit = 'each' | 'roll' | 'bottle' | 'box' | 'case' | 'litre' | 'kg';
+
+export interface SupplyItem {
+  id: string;
+  name: string;
+  category: SupplyCategory;
+  unit: SupplyUnit;
+  /** Reorder when stock reaches this level */
+  reorderAt: number;
+  /** Default per-visit consumption estimate */
+  perVisitUsage: number;
+  notes?: string;
+}
+
+export interface SiteInventory {
+  id: string;
+  siteId: string;
+  itemId: string;
+  quantity: number;
+  lastRestocked: string | null;
+  notes?: string;
+}
+
+// --- Quality / Inspection ---
+export type InspectionRating = 'pass' | 'pass_needs' | 'fail';
+
+export interface InspectionItem {
+  id: string;
+  label: string;
+  category: string;       // e.g. "Floors", "Washrooms", "Kitchen", "Dusting"
+  order: number;
+}
+
+export interface InspectionResult {
+  itemId: string;
+  rating: InspectionRating;
+  notes: string;
+}
+
+export interface Inspection {
+  id: string;
+  siteId: string;
+  performedById: string;
+  performedAt: string;
+  items: InspectionResult[];
+  /** Overall notes from the inspector */
+  notes: string;
+  /** Photo evidence stored in IndexedDB */
+  photoIds: string[];
+  /** Whether client signed off */
+  clientSigned: boolean;
+  clientSignedAt: string | null;
+  createdAt: string;
+}
+
+// --- Incident / Accident ---
+export type IncidentSeverity = 'minor' | 'moderate' | 'major' | 'critical';
+
+export interface IncidentReport {
+  id: string;
+  siteId: string;
+  reportedById: string;
+  occurredAt: string;
+  severity: IncidentSeverity;
+  description: string;
+  /** What was the immediate action taken */
+  actionTaken: string;
+  /** Witness information */
+  witnessName?: string;
+  witnessPhone?: string;
+  witnessStatement?: string;
+  /** Photos stored in IndexedDB */
+  photoIds: string[];
+  /** Was medical attention required */
+  medicalAttention: boolean;
+  medicalDetails?: string;
+  /** Was property damaged */
+  propertyDamage: boolean;
+  propertyDamageDetails?: string;
+  /** Follow-up task ID (if created) */
+  followUpTaskId?: string;
+  status: 'open' | 'investigating' | 'resolved';
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+}
+
 // --- Entity Interfaces ---
 
 export interface Client {
@@ -50,7 +140,34 @@ export interface User {
   avatarInitials: string;
   avatarColor: string;
   hourlyRate: number;
+  // Contact
   phone?: string;
+  email?: string;
+  address?: string;
+  // Employment
+  jobTitle?: string;
+  hireDate?: string;
+  employeeId?: string;
+  sin?: string;             // Tax ID / SIN — sensitive, for payroll only
+  bankingInfo?: string;     // Stored encrypted or as note; for direct deposit
+  // Emergency contact
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
+  // Skills & certifications
+  skills?: string[];        // e.g. ["High Dusting", "Carpet Cleaning", "Floor Buffing"]
+  // Availability (day → "morning" | "afternoon" | "evening" | "unavailable")
+  availability?: Partial<Record<DayOfWeek, 'morning' | 'afternoon' | 'evening' | 'unavailable'>>;
+  // Documents (key = label, value = photoStore key)
+  documents?: Record<string, string>;
+  // Uniform & equipment
+  tshirtSize?: string;
+  equipmentIssued?: string; // e.g. "Uniform x2, Safety vest, Mop bucket"
+  // Management
+  notes?: string;
+  performanceRating?: number; // 1–5
+  // Photo stored in IndexedDB (photoStore key)
+  photoId?: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -216,6 +333,12 @@ export interface AppState {
   settings: AppSettings;
   session: Session | null;
   isInitialized: boolean;
+  // New feature stores
+  supplyItems: SupplyItem[];
+  siteInventory: SiteInventory[];
+  inspections: Inspection[];
+  inspectionTemplates: InspectionItem[];
+  incidentReports: IncidentReport[];
 }
 
 // --- Action Types ---
@@ -275,6 +398,27 @@ export type AppAction =
   | { type: 'DELETE_QUOTE'; payload: string }
   // Settings
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
+  // Inventory
+  | { type: 'SET_SUPPLY_ITEMS'; payload: SupplyItem[] }
+  | { type: 'ADD_SUPPLY_ITEM'; payload: SupplyItem }
+  | { type: 'UPDATE_SUPPLY_ITEM'; payload: SupplyItem }
+  | { type: 'DELETE_SUPPLY_ITEM'; payload: string }
+  | { type: 'SET_SITE_INVENTORY'; payload: SiteInventory[] }
+  | { type: 'ADD_SITE_INVENTORY'; payload: SiteInventory }
+  | { type: 'UPDATE_SITE_INVENTORY'; payload: SiteInventory }
+  | { type: 'DELETE_SITE_INVENTORY'; payload: string }
+  // Inspections
+  | { type: 'SET_INSPECTIONS'; payload: Inspection[] }
+  | { type: 'ADD_INSPECTION'; payload: Inspection }
+  | { type: 'DELETE_INSPECTION'; payload: string }
+  | { type: 'SET_INSPECTION_TEMPLATES'; payload: InspectionItem[] }
+  | { type: 'ADD_INSPECTION_TEMPLATE'; payload: InspectionItem }
+  | { type: 'DELETE_INSPECTION_TEMPLATE'; payload: string }
+  // Incidents
+  | { type: 'SET_INCIDENT_REPORTS'; payload: IncidentReport[] }
+  | { type: 'ADD_INCIDENT_REPORT'; payload: IncidentReport }
+  | { type: 'UPDATE_INCIDENT_REPORT'; payload: IncidentReport }
+  | { type: 'DELETE_INCIDENT_REPORT'; payload: string }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };

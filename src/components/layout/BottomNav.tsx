@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Clock, Building2, DollarSign, Menu, BarChart3, CheckSquare, Settings, LogOut, X, Users, Briefcase, FileText, CalendarDays } from 'lucide-react';
+import { Home, Clock, Building2, DollarSign, Menu, BarChart3, CheckSquare, Settings, LogOut, X, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export function BottomNav() {
@@ -36,6 +36,10 @@ export function BottomNav() {
               </button>
             </div>
             <div className="p-2 space-y-1">
+              <NavLink to="/profile" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                <User size={20} className="text-gray-400" />
+                <span className="font-medium">My Profile</span>
+              </NavLink>
               {isOwnerOrPartner && (
                 <NavLink to="/schedule" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
                   <CalendarDays size={20} className="text-gray-400" />
@@ -52,6 +56,18 @@ export function BottomNav() {
                 <NavLink to="/quotes" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
                   <FileText size={20} className="text-gray-400" />
                   <span className="font-medium">Quotes</span>
+                </NavLink>
+              )}
+              {isOwnerOrPartner && (
+                <NavLink to="/inventory" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <Package size={20} className="text-gray-400" />
+                  <span className="font-medium">Inventory</span>
+                </NavLink>
+              )}
+              {isOwnerOrPartner && (
+                <NavLink to="/incidents" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <AlertTriangle size={20} className="text-gray-400" />
+                  <span className="font-medium">Incidents</span>
                 </NavLink>
               )}
               {isOwnerOrPartner && (

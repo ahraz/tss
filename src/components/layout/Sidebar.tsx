@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
@@ -13,6 +13,7 @@ export function Sidebar() {
 
   const links = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/profile', icon: User, label: 'My Profile' },
     { to: '/clock', icon: Clock, label: 'Clock In/Out' },
     { to: '/shifts', icon: ClipboardList, label: 'Shifts' },
     { to: '/sites', icon: Building2, label: 'Sites' },
@@ -21,6 +22,8 @@ export function Sidebar() {
       { to: '/clients', icon: Briefcase, label: 'Clients' },
       { to: '/quotes', icon: FileText, label: 'Quotes' },
       { to: '/team', icon: Users, label: 'Team' },
+      { to: '/inventory', icon: Package, label: 'Inventory' },
+      { to: '/incidents', icon: AlertTriangle, label: 'Incidents' },
       { to: '/money', icon: DollarSign, label: 'Money Book' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
     ] : []),

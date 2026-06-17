@@ -3,7 +3,8 @@
 // ============================================================
 
 import type {
-  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, Session
+  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, Session,
+  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport
 } from '../types';
 
 // --- Storage Keys ---
@@ -19,6 +20,11 @@ const KEYS = {
   quotes: 'cleanops_quotes',
   settings: 'cleanops_settings',
   session: 'cleanops_session',
+  supplyItems: 'cleanops_supplyItems',
+  siteInventory: 'cleanops_siteInventory',
+  inspections: 'cleanops_inspections',
+  inspectionTemplates: 'cleanops_inspectionTemplates',
+  incidentReports: 'cleanops_incidentReports',
 } as const;
 
 // --- Generic Read/Write ---
@@ -77,6 +83,21 @@ export const setQuotes = (v: Quote[]) => setData(KEYS.quotes, v);
 
 export const getSettings = () => getData<AppSettings>(KEYS.settings);
 export const setSettings = (v: AppSettings) => setData(KEYS.settings, v);
+
+export const getSupplyItems = () => getData<SupplyItem[]>(KEYS.supplyItems) ?? [];
+export const setSupplyItems = (v: SupplyItem[]) => setData(KEYS.supplyItems, v);
+
+export const getSiteInventory = () => getData<SiteInventory[]>(KEYS.siteInventory) ?? [];
+export const setSiteInventory = (v: SiteInventory[]) => setData(KEYS.siteInventory, v);
+
+export const getInspections = () => getData<Inspection[]>(KEYS.inspections) ?? [];
+export const setInspections = (v: Inspection[]) => setData(KEYS.inspections, v);
+
+export const getInspectionTemplates = () => getData<InspectionItem[]>(KEYS.inspectionTemplates) ?? [];
+export const setInspectionTemplates = (v: InspectionItem[]) => setData(KEYS.inspectionTemplates, v);
+
+export const getIncidentReports = () => getData<IncidentReport[]>(KEYS.incidentReports) ?? [];
+export const setIncidentReports = (v: IncidentReport[]) => setData(KEYS.incidentReports, v);
 
 export const getSession = () => getData<Session>(KEYS.session);
 export const setSession = (v: Session | null) => {
@@ -704,6 +725,11 @@ export function loadAllState() {
     tasks: getTasks(),
     clients: getClients(),
     quotes: getQuotes(),
+    supplyItems: getSupplyItems(),
+    siteInventory: getSiteInventory(),
+    inspections: getInspections(),
+    inspectionTemplates: getInspectionTemplates(),
+    incidentReports: getIncidentReports(),
     settings: getSettings() || {
       businessName: 'TSS Cleaners',
       ownerName: 'Ahraz Malik',
@@ -727,6 +753,11 @@ export function persistState(state: {
   tasks: Task[];
   clients: Client[];
   quotes: Quote[];
+  supplyItems: SupplyItem[];
+  siteInventory: SiteInventory[];
+  inspections: Inspection[];
+  inspectionTemplates: InspectionItem[];
+  incidentReports: IncidentReport[];
   settings: AppSettings;
 }) {
   setUsers(state.users);
@@ -738,5 +769,10 @@ export function persistState(state: {
   setTasks(state.tasks);
   setClients(state.clients);
   setQuotes(state.quotes);
+  setSupplyItems(state.supplyItems);
+  setSiteInventory(state.siteInventory);
+  setInspections(state.inspections);
+  setInspectionTemplates(state.inspectionTemplates);
+  setIncidentReports(state.incidentReports);
   setSettings(state.settings);
 }
