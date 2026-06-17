@@ -288,6 +288,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         originalDispatch({ type: 'SET_TASKS', payload: remote.tasks });
         originalDispatch({ type: 'SET_CLIENTS', payload: remote.clients });
         originalDispatch({ type: 'SET_QUOTES', payload: remote.quotes });
+        if (remote.supplyItems) originalDispatch({ type: 'SET_SUPPLY_ITEMS', payload: remote.supplyItems });
+        if (remote.siteInventory) originalDispatch({ type: 'SET_SITE_INVENTORY', payload: remote.siteInventory });
+        if (remote.inspections) originalDispatch({ type: 'SET_INSPECTIONS', payload: remote.inspections });
+        if (remote.inspectionTemplates) originalDispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: remote.inspectionTemplates });
+        if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }

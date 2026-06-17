@@ -9,7 +9,8 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { 
-  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction 
+  User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
+  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport
 } from '../types';
 import { loadAllState } from '../utils/storage';
 
@@ -52,6 +53,11 @@ export async function fetchAllCollectionsOnce() {
     tasksSnap,
     clientsSnap,
     quotesSnap,
+    supplyItemsSnap,
+    siteInventorySnap,
+    inspectionsSnap,
+    inspectionTemplatesSnap,
+    incidentReportsSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'sites')),
@@ -62,112 +68,80 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'tasks')),
     getDocs(collection(db, 'clients')),
     getDocs(collection(db, 'quotes')),
+    getDocs(collection(db, 'supplyItems')),
+    getDocs(collection(db, 'siteInventory')),
+    getDocs(collection(db, 'inspections')),
+    getDocs(collection(db, 'inspectionTemplates')),
+    getDocs(collection(db, 'incidentReports')),
   ]);
 
-  const users = usersSnap.docs.map(docSnap => {
-    const data = docSnap.data() as User;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const sites = sitesSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Site;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const shifts = shiftsSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Shift;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const payments = paymentsSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Payment;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const expenses = expensesSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Expense;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const payroll = payrollSnap.docs.map(docSnap => {
-    const data = docSnap.data() as PayrollRecord;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const tasks = tasksSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Task;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const clients = clientsSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Client;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
-  const quotes = quotesSnap.docs.map(docSnap => {
-    const data = docSnap.data() as Quote;
-    return { ...data, id: data.id ?? docSnap.id };
-  });
+  const mapDoc = <T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T => {
+    const data = snap.data();
+    return { ...data, id: data?.id ?? snap.id } as T;
+  };
+
+  const users = usersSnap.docs.map(d => mapDoc<User>(d));
+  const sites = sitesSnap.docs.map(d => mapDoc<Site>(d));
+  const shifts = shiftsSnap.docs.map(d => mapDoc<Shift>(d));
+  const payments = paymentsSnap.docs.map(d => mapDoc<Payment>(d));
+  const expenses = expensesSnap.docs.map(d => mapDoc<Expense>(d));
+  const payroll = payrollSnap.docs.map(d => mapDoc<PayrollRecord>(d));
+  const tasks = tasksSnap.docs.map(d => mapDoc<Task>(d));
+  const clients = clientsSnap.docs.map(d => mapDoc<Client>(d));
+  const quotes = quotesSnap.docs.map(d => mapDoc<Quote>(d));
+  const supplyItems = supplyItemsSnap.docs.map(d => mapDoc<SupplyItem>(d));
+  const siteInventory = siteInventorySnap.docs.map(d => mapDoc<SiteInventory>(d));
+  const inspections = inspectionsSnap.docs.map(d => mapDoc<Inspection>(d));
+  const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => mapDoc<InspectionItem>(d));
+  const incidentReports = incidentReportsSnap.docs.map(d => mapDoc<IncidentReport>(d));
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, settings };
 }
 
 /**
- * Migrates local storage data to Firebase Firestore if Firestore is currently empty.
- * Ensures the user's existing offline data is safely seeded online.
+ * Migrates local storage data to Firebase Firestore if Firestore collections are empty.
+ * Now incremental: each collection is checked individually, so new collections
+ * (like supplyItems, incidentReports) get uploaded even if older collections already exist.
  */
 export async function migrateLocalToFirebase(): Promise<void> {
-  const migrated = localStorage.getItem('cleanops_firebase_migrated');
-  if (migrated === 'true') return;
-
   try {
-    // Safety check: check if users collection in Firestore is already populated
-    const usersSnap = await getDocs(collection(db, 'users'));
-    if (usersSnap.size > 0) {
-      console.log('Firestore is already initialized, skipping migration.');
-      localStorage.setItem('cleanops_firebase_migrated', 'true');
-      return;
-    }
-
-    console.log('Firestore is empty. Starting migration from localStorage...');
     const localData = loadAllState();
 
-    // 1. Migrate Users
-    for (const item of localData.users) {
-      await setDoc(doc(db, 'users', item.id), sanitizeForFirestore(item));
-    }
-    // 2. Migrate Sites
-    for (const item of localData.sites) {
-      await setDoc(doc(db, 'sites', item.id), sanitizeForFirestore(item));
-    }
-    // 3. Migrate Shifts
-    for (const item of localData.shifts) {
-      await setDoc(doc(db, 'shifts', item.id), sanitizeForFirestore(item));
-    }
-    // 4. Migrate Payments
-    for (const item of localData.payments) {
-      await setDoc(doc(db, 'payments', item.id), sanitizeForFirestore(item));
-    }
-    // 5. Migrate Expenses
-    for (const item of localData.expenses) {
-      await setDoc(doc(db, 'expenses', item.id), sanitizeForFirestore(item));
-    }
-    // 6. Migrate Payroll
-    for (const item of localData.payroll) {
-      await setDoc(doc(db, 'payroll', item.id), sanitizeForFirestore(item));
-    }
-    // 7. Migrate Tasks
-    for (const item of localData.tasks) {
-      await setDoc(doc(db, 'tasks', item.id), sanitizeForFirestore(item));
-    }
-    // 8. Migrate Clients
-    for (const item of localData.clients) {
-      await setDoc(doc(db, 'clients', item.id), sanitizeForFirestore(item));
-    }
-    // 9. Migrate Quotes
-    for (const item of localData.quotes) {
-      await setDoc(doc(db, 'quotes', item.id), sanitizeForFirestore(item));
-    }
-    // 10. Migrate Settings
-    await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
+    // Helper: check if a Firestore collection is empty, and if so migrate data into it
+    const migrateIfEmpty = async <T extends { id: string }>(colName: string, items: T[]) => {
+      const snap = await getDocs(collection(db, colName));
+      if (snap.size > 0) return; // already has data, skip
+      console.log(`Migrating ${colName} (${items.length} items) to Firestore...`);
+      for (const item of items) {
+        await setDoc(doc(db, colName, item.id), sanitizeForFirestore(item));
+      }
+    };
 
-    console.log('Migration completed successfully!');
-    localStorage.setItem('cleanops_firebase_migrated', 'true');
+    await migrateIfEmpty('users', localData.users);
+    await migrateIfEmpty('sites', localData.sites);
+    await migrateIfEmpty('shifts', localData.shifts);
+    await migrateIfEmpty('payments', localData.payments);
+    await migrateIfEmpty('expenses', localData.expenses);
+    await migrateIfEmpty('payroll', localData.payroll);
+    await migrateIfEmpty('tasks', localData.tasks);
+    await migrateIfEmpty('clients', localData.clients);
+    await migrateIfEmpty('quotes', localData.quotes);
+    await migrateIfEmpty('supplyItems', localData.supplyItems);
+    await migrateIfEmpty('siteInventory', localData.siteInventory);
+    await migrateIfEmpty('inspections', localData.inspections);
+    await migrateIfEmpty('inspectionTemplates', localData.inspectionTemplates);
+    await migrateIfEmpty('incidentReports', localData.incidentReports);
+
+    // Settings: only migrate if not present
+    const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
+    if (!settingsSnap.exists()) {
+      await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
+    }
+
+    console.log('Migration check completed successfully.');
   } catch (error) {
     console.error('Error migrating local data to Firebase:', error);
   }
@@ -287,6 +261,57 @@ export function subscribeToCollections(
     (err) => onError?.('settings', err)
   );
 
+  // New collections
+  const unsubSupplyItems = onSnapshot(
+    collection(db, 'supplyItems'),
+    (snapshot) => {
+      const list: SupplyItem[] = [];
+      snapshot.forEach(doc => list.push(ensureId<SupplyItem>(doc)));
+      dispatch({ type: 'SET_SUPPLY_ITEMS', payload: list });
+    },
+    (err) => onError?.('supplyItems', err)
+  );
+
+  const unsubSiteInventory = onSnapshot(
+    collection(db, 'siteInventory'),
+    (snapshot) => {
+      const list: SiteInventory[] = [];
+      snapshot.forEach(doc => list.push(ensureId<SiteInventory>(doc)));
+      dispatch({ type: 'SET_SITE_INVENTORY', payload: list });
+    },
+    (err) => onError?.('siteInventory', err)
+  );
+
+  const unsubInspections = onSnapshot(
+    collection(db, 'inspections'),
+    (snapshot) => {
+      const list: Inspection[] = [];
+      snapshot.forEach(doc => list.push(ensureId<Inspection>(doc)));
+      dispatch({ type: 'SET_INSPECTIONS', payload: list });
+    },
+    (err) => onError?.('inspections', err)
+  );
+
+  const unsubInspectionTemplates = onSnapshot(
+    collection(db, 'inspectionTemplates'),
+    (snapshot) => {
+      const list: InspectionItem[] = [];
+      snapshot.forEach(doc => list.push(ensureId<InspectionItem>(doc)));
+      dispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: list });
+    },
+    (err) => onError?.('inspectionTemplates', err)
+  );
+
+  const unsubIncidentReports = onSnapshot(
+    collection(db, 'incidentReports'),
+    (snapshot) => {
+      const list: IncidentReport[] = [];
+      snapshot.forEach(doc => list.push(ensureId<IncidentReport>(doc)));
+      dispatch({ type: 'SET_INCIDENT_REPORTS', payload: list });
+    },
+    (err) => onError?.('incidentReports', err)
+  );
+
   // Return unsubscribe cleanup function
   return () => {
     unsubUsers();
@@ -299,6 +324,11 @@ export function subscribeToCollections(
     unsubClients();
     unsubQuotes();
     unsubSettings();
+    unsubSupplyItems();
+    unsubSiteInventory();
+    unsubInspections();
+    unsubInspectionTemplates();
+    unsubIncidentReports();
   };
 }
 
@@ -397,6 +427,45 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         }
         break;
 
+      // Inventory
+      case 'ADD_SUPPLY_ITEM':
+      case 'UPDATE_SUPPLY_ITEM':
+        await setDoc(doc(db, 'supplyItems', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_SUPPLY_ITEM':
+        await deleteDoc(doc(db, 'supplyItems', action.payload));
+        break;
+      case 'ADD_SITE_INVENTORY':
+      case 'UPDATE_SITE_INVENTORY':
+        await setDoc(doc(db, 'siteInventory', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_SITE_INVENTORY':
+        await deleteDoc(doc(db, 'siteInventory', action.payload));
+        break;
+
+      // Inspections
+      case 'ADD_INSPECTION':
+        await setDoc(doc(db, 'inspections', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_INSPECTION':
+        await deleteDoc(doc(db, 'inspections', action.payload));
+        break;
+      case 'ADD_INSPECTION_TEMPLATE':
+        await setDoc(doc(db, 'inspectionTemplates', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_INSPECTION_TEMPLATE':
+        await deleteDoc(doc(db, 'inspectionTemplates', action.payload));
+        break;
+
+      // Incidents
+      case 'ADD_INCIDENT_REPORT':
+      case 'UPDATE_INCIDENT_REPORT':
+        await setDoc(doc(db, 'incidentReports', action.payload.id), sanitizeForFirestore(action.payload));
+        break;
+      case 'DELETE_INCIDENT_REPORT':
+        await deleteDoc(doc(db, 'incidentReports', action.payload));
+        break;
+
       // Import data (Bulk setup)
       case 'IMPORT_DATA':
         for (const item of action.payload.users) {
@@ -426,11 +495,26 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         for (const item of action.payload.quotes) {
           await setDoc(doc(db, 'quotes', item.id), sanitizeForFirestore(item));
         }
+        for (const item of action.payload.supplyItems) {
+          await setDoc(doc(db, 'supplyItems', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.siteInventory) {
+          await setDoc(doc(db, 'siteInventory', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.inspections) {
+          await setDoc(doc(db, 'inspections', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.inspectionTemplates) {
+          await setDoc(doc(db, 'inspectionTemplates', item.id), sanitizeForFirestore(item));
+        }
+        for (const item of action.payload.incidentReports) {
+          await setDoc(doc(db, 'incidentReports', item.id), sanitizeForFirestore(item));
+        }
         await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
         break;
 
       case 'CLEAR_ALL_DATA':
-        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes'];
+        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports'];
         for (const colName of collectionsToClear) {
           const snap = await getDocs(collection(db, colName));
           for (const docObj of snap.docs) {
