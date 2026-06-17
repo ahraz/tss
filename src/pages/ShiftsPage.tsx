@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Download, FileWarning } from 'lucide-react';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useApp } from '../context/AppContext';
@@ -12,6 +12,7 @@ import { UserAvatar } from '../components/ui/UserAvatar';
 import { Modal } from '../components/ui/Modal';
 import { Textarea } from '../components/ui/Textarea';
 import { EmptyState } from '../components/ui/EmptyState';
+import { getPhoto } from '../utils/photoStore';
 import { formatDateTime, formatDate, formatDuration, formatCAD } from '../utils/formatters';
 import { exportToCSV } from '../utils/csv';
 import type { Shift } from '../types';
@@ -26,6 +27,28 @@ export function ShiftsPage() {
   
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [editNotes, setEditNotes] = useState('');
+  const [clockInPhoto, setClockInPhoto] = useState<string | null>(null);
+  const [clockOutPhoto, setClockOutPhoto] = useState<string | null>(null);
+
+  // Load photos from IndexedDB when a shift is selected
+  useEffect(() => {
+    if (!selectedShift) {
+      setClockInPhoto(null);
+      setClockOutPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.all([
+      getPhoto(`shift:${selectedShift.id}:in`),
+      getPhoto(`shift:${selectedShift.id}:out`),
+    ]).then(([inPhoto, outPhoto]) => {
+      if (!cancelled) {
+        setClockInPhoto(inPhoto);
+        setClockOutPhoto(outPhoto);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [selectedShift]);
 
   if (!currentUser) return null;
 
@@ -234,8 +257,8 @@ export function ShiftsPage() {
                       <p className="text-sm font-medium text-gray-900">{formatDateTime(selectedShift.clockInTime)}</p>
                     </div>
                     <div className="aspect-[4/3] bg-gray-100 flex items-center justify-center">
-                      {selectedShift.clockInPhotoDataUrl ? (
-                        <img src={selectedShift.clockInPhotoDataUrl} alt="Clock In" className="w-full h-full object-contain" />
+                      {clockInPhoto ? (
+                        <img src={clockInPhoto} alt="Clock In" className="w-full h-full object-contain" />
                       ) : (
                         <p className="text-xs text-gray-400">No photo</p>
                       )}
@@ -248,8 +271,8 @@ export function ShiftsPage() {
                       <p className="text-sm font-medium text-gray-900">{selectedShift.clockOutTime ? formatDateTime(selectedShift.clockOutTime) : '—'}</p>
                     </div>
                     <div className="aspect-[4/3] bg-gray-100 flex items-center justify-center">
-                      {selectedShift.clockOutPhotoDataUrl ? (
-                        <img src={selectedShift.clockOutPhotoDataUrl} alt="Clock Out" className="w-full h-full object-contain" />
+                      {clockOutPhoto ? (
+                        <img src={clockOutPhoto} alt="Clock Out" className="w-full h-full object-contain" />
                       ) : (
                         <p className="text-xs text-gray-400">No photo</p>
                       )}

@@ -110,10 +110,10 @@ export function clearOldPhotos(days: number = 30): number {
   let cleared = 0;
 
   const shifts = getShifts();
+  const idsToClear: string[] = [];
   const updated = shifts.map(s => {
     if (s.createdAt < cutoffISO) {
-      if (s.clockInPhotoDataUrl) { cleared++; }
-      if (s.clockOutPhotoDataUrl) { cleared++; }
+      idsToClear.push(s.id);
       return {
         ...s,
         clockInPhotoDataUrl: '',
@@ -122,17 +122,35 @@ export function clearOldPhotos(days: number = 30): number {
     }
     return s;
   });
-  if (cleared > 0) setShifts(updated);
+  if (idsToClear.length > 0) {
+    setShifts(updated);
+    // Also clean up IndexedDB photos
+    import('./photoStore').then(({ deletePhotosByPrefix }) => {
+      idsToClear.forEach(id => {
+        deletePhotosByPrefix(`shift:${id}`);
+      });
+    });
+  }
+  cleared += idsToClear.length * 2;
 
   const expenses = getExpenses();
+  const expIdsToClear: string[] = [];
   const updatedExpenses = expenses.map(e => {
     if (e.createdAt < cutoffISO && e.receiptPhotoDataUrl) {
-      cleared++;
+      expIdsToClear.push(e.id);
       return { ...e, receiptPhotoDataUrl: null };
     }
     return e;
   });
-  if (cleared > 0) setExpenses(updatedExpenses);
+  if (expIdsToClear.length > 0) {
+    setExpenses(updatedExpenses);
+    import('./photoStore').then(({ deletePhotosByPrefix }) => {
+      expIdsToClear.forEach(id => {
+        deletePhotosByPrefix(`expense:${id}`);
+      });
+    });
+  }
+  cleared += expIdsToClear.length;
 
   return cleared;
 }
@@ -160,6 +178,10 @@ export function importAllData(json: string): void {
 export function clearAllData(): void {
   Object.values(KEYS).forEach(key => {
     localStorage.removeItem(key);
+  });
+  // Also wipe the IndexedDB photo store
+  import('./photoStore').then(({ deletePhotosByPrefix }) => {
+    deletePhotosByPrefix('');
   });
 }
 

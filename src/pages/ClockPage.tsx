@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { Modal } from '../components/ui/Modal';
 import { startCamera, capturePhoto, stopCamera, isCameraAvailable } from '../utils/camera';
 import { generateId } from '../utils/storage';
+import { putPhoto } from '../utils/photoStore';
 import { formatDuration, formatCAD } from '../utils/formatters';
 import { useActiveShift } from '../hooks/useActiveShift';
 import type { ChecklistCompletion } from '../types';
@@ -90,7 +91,7 @@ export function ClockPage() {
     setPhoto(null);
   };
 
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     if (!selectedSiteId) {
       toast.error('Please select a site');
       return;
@@ -100,12 +101,18 @@ export function ClockPage() {
       return;
     }
 
+    const shiftId = generateId();
+    // Store photo in IndexedDB instead of localStorage to avoid quota issues
+    if (photo) {
+      await putPhoto(`shift:${shiftId}:in`, photo).catch(() => {});
+    }
+
     const newShift = {
-      id: generateId(),
+      id: shiftId,
       userId: currentUser!.id,
       siteId: selectedSiteId,
       clockInTime: new Date().toISOString(),
-      clockInPhotoDataUrl: photo || '', // Fallback empty string if no camera
+      clockInPhotoDataUrl: '',
       clockOutTime: null,
       clockOutPhotoDataUrl: null,
       durationMinutes: null,
@@ -120,17 +127,23 @@ export function ClockPage() {
     setPhoto(null);
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     if (!photo && isCameraAvailable() && !cameraError) {
       toast.error('Please take a photo to clock out');
       return;
     }
 
     const durationMins = Math.floor(elapsed / 60);
+
+    // Store clock-out photo in IndexedDB
+    if (photo) {
+      await putPhoto(`shift:${activeShift!.id}:out`, photo).catch(() => {});
+    }
+
     const completedShift = {
       ...activeShift!,
       clockOutTime: new Date().toISOString(),
-      clockOutPhotoDataUrl: photo || '',
+      clockOutPhotoDataUrl: '',
       durationMinutes: durationMins,
       checklistCompletions: checklist,
       notes: notes,
