@@ -102,46 +102,48 @@ export async function fetchAllCollectionsOnce() {
 }
 
 /**
- * Migrates local storage data to Firebase Firestore if Firestore collections are empty.
- * Now incremental: each collection is checked individually, so new collections
- * (like supplyItems, incidentReports) get uploaded even if older collections already exist.
+ * Force-pushes all local data to Firestore, overwriting existing documents.
+ * This ensures rich profile fields (photoId, email, skills, etc.) and new
+ * collections (supplyItems, incidentReports, etc.) are all present in Firestore.
+ * Runs only once — guarded by a data version flag.
  */
 export async function migrateLocalToFirebase(): Promise<void> {
+  const version = localStorage.getItem('cleanops_data_version');
+  if (version === '2') return; // already migrated
+
   try {
     const localData = loadAllState();
 
-    // Helper: check if a Firestore collection is empty, and if so migrate data into it
-    const migrateIfEmpty = async <T extends { id: string }>(colName: string, items: T[]) => {
-      const snap = await getDocs(collection(db, colName));
-      if (snap.size > 0) return; // already has data, skip
-      console.log(`Migrating ${colName} (${items.length} items) to Firestore...`);
+    const pushCollection = async <T extends { id: string }>(colName: string, items: T[]) => {
+      if (items.length === 0) return;
+      console.log(`Pushing ${items.length} ${colName} to Firestore...`);
       for (const item of items) {
         await setDoc(doc(db, colName, item.id), sanitizeForFirestore(item));
       }
     };
 
-    await migrateIfEmpty('users', localData.users);
-    await migrateIfEmpty('sites', localData.sites);
-    await migrateIfEmpty('shifts', localData.shifts);
-    await migrateIfEmpty('payments', localData.payments);
-    await migrateIfEmpty('expenses', localData.expenses);
-    await migrateIfEmpty('payroll', localData.payroll);
-    await migrateIfEmpty('tasks', localData.tasks);
-    await migrateIfEmpty('clients', localData.clients);
-    await migrateIfEmpty('quotes', localData.quotes);
-    await migrateIfEmpty('supplyItems', localData.supplyItems);
-    await migrateIfEmpty('siteInventory', localData.siteInventory);
-    await migrateIfEmpty('inspections', localData.inspections);
-    await migrateIfEmpty('inspectionTemplates', localData.inspectionTemplates);
-    await migrateIfEmpty('incidentReports', localData.incidentReports);
+    // Push ALL local data to Firestore regardless of what's already there
+    await pushCollection('users', localData.users);
+    await pushCollection('sites', localData.sites);
+    await pushCollection('shifts', localData.shifts);
+    await pushCollection('payments', localData.payments);
+    await pushCollection('expenses', localData.expenses);
+    await pushCollection('payroll', localData.payroll);
+    await pushCollection('tasks', localData.tasks);
+    await pushCollection('clients', localData.clients);
+    await pushCollection('quotes', localData.quotes);
+    await pushCollection('supplyItems', localData.supplyItems);
+    await pushCollection('siteInventory', localData.siteInventory);
+    await pushCollection('inspections', localData.inspections);
+    await pushCollection('inspectionTemplates', localData.inspectionTemplates);
+    await pushCollection('incidentReports', localData.incidentReports);
 
-    // Settings: only migrate if not present
-    const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
-    if (!settingsSnap.exists()) {
+    if (localData.settings) {
       await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
     }
 
-    console.log('Migration check completed successfully.');
+    localStorage.setItem('cleanops_data_version', '2');
+    console.log('Firestore migration complete — all local data pushed to cloud.');
   } catch (error) {
     console.error('Error migrating local data to Firebase:', error);
   }

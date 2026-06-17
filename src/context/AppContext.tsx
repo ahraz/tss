@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { AppState, AppAction, User } from '../types';
 import { toast } from 'react-hot-toast';
 import {
-  initializeStorage, loadAllState, persistState,
+  initializeStorage, loadAllState,
   setSession, clearAllData, importAllData, getSession
 } from '../utils/storage';
 import {
@@ -237,49 +237,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.settings]
   );
 
-  // Initialize and synchronize with Firebase on mount
+  // ─── Init: Firestore is the source of truth ──────────────
   useEffect(() => {
-    // 1. First, seed and load from local storage as a quick fallback cache
+    // 1. Quick render from localStorage cache so the screen isn't blank
     initializeStorage();
-    const loaded = loadAllState();
+    const cached = loadAllState();
     originalDispatch({
       type: 'INITIALIZE',
       payload: {
-        ...loaded,
+        ...cached,
         session: getSession(),
       },
     });
 
-    // Keep a ref to the rich local user data so real-time Firestore listeners
-    // don't overwrite extended profile fields that Firestore doesn't have yet.
-    const richUsersRef = new Map<string, User>();
-    loaded.users.forEach(u => richUsersRef.set(u.id, { ...u }));
-
-    // 2. Safely connect and sync with Firebase online
+    // 2. Connect to Firestore — this is the real source of truth
     let unsubscribe: (() => void) | null = null;
-    
+
     async function startFirebaseSync() {
-      const handleSnapshotError = (source: string, err: unknown) => {
+      const handleError = (source: string, err: unknown) => {
         console.error(`Firestore listener error (${source})`, err);
-        toast.error(`Live sync error (${source}). Check connection/permissions.`);
       };
 
       try {
-        // Run migration if the online database is currently empty
+        // One-time migration: push all local data to Firestore (rich fields, new collections)
         await migrateLocalToFirebase();
-        
-        // Hydrate once from Firestore to ensure cross-session consistency
+
+        // Hydrate from Firestore (overwrites cached localStorage data)
         const remote = await fetchAllCollectionsOnce();
-        
-        // Merge remote users with local (rich) data to preserve extended profile fields
-        // that Firestore doesn't yet have (photoId, email, skills, availability, etc.)
-        const mergedUsers = remote.users.map(remoteUser => {
-          const localUser = richUsersRef.get(remoteUser.id) ?? loaded.users.find(u => u.id === remoteUser.id);
-          return localUser ? { ...remoteUser, ...localUser } : remoteUser;
-        });
-        // Update the ref with merged data so listeners can use it too
-        mergedUsers.forEach(u => richUsersRef.set(u.id, { ...u }));
-        originalDispatch({ type: 'SET_USERS', payload: mergedUsers });
+        originalDispatch({ type: 'SET_USERS', payload: remote.users });
         originalDispatch({ type: 'SET_SITES', payload: remote.sites });
         originalDispatch({ type: 'SET_SHIFTS', payload: remote.shifts });
         originalDispatch({ type: 'SET_PAYMENTS', payload: remote.payments });
@@ -296,82 +281,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
-        
-        // Create a wrapped dispatch for the real-time listener that merges rich user data
-        const mergingDispatch = (action: AppAction) => {
-          if (action.type === 'SET_USERS') {
-            const merged = action.payload.map(remoteUser => {
-              const rich = richUsersRef.get(remoteUser.id);
-              return rich ? { ...remoteUser, ...rich } : remoteUser;
-            });
-            merged.forEach(u => richUsersRef.set(u.id, { ...u }));
-            originalDispatch({ type: 'SET_USERS', payload: merged });
-          } else {
-            originalDispatch(action);
-          }
-        };
 
-        // Start listening to the real-time collections with the merging dispatch
-        unsubscribe = subscribeToCollections(mergingDispatch, handleSnapshotError);
+        // Start real-time listeners
+        unsubscribe = subscribeToCollections(originalDispatch, handleError);
       } catch (err) {
-        console.error('Failed to initialize Firebase syncing:', err);
-        toast.error('Could not connect to Firestore. Working locally only.');
+        console.error('Firestore init failed:', err);
+        // Cached data from step 1 is still visible, so the app works with stale data
       }
     }
 
     startFirebaseSync();
 
-    // Clean up real-time listeners on component unmount
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, []);
-
-  // Persist to localStorage on every state change — but skip when the data
-  // hasn't actually changed (e.g. Firestore snapshot echoing back the same data).
-  const lastPersistedRef = React.useRef('');
-  useEffect(() => {
-    if (!state.isInitialized) return;
-    const snapshot = JSON.stringify({
-      users: state.users,
-      sites: state.sites,
-      shifts: state.shifts,
-      payments: state.payments,
-      expenses: state.expenses,
-      payroll: state.payroll,
-      tasks: state.tasks,
-      clients: state.clients,
-      quotes: state.quotes,
-      supplyItems: state.supplyItems,
-      siteInventory: state.siteInventory,
-      inspections: state.inspections,
-      inspectionTemplates: state.inspectionTemplates,
-      incidentReports: state.incidentReports,
-      settings: state.settings,
-    });
-    if (snapshot === lastPersistedRef.current) return;
-    lastPersistedRef.current = snapshot;
-    persistState(JSON.parse(snapshot));
-  }, [
-    state.isInitialized,
-    state.users,
-    state.sites,
-    state.shifts,
-    state.payments,
-    state.expenses,
-    state.payroll,
-    state.tasks,
-    state.clients,
-    state.quotes,
-    state.supplyItems,
-    state.siteInventory,
-    state.inspections,
-    state.inspectionTemplates,
-    state.incidentReports,
-    state.settings,
-  ]);
 
   const currentUser = state.session
     ? state.users.find(u => u.id === state.session!.userId) ?? null
