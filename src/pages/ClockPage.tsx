@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import { startCamera, capturePhoto, stopCamera, isCameraAvailable } from '../utils/camera';
 import { generateId } from '../utils/storage';
 import { putPhoto } from '../utils/photoStore';
+import { compressImage } from '../utils/compressImage';
 import { formatDuration, formatCAD } from '../utils/formatters';
 import { useActiveShift } from '../hooks/useActiveShift';
 import type { ChecklistCompletion } from '../types';
@@ -78,10 +79,11 @@ export function ClockPage() {
     }
   }, [activeShift, state.sites]);
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (videoRef.current && stream) {
       const dataUrl = capturePhoto(videoRef.current);
-      setPhoto(dataUrl);
+      const compressed = await compressImage(dataUrl).catch(() => dataUrl);
+      setPhoto(compressed);
       stopCamera(stream);
       setStream(null);
     }
@@ -190,8 +192,9 @@ export function ClockPage() {
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhoto(reader.result as string);
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result as string).catch(() => reader.result as string);
+      setPhoto(compressed);
     };
     reader.readAsDataURL(file);
   };
