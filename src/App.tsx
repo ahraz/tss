@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from './context/AppContext';
 
-// Pages
+// Pages (eager — always needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ClockPage } from './pages/ClockPage';
@@ -15,10 +15,14 @@ import { QuotesPage } from './pages/QuotesPage';
 import { QuoteDetailPage } from './pages/QuoteDetailPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { MoneyBookPage } from './pages/MoneyBookPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
 import { TasksPage } from './pages/TasksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TeamPage } from './pages/TeamPage';
+
+// AnalyticsPage lazy-loaded because it pulls in ~300 KB of recharts
+const AnalyticsPage = lazy(() =>
+  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+);
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const { currentUser } = useApp();
@@ -76,7 +80,7 @@ export default function App() {
       
       <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
       <Route path="/money" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><MoneyBookPage /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><AnalyticsPage /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Loading analytics…</div>}><AnalyticsPage /></Suspense></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['owner']}><SettingsPage /></ProtectedRoute>} />
       
       <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
