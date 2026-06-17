@@ -33,6 +33,9 @@ export class ErrorBoundary extends React.Component<
             </p>
             <pre className="bg-gray-100 p-3 rounded-lg text-xs text-gray-700 overflow-auto max-h-40 mb-4">
               {this.state.error?.message}
+              {this.state.error?.stack && (
+                <>\n\n{this.state.error.stack}</>
+              )}
             </pre>
             <button
               onClick={() => {

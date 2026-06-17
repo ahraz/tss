@@ -129,7 +129,7 @@ export function DashboardPage() {
                       {task.dueDate && <p className="text-xs text-gray-500 flex items-center gap-1"><Clock size={12}/> {format(new Date(task.dueDate), 'MMM d')}</p>}
                     </div>
                   </div>
-                  {task.assignedUserId && <UserAvatar user={state.users.find(u => u.id === task.assignedUserId)!} size="sm" />}
+                  {task.assignedUserId && <UserAvatar user={state.users.find(u => u.id === task.assignedUserId)} size="sm" />}
                 </div>
               ))
             )}

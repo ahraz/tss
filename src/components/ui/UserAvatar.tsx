@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge';
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface UserAvatarProps {
-  user: { avatarInitials: string; avatarColor: string; name?: string };
+  user: { avatarInitials: string; avatarColor: string; name?: string } | null | undefined;
   size?: AvatarSize;
   className?: string;
 }
@@ -16,6 +16,8 @@ const sizeClasses: Record<AvatarSize, string> = {
 };
 
 export function UserAvatar({ user, size = 'md', className }: UserAvatarProps) {
+  if (!user) return null;
+
   return (
     <div
       title={user.name}
