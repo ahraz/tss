@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, DollarSign, Calendar, Search, Building2, Layers } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Calendar, Building2, Layers } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';

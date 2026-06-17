@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Save, Download, Upload, Trash2, Database, ShieldAlert, Building, DollarSign, User, Lock, Palette } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -18,6 +19,7 @@ const AVATAR_COLORS = [
 
 export function SettingsPage() {
   const { state, dispatch, currentUser } = useApp();
+  const navigate = useNavigate();
   
   const [settings, setSettings] = useState(state.settings);
   const [userProfile, setUserProfile] = useState(currentUser ? {
@@ -148,7 +150,7 @@ export function SettingsPage() {
     dispatch({ type: 'CLEAR_ALL_DATA' });
     setShowClearConfirm(false);
     toast.success('All data cleared');
-    window.location.href = '/'; // Force reload to login
+    navigate('/login');
   };
 
   return (
