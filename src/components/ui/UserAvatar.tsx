@@ -27,10 +27,16 @@ export function UserAvatar({ user, size = 'md', className }: UserAvatarProps) {
       setLoaded(true);
       return;
     }
-    getPhoto(user.photoId).then(url => {
-      setPhotoUrl(url);
+    // photoId can be a Firebase Storage download URL (http) or an IndexedDB key (legacy)
+    if (user.photoId.startsWith('http')) {
+      setPhotoUrl(user.photoId);
       setLoaded(true);
-    });
+    } else {
+      getPhoto(user.photoId).then(url => {
+        setPhotoUrl(url);
+        setLoaded(true);
+      });
+    }
   }, [user?.photoId]);
 
   if (!user) return null;

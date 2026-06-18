@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { putPhoto, getPhoto, deletePhoto } from '../utils/photoStore';
+import { putPhoto, deletePhoto } from '../utils/photoStore';
 import { compressImage } from '../utils/compressImage';
 import { getInitials } from '../utils/formatters';
+import { uploadProfilePhoto, deleteProfilePhoto } from '../lib/firebaseStorage';
 import type { DayOfWeek } from '../types';
 import toast from 'react-hot-toast';
 
@@ -64,22 +65,29 @@ export function useProfile() {
     setDocuments(currentUser.documents || {});
   }, [currentUser]);
 
-  // Load profile photo from IndexedDB
+  // Profile photo URL is stored as a Firebase Storage download URL in currentUser.photoId
   useEffect(() => {
     if (!currentUser?.photoId) { setPhotoLoading(false); return; }
-    getPhoto(currentUser.photoId).then(url => { if (url) setProfilePhoto(url); setPhotoLoading(false); });
+    setProfilePhoto(currentUser.photoId);
+    setPhotoLoading(false);
   }, [currentUser?.photoId]);
 
   const handlePhotoUpload = useCallback(async (dataUrl: string) => {
     if (!currentUser) return;
     const compressed = await compressImage(dataUrl, 600, 0.8).catch(() => dataUrl);
-    const photoId = `profile:${currentUser.id}`;
-    await putPhoto(photoId, compressed);
-    setProfilePhoto(compressed);
-    if (currentUser.photoId && currentUser.photoId !== photoId) {
+    setProfilePhoto(compressed); // show preview immediately
+    // Upload to Firebase Storage (cross-browser persistent)
+    const downloadUrl = await uploadProfilePhoto(currentUser.id, compressed).catch((err) => {
+      console.error('Failed to upload to Firebase Storage:', err);
+      toast.error('Photo upload failed. Check your connection.');
+      return null;
+    });
+    if (!downloadUrl) return;
+    // Delete old IndexedDB photo if upgrading from old format
+    if (currentUser.photoId && !currentUser.photoId.startsWith('http')) {
       await deletePhoto(currentUser.photoId).catch(() => {});
     }
-    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, photoId } });
+    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, photoId: downloadUrl } });
     toast.success('Profile photo updated');
   }, [currentUser, dispatch]);
 
@@ -94,7 +102,13 @@ export function useProfile() {
 
   const handleRemovePhoto = async () => {
     if (!currentUser?.photoId) return;
-    await deletePhoto(currentUser.photoId).catch(() => {});
+    if (currentUser.photoId.startsWith('http')) {
+      // Delete from Firebase Storage
+      await deleteProfilePhoto(currentUser.id).catch(() => {});
+    } else {
+      // Clean up old IndexedDB format
+      await deletePhoto(currentUser.photoId).catch(() => {});
+    }
     setProfilePhoto(null);
     dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, photoId: undefined } });
     toast.success('Photo removed');
