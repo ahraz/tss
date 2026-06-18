@@ -169,8 +169,10 @@ export interface User {
   // Management
   notes?: string;
   performanceRating?: number; // 1–5
-  // Photo stored in IndexedDB (photoStore key)
+  // Legacy: photo stored in IndexedDB (photoStore key) or Firebase Storage URL
   photoId?: string;
+  // New: photo data URL stored directly in Firestore (cross-browser, no Storage needed)
+  photoData?: string;
   isActive: boolean;
   createdAt: string;
 }

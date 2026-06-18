@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { useApp } from '../context/AppContext';
 import { putPhoto, deletePhoto } from '../utils/photoStore';
 import { compressImage } from '../utils/compressImage';
 import { getInitials } from '../utils/formatters';
-import { uploadProfilePhoto, deleteProfilePhoto } from '../lib/firebaseStorage';
+import { saveProfilePhoto, removeProfilePhoto } from '../lib/firebaseStorage';
 import type { DayOfWeek } from '../types';
 import toast from 'react-hot-toast';
 
@@ -67,39 +65,26 @@ export function useProfile() {
     setDocuments(currentUser.documents || {});
   }, [currentUser]);
 
-  // Profile photo URL is stored as a Firebase Storage download URL in currentUser.photoId
+  // Profile photo data is stored directly in Firestore (photoData field)
+  // so it works cross-browser without needing Firebase Storage.
   useEffect(() => {
-    if (!currentUser?.photoId) { setPhotoLoading(false); return; }
-    setProfilePhoto(currentUser.photoId);
+    if (!currentUser?.photoData) { setPhotoLoading(false); return; }
+    setProfilePhoto(currentUser.photoData);
     setPhotoLoading(false);
-  }, [currentUser?.photoId]);
+  }, [currentUser?.photoData]);
 
   const handlePhotoUpload = useCallback(async (dataUrl: string) => {
     if (!currentUser) return;
     const compressed = await compressImage(dataUrl, 600, 0.8).catch(() => dataUrl);
     setProfilePhoto(compressed); // show preview immediately
 
-    // Upload to Firebase Storage (cross-browser persistent)
-    const downloadUrl = await uploadProfilePhoto(currentUser.id, compressed).catch((err) => {
-      console.error('Failed to upload to Firebase Storage:', err);
-      toast.error('Photo upload failed. Check your connection.');
-      return null;
-    });
-    if (!downloadUrl) return;
-
-    // Delete old IndexedDB photo if upgrading from old format
-    if (currentUser.photoId && !currentUser.photoId.startsWith('http')) {
-      await deletePhoto(currentUser.photoId).catch(() => {});
-    }
-
-    // Write the download URL directly to Firestore.
-    // The onSnapshot listener will pick this up and dispatch SET_USERS,
-    // keeping React state in sync across all browsers/tabs automatically.
+    // Save photo data directly in Firestore (free Spark plan).
+    // The onSnapshot listener picks this up and updates state in all browsers.
     try {
-      await setDoc(doc(db, 'users', currentUser.id), { photoId: downloadUrl }, { merge: true });
+      await saveProfilePhoto(currentUser.id, compressed);
       toast.success('Profile photo updated');
     } catch (err) {
-      console.error('Failed to save photo URL to Firestore:', err);
+      console.error('Failed to save photo to Firestore:', err);
       toast.error('Failed to save photo. Check Firestore security rules.');
     }
   }, [currentUser]);
@@ -114,16 +99,10 @@ export function useProfile() {
   };
 
   const handleRemovePhoto = async () => {
-    if (!currentUser?.photoId) return;
-    if (currentUser.photoId.startsWith('http')) {
-      await deleteProfilePhoto(currentUser.id).catch(() => {});
-    } else {
-      await deletePhoto(currentUser.photoId).catch(() => {});
-    }
+    if (!currentUser) return;
     setProfilePhoto(null);
-    // Write removal directly to Firestore
     try {
-      await setDoc(doc(db, 'users', currentUser.id), { photoId: null }, { merge: true });
+      await removeProfilePhoto(currentUser.id);
       toast.success('Photo removed');
     } catch (err) {
       console.error('Failed to remove photo from Firestore:', err);

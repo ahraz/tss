@@ -1,48 +1,21 @@
 // ============================================================
-// TSS Cleaners — Firebase Storage for photos
+// TSS Cleaners — Photo helpers (Firestore-only, no Storage needed)
 // ============================================================
 
-import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import app from './firebase';
-
-const auth = getAuth(app);
-
-let authPromise: Promise<void> | null = null;
-
-/** Ensure we're authenticated anonymously before touching Storage. */
-async function ensureAuth(): Promise<void> {
-  if (auth.currentUser) return;
-  if (authPromise) return authPromise;
-  authPromise = signInAnonymously(auth).then(() => {}).catch((err) => {
-    authPromise = null;
-    throw err;
-  });
-  return authPromise;
-}
-
-const storage = getStorage(app);
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 /**
- * Upload a profile photo (data URL) and return the download URL.
- * Replaces any existing photo at the same path.
+ * Store a compressed profile photo data URL directly in Firestore.
+ * The onSnapshot listener picks this up and displays it in any browser.
+ *
+ * Firestore document limit is 1MB — a compressed 600px profile photo
+ * is ~50-200KB, well within bounds.
  */
-export async function uploadProfilePhoto(userId: string, dataUrl: string): Promise<string> {
-  await ensureAuth();
-  const photoRef = ref(storage, `profiles/${userId}`);
-  await uploadString(photoRef, dataUrl, 'data_url');
-  return getDownloadURL(photoRef);
+export async function saveProfilePhoto(userId: string, dataUrl: string): Promise<void> {
+  await setDoc(doc(db, 'users', userId), { photoData: dataUrl }, { merge: true });
 }
 
-/**
- * Delete a profile photo from Firebase Storage.
- */
-export async function deleteProfilePhoto(userId: string): Promise<void> {
-  await ensureAuth();
-  const photoRef = ref(storage, `profiles/${userId}`);
-  try {
-    await deleteObject(photoRef);
-  } catch {
-    // Ignore if file doesn't exist
-  }
+export async function removeProfilePhoto(userId: string): Promise<void> {
+  await setDoc(doc(db, 'users', userId), { photoData: null }, { merge: true });
 }

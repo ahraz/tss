@@ -5,7 +5,7 @@ import { getPhoto } from '../../utils/photoStore';
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface UserAvatarProps {
-  user: { avatarInitials: string; avatarColor: string; name?: string; photoId?: string } | null | undefined;
+  user: { avatarInitials: string; avatarColor: string; name?: string; photoId?: string; photoData?: string } | null | undefined;
   size?: AvatarSize;
   className?: string;
 }
@@ -22,22 +22,26 @@ export function UserAvatar({ user, size = 'md', className }: UserAvatarProps) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user?.photoId) {
+    if (user?.photoData) {
+      // New: photo data stored directly in Firestore (cross-browser)
+      setPhotoUrl(user.photoData);
+      setLoaded(true);
+    } else if (user?.photoId) {
+      // Legacy: photoId can be a Firebase Storage URL (http) or IndexedDB key
+      if (user.photoId.startsWith('http')) {
+        setPhotoUrl(user.photoId);
+        setLoaded(true);
+      } else {
+        getPhoto(user.photoId).then(url => {
+          setPhotoUrl(url);
+          setLoaded(true);
+        });
+      }
+    } else {
       setPhotoUrl(null);
       setLoaded(true);
-      return;
     }
-    // photoId can be a Firebase Storage download URL (http) or an IndexedDB key (legacy)
-    if (user.photoId.startsWith('http')) {
-      setPhotoUrl(user.photoId);
-      setLoaded(true);
-    } else {
-      getPhoto(user.photoId).then(url => {
-        setPhotoUrl(url);
-        setLoaded(true);
-      });
-    }
-  }, [user?.photoId]);
+  }, [user?.photoData, user?.photoId]);
 
   if (!user) return null;
 
