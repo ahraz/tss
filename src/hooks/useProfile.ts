@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useApp } from '../context/AppContext';
 import { putPhoto, deletePhoto } from '../utils/photoStore';
 import { compressImage } from '../utils/compressImage';
@@ -76,6 +78,7 @@ export function useProfile() {
     if (!currentUser) return;
     const compressed = await compressImage(dataUrl, 600, 0.8).catch(() => dataUrl);
     setProfilePhoto(compressed); // show preview immediately
+
     // Upload to Firebase Storage (cross-browser persistent)
     const downloadUrl = await uploadProfilePhoto(currentUser.id, compressed).catch((err) => {
       console.error('Failed to upload to Firebase Storage:', err);
@@ -83,13 +86,23 @@ export function useProfile() {
       return null;
     });
     if (!downloadUrl) return;
+
     // Delete old IndexedDB photo if upgrading from old format
     if (currentUser.photoId && !currentUser.photoId.startsWith('http')) {
       await deletePhoto(currentUser.photoId).catch(() => {});
     }
-    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, photoId: downloadUrl } });
-    toast.success('Profile photo updated');
-  }, [currentUser, dispatch]);
+
+    // Write the download URL directly to Firestore.
+    // The onSnapshot listener will pick this up and dispatch SET_USERS,
+    // keeping React state in sync across all browsers/tabs automatically.
+    try {
+      await setDoc(doc(db, 'users', currentUser.id), { photoId: downloadUrl }, { merge: true });
+      toast.success('Profile photo updated');
+    } catch (err) {
+      console.error('Failed to save photo URL to Firestore:', err);
+      toast.error('Failed to save photo. Check Firestore security rules.');
+    }
+  }, [currentUser]);
 
   const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,15 +116,19 @@ export function useProfile() {
   const handleRemovePhoto = async () => {
     if (!currentUser?.photoId) return;
     if (currentUser.photoId.startsWith('http')) {
-      // Delete from Firebase Storage
       await deleteProfilePhoto(currentUser.id).catch(() => {});
     } else {
-      // Clean up old IndexedDB format
       await deletePhoto(currentUser.photoId).catch(() => {});
     }
     setProfilePhoto(null);
-    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, photoId: undefined } });
-    toast.success('Photo removed');
+    // Write removal directly to Firestore
+    try {
+      await setDoc(doc(db, 'users', currentUser.id), { photoId: null }, { merge: true });
+      toast.success('Photo removed');
+    } catch (err) {
+      console.error('Failed to remove photo from Firestore:', err);
+      toast.error('Failed to remove photo. Check Firestore security rules.');
+    }
   };
 
   const handleDocUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
