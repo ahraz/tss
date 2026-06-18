@@ -173,6 +173,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, inspections: action.payload };
     case 'ADD_INSPECTION':
       return { ...state, inspections: [...state.inspections, action.payload] };
+    case 'UPDATE_INSPECTION':
+      return { ...state, inspections: state.inspections.map(i => i.id === action.payload.id ? action.payload : i) };
     case 'DELETE_INSPECTION':
       return { ...state, inspections: state.inspections.filter(i => i.id !== action.payload) };
     case 'SET_INSPECTION_TEMPLATES':

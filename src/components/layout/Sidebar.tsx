@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle, Banknote } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle, Banknote, ClipboardCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
@@ -24,6 +24,7 @@ export function Sidebar() {
       { to: '/team', icon: Users, label: 'Team' },
       { to: '/inventory', icon: Package, label: 'Inventory' },
       { to: '/incidents', icon: AlertTriangle, label: 'Incidents' },
+      { to: '/inspections', icon: ClipboardCheck, label: 'Inspections' },
       { to: '/money', icon: DollarSign, label: 'Money Book' },
       { to: '/payroll', icon: Banknote, label: 'Payroll' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },

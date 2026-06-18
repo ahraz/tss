@@ -447,6 +447,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
 
       // Inspections
       case 'ADD_INSPECTION':
+      case 'UPDATE_INSPECTION':
         await setDoc(doc(db, 'inspections', action.payload.id), sanitizeForFirestore(action.payload));
         break;
       case 'DELETE_INSPECTION':

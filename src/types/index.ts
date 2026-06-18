@@ -67,6 +67,8 @@ export interface InspectionResult {
 export interface Inspection {
   id: string;
   siteId: string;
+  templateId: string;
+  templateLabel: string;
   performedById: string;
   performedAt: string;
   items: InspectionResult[];
@@ -77,6 +79,7 @@ export interface Inspection {
   /** Whether client signed off */
   clientSigned: boolean;
   clientSignedAt: string | null;
+  signedByName: string | null;
   createdAt: string;
 }
 
@@ -417,6 +420,7 @@ export type AppAction =
   // Inspections
   | { type: 'SET_INSPECTIONS'; payload: Inspection[] }
   | { type: 'ADD_INSPECTION'; payload: Inspection }
+  | { type: 'UPDATE_INSPECTION'; payload: Inspection }
   | { type: 'DELETE_INSPECTION'; payload: string }
   | { type: 'SET_INSPECTION_TEMPLATES'; payload: InspectionItem[] }
   | { type: 'ADD_INSPECTION_TEMPLATE'; payload: InspectionItem }

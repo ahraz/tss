@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, AlertCircle, Plus, Banknote, Users } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, AlertCircle, Plus, Banknote, Users, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -103,6 +103,29 @@ export function DashboardPage() {
             <Button onClick={() => navigate('/payroll')}>
               <Banknote size={16} />
               Go to Payroll
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Inspections summary */}
+      {state.inspections.length > 0 && (
+        <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-emerald-100 p-2.5 rounded-xl">
+                <ClipboardCheck size={24} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Quality Inspections</p>
+                <p className="text-sm text-gray-600">
+                  {state.inspections.length} total · {state.inspections.filter(i => i.items.some(r => r.rating === 'fail')).length} with fails · {state.inspections.filter(i => i.clientSigned).length} signed off
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => navigate('/inspections')}>
+              <ClipboardCheck size={16} />
+              View Inspections
             </Button>
           </div>
         </Card>
