@@ -12,11 +12,15 @@ import type {
   User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
   SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport
 } from '../types';
-import { loadAllState } from '../utils/storage';
 
 /**
- * Recursively removes any undefined fields from objects/arrays to satisfy Firestore's strict schema rules.
+ * Shared helper to convert a Firestore snapshot into a typed object,
+ * preferring the `id` field from the document data over the snapshot key.
  */
+function docToObj<T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T {
+  const data = snap.data();
+  return { ...data, id: data?.id ?? snap.id } as T;
+}
 export function sanitizeForFirestore<T>(val: T): any {
   if (val === undefined) {
     return null;
@@ -79,78 +83,25 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'incidentReports')),
   ]);
 
-  const mapDoc = <T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T => {
-    const data = snap.data();
-    return { ...data, id: data?.id ?? snap.id } as T;
-  };
-
-  const users = usersSnap.docs.map(d => mapDoc<User>(d));
-  const sites = sitesSnap.docs.map(d => mapDoc<Site>(d));
-  const shifts = shiftsSnap.docs.map(d => mapDoc<Shift>(d));
-  const payments = paymentsSnap.docs.map(d => mapDoc<Payment>(d));
-  const expenses = expensesSnap.docs.map(d => mapDoc<Expense>(d));
-  const payroll = payrollSnap.docs.map(d => mapDoc<PayrollRecord>(d));
-  const tasks = tasksSnap.docs.map(d => mapDoc<Task>(d));
-  const clients = clientsSnap.docs.map(d => mapDoc<Client>(d));
-  const quotes = quotesSnap.docs.map(d => mapDoc<Quote>(d));
-  const supplyItems = supplyItemsSnap.docs.map(d => mapDoc<SupplyItem>(d));
-  const siteInventory = siteInventorySnap.docs.map(d => mapDoc<SiteInventory>(d));
-  const inspections = inspectionsSnap.docs.map(d => mapDoc<Inspection>(d));
-  const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => mapDoc<InspectionItem>(d));
-  const incidentReports = incidentReportsSnap.docs.map(d => mapDoc<IncidentReport>(d));
+  const users = usersSnap.docs.map(d => docToObj<User>(d));
+  const sites = sitesSnap.docs.map(d => docToObj<Site>(d));
+  const shifts = shiftsSnap.docs.map(d => docToObj<Shift>(d));
+  const payments = paymentsSnap.docs.map(d => docToObj<Payment>(d));
+  const expenses = expensesSnap.docs.map(d => docToObj<Expense>(d));
+  const payroll = payrollSnap.docs.map(d => docToObj<PayrollRecord>(d));
+  const tasks = tasksSnap.docs.map(d => docToObj<Task>(d));
+  const clients = clientsSnap.docs.map(d => docToObj<Client>(d));
+  const quotes = quotesSnap.docs.map(d => docToObj<Quote>(d));
+  const supplyItems = supplyItemsSnap.docs.map(d => docToObj<SupplyItem>(d));
+  const siteInventory = siteInventorySnap.docs.map(d => docToObj<SiteInventory>(d));
+  const inspections = inspectionsSnap.docs.map(d => docToObj<Inspection>(d));
+  const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => docToObj<InspectionItem>(d));
+  const incidentReports = incidentReportsSnap.docs.map(d => docToObj<IncidentReport>(d));
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
   return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, settings };
-}
-
-/**
- * Force-pushes all local data to Firestore, overwriting existing documents.
- * This ensures rich profile fields (photoId, email, skills, etc.) and new
- * collections (supplyItems, incidentReports, etc.) are all present in Firestore.
- * Runs only once — guarded by a data version flag.
- */
-export async function migrateLocalToFirebase(): Promise<void> {
-  const version = localStorage.getItem('cleanops_data_version');
-  if (version === '2') return; // already migrated
-
-  try {
-    const localData = loadAllState();
-
-    const pushCollection = async <T extends { id: string }>(colName: string, items: T[]) => {
-      if (items.length === 0) return;
-      console.log(`Pushing ${items.length} ${colName} to Firestore...`);
-      for (const item of items) {
-        await setDoc(doc(db, colName, item.id), sanitizeForFirestore(item));
-      }
-    };
-
-    // Push ALL local data to Firestore regardless of what's already there
-    await pushCollection('users', localData.users);
-    await pushCollection('sites', localData.sites);
-    await pushCollection('shifts', localData.shifts);
-    await pushCollection('payments', localData.payments);
-    await pushCollection('expenses', localData.expenses);
-    await pushCollection('payroll', localData.payroll);
-    await pushCollection('tasks', localData.tasks);
-    await pushCollection('clients', localData.clients);
-    await pushCollection('quotes', localData.quotes);
-    await pushCollection('supplyItems', localData.supplyItems);
-    await pushCollection('siteInventory', localData.siteInventory);
-    await pushCollection('inspections', localData.inspections);
-    await pushCollection('inspectionTemplates', localData.inspectionTemplates);
-    await pushCollection('incidentReports', localData.incidentReports);
-
-    if (localData.settings) {
-      await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(localData.settings));
-    }
-
-    localStorage.setItem('cleanops_data_version', '2');
-    console.log('Firestore migration complete — all local data pushed to cloud.');
-  } catch (error) {
-    console.error('Error migrating local data to Firebase:', error);
-  }
 }
 
 /**
@@ -161,16 +112,12 @@ export function subscribeToCollections(
   dispatch: (action: AppAction) => void,
   onError?: (source: string, err: unknown) => void
 ) {
-  const ensureId = <T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T => {
-    const data = snap.data();
-    return { ...data, id: data?.id ?? snap.id } as T;
-  };
 
   const unsubUsers = onSnapshot(
     collection(db, 'users'),
     (snapshot) => {
       const list: User[] = [];
-      snapshot.forEach(doc => list.push(ensureId<User>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<User>(doc)));
       dispatch({ type: 'SET_USERS', payload: list });
     },
     (err) => onError?.('users', err)
@@ -180,7 +127,7 @@ export function subscribeToCollections(
     collection(db, 'sites'),
     (snapshot) => {
       const list: Site[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Site>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Site>(doc)));
       dispatch({ type: 'SET_SITES', payload: list });
     },
     (err) => onError?.('sites', err)
@@ -190,7 +137,7 @@ export function subscribeToCollections(
     collection(db, 'shifts'),
     (snapshot) => {
       const list: Shift[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Shift>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Shift>(doc)));
       dispatch({ type: 'SET_SHIFTS', payload: list });
     },
     (err) => onError?.('shifts', err)
@@ -200,7 +147,7 @@ export function subscribeToCollections(
     collection(db, 'payments'),
     (snapshot) => {
       const list: Payment[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Payment>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Payment>(doc)));
       dispatch({ type: 'SET_PAYMENTS', payload: list });
     },
     (err) => onError?.('payments', err)
@@ -210,7 +157,7 @@ export function subscribeToCollections(
     collection(db, 'expenses'),
     (snapshot) => {
       const list: Expense[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Expense>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Expense>(doc)));
       dispatch({ type: 'SET_EXPENSES', payload: list });
     },
     (err) => onError?.('expenses', err)
@@ -220,7 +167,7 @@ export function subscribeToCollections(
     collection(db, 'payroll'),
     (snapshot) => {
       const list: PayrollRecord[] = [];
-      snapshot.forEach(doc => list.push(ensureId<PayrollRecord>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<PayrollRecord>(doc)));
       dispatch({ type: 'SET_PAYROLL', payload: list });
     },
     (err) => onError?.('payroll', err)
@@ -230,7 +177,7 @@ export function subscribeToCollections(
     collection(db, 'tasks'),
     (snapshot) => {
       const list: Task[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Task>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Task>(doc)));
       dispatch({ type: 'SET_TASKS', payload: list });
     },
     (err) => onError?.('tasks', err)
@@ -240,7 +187,7 @@ export function subscribeToCollections(
     collection(db, 'clients'),
     (snapshot) => {
       const list: Client[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Client>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Client>(doc)));
       dispatch({ type: 'SET_CLIENTS', payload: list });
     },
     (err) => onError?.('clients', err)
@@ -250,7 +197,7 @@ export function subscribeToCollections(
     collection(db, 'quotes'),
     (snapshot) => {
       const list: Quote[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Quote>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Quote>(doc)));
       dispatch({ type: 'SET_QUOTES', payload: list });
     },
     (err) => onError?.('quotes', err)
@@ -272,7 +219,7 @@ export function subscribeToCollections(
     collection(db, 'supplyItems'),
     (snapshot) => {
       const list: SupplyItem[] = [];
-      snapshot.forEach(doc => list.push(ensureId<SupplyItem>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<SupplyItem>(doc)));
       dispatch({ type: 'SET_SUPPLY_ITEMS', payload: list });
     },
     (err) => onError?.('supplyItems', err)
@@ -282,7 +229,7 @@ export function subscribeToCollections(
     collection(db, 'siteInventory'),
     (snapshot) => {
       const list: SiteInventory[] = [];
-      snapshot.forEach(doc => list.push(ensureId<SiteInventory>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<SiteInventory>(doc)));
       dispatch({ type: 'SET_SITE_INVENTORY', payload: list });
     },
     (err) => onError?.('siteInventory', err)
@@ -292,7 +239,7 @@ export function subscribeToCollections(
     collection(db, 'inspections'),
     (snapshot) => {
       const list: Inspection[] = [];
-      snapshot.forEach(doc => list.push(ensureId<Inspection>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<Inspection>(doc)));
       dispatch({ type: 'SET_INSPECTIONS', payload: list });
     },
     (err) => onError?.('inspections', err)
@@ -302,7 +249,7 @@ export function subscribeToCollections(
     collection(db, 'inspectionTemplates'),
     (snapshot) => {
       const list: InspectionItem[] = [];
-      snapshot.forEach(doc => list.push(ensureId<InspectionItem>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<InspectionItem>(doc)));
       dispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: list });
     },
     (err) => onError?.('inspectionTemplates', err)
@@ -312,7 +259,7 @@ export function subscribeToCollections(
     collection(db, 'incidentReports'),
     (snapshot) => {
       const list: IncidentReport[] = [];
-      snapshot.forEach(doc => list.push(ensureId<IncidentReport>(doc)));
+      snapshot.forEach(doc => list.push(docToObj<IncidentReport>(doc)));
       dispatch({ type: 'SET_INCIDENT_REPORTS', payload: list });
     },
     (err) => onError?.('incidentReports', err)
@@ -348,7 +295,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Users
       case 'ADD_USER':
       case 'UPDATE_USER':
-        await setDoc(doc(db, 'users', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'users', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_USER':
         await deleteDoc(doc(db, 'users', action.payload));
@@ -357,7 +304,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Sites
       case 'ADD_SITE':
       case 'UPDATE_SITE':
-        await setDoc(doc(db, 'sites', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'sites', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_SITE':
         await deleteDoc(doc(db, 'sites', action.payload));
@@ -366,7 +313,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Shifts
       case 'ADD_SHIFT':
       case 'UPDATE_SHIFT':
-        await setDoc(doc(db, 'shifts', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'shifts', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_SHIFT':
         await deleteDoc(doc(db, 'shifts', action.payload));
@@ -375,7 +322,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Payments
       case 'ADD_PAYMENT':
       case 'UPDATE_PAYMENT':
-        await setDoc(doc(db, 'payments', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'payments', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_PAYMENT':
         await deleteDoc(doc(db, 'payments', action.payload));
@@ -384,7 +331,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Expenses
       case 'ADD_EXPENSE':
       case 'UPDATE_EXPENSE':
-        await setDoc(doc(db, 'expenses', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'expenses', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_EXPENSE':
         await deleteDoc(doc(db, 'expenses', action.payload));
@@ -393,7 +340,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Payroll
       case 'ADD_PAYROLL':
       case 'UPDATE_PAYROLL':
-        await setDoc(doc(db, 'payroll', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'payroll', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_PAYROLL':
         await deleteDoc(doc(db, 'payroll', action.payload));
@@ -402,7 +349,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Tasks
       case 'ADD_TASK':
       case 'UPDATE_TASK':
-        await setDoc(doc(db, 'tasks', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'tasks', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_TASK':
         await deleteDoc(doc(db, 'tasks', action.payload));
@@ -411,7 +358,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Clients
       case 'ADD_CLIENT':
       case 'UPDATE_CLIENT':
-        await setDoc(doc(db, 'clients', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'clients', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_CLIENT':
         await deleteDoc(doc(db, 'clients', action.payload));
@@ -420,7 +367,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Quotes
       case 'ADD_QUOTE':
       case 'UPDATE_QUOTE':
-        await setDoc(doc(db, 'quotes', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'quotes', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_QUOTE':
         await deleteDoc(doc(db, 'quotes', action.payload));
@@ -429,21 +376,21 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Settings
       case 'UPDATE_SETTINGS':
         if (currentSettings) {
-          await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore({ ...currentSettings, ...action.payload }));
+          await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore({ ...currentSettings, ...action.payload }), { merge: true });
         }
         break;
 
       // Inventory
       case 'ADD_SUPPLY_ITEM':
       case 'UPDATE_SUPPLY_ITEM':
-        await setDoc(doc(db, 'supplyItems', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'supplyItems', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_SUPPLY_ITEM':
         await deleteDoc(doc(db, 'supplyItems', action.payload));
         break;
       case 'ADD_SITE_INVENTORY':
       case 'UPDATE_SITE_INVENTORY':
-        await setDoc(doc(db, 'siteInventory', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'siteInventory', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_SITE_INVENTORY':
         await deleteDoc(doc(db, 'siteInventory', action.payload));
@@ -452,13 +399,13 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Inspections
       case 'ADD_INSPECTION':
       case 'UPDATE_INSPECTION':
-        await setDoc(doc(db, 'inspections', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'inspections', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_INSPECTION':
         await deleteDoc(doc(db, 'inspections', action.payload));
         break;
       case 'ADD_INSPECTION_TEMPLATE':
-        await setDoc(doc(db, 'inspectionTemplates', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'inspectionTemplates', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_INSPECTION_TEMPLATE':
         await deleteDoc(doc(db, 'inspectionTemplates', action.payload));
@@ -467,7 +414,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Incidents
       case 'ADD_INCIDENT_REPORT':
       case 'UPDATE_INCIDENT_REPORT':
-        await setDoc(doc(db, 'incidentReports', action.payload.id), sanitizeForFirestore(action.payload));
+        await setDoc(doc(db, 'incidentReports', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_INCIDENT_REPORT':
         await deleteDoc(doc(db, 'incidentReports', action.payload));

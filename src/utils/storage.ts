@@ -52,52 +52,52 @@ export function setData<T>(key: string, value: T): void {
   }
 }
 
-// --- Typed Getters/Setters ---
+// --- Typed Getters/Setters (internal — not used outside this module) ---
 
-export const getUsers = () => getData<User[]>(KEYS.users) ?? [];
-export const setUsers = (v: User[]) => setData(KEYS.users, v);
+const getUsers = () => getData<User[]>(KEYS.users) ?? [];
+const setUsers = (v: User[]) => setData(KEYS.users, v);
 
-export const getSites = () => getData<Site[]>(KEYS.sites) ?? [];
-export const setSites = (v: Site[]) => setData(KEYS.sites, v);
+const getSites = () => getData<Site[]>(KEYS.sites) ?? [];
+const setSites = (v: Site[]) => setData(KEYS.sites, v);
 
-export const getShifts = () => getData<Shift[]>(KEYS.shifts) ?? [];
-export const setShifts = (v: Shift[]) => setData(KEYS.shifts, v);
+const getShifts = () => getData<Shift[]>(KEYS.shifts) ?? [];
+const setShifts = (v: Shift[]) => setData(KEYS.shifts, v);
 
-export const getPayments = () => getData<Payment[]>(KEYS.payments) ?? [];
-export const setPayments = (v: Payment[]) => setData(KEYS.payments, v);
+const getPayments = () => getData<Payment[]>(KEYS.payments) ?? [];
+const setPayments = (v: Payment[]) => setData(KEYS.payments, v);
 
-export const getExpenses = () => getData<Expense[]>(KEYS.expenses) ?? [];
-export const setExpenses = (v: Expense[]) => setData(KEYS.expenses, v);
+const getExpenses = () => getData<Expense[]>(KEYS.expenses) ?? [];
+const setExpenses = (v: Expense[]) => setData(KEYS.expenses, v);
 
-export const getPayroll = () => getData<PayrollRecord[]>(KEYS.payroll) ?? [];
-export const setPayroll = (v: PayrollRecord[]) => setData(KEYS.payroll, v);
+const getPayroll = () => getData<PayrollRecord[]>(KEYS.payroll) ?? [];
+const setPayroll = (v: PayrollRecord[]) => setData(KEYS.payroll, v);
 
-export const getTasks = () => getData<Task[]>(KEYS.tasks) ?? [];
-export const setTasks = (v: Task[]) => setData(KEYS.tasks, v);
+const getTasks = () => getData<Task[]>(KEYS.tasks) ?? [];
+const setTasks = (v: Task[]) => setData(KEYS.tasks, v);
 
-export const getClients = () => getData<Client[]>(KEYS.clients) ?? [];
-export const setClients = (v: Client[]) => setData(KEYS.clients, v);
+const getClients = () => getData<Client[]>(KEYS.clients) ?? [];
+const setClients = (v: Client[]) => setData(KEYS.clients, v);
 
-export const getQuotes = () => getData<Quote[]>(KEYS.quotes) ?? [];
-export const setQuotes = (v: Quote[]) => setData(KEYS.quotes, v);
+const getQuotes = () => getData<Quote[]>(KEYS.quotes) ?? [];
+const setQuotes = (v: Quote[]) => setData(KEYS.quotes, v);
 
-export const getSettings = () => getData<AppSettings>(KEYS.settings);
-export const setSettings = (v: AppSettings) => setData(KEYS.settings, v);
+const getSettings = () => getData<AppSettings>(KEYS.settings);
+const setSettings = (v: AppSettings) => setData(KEYS.settings, v);
 
-export const getSupplyItems = () => getData<SupplyItem[]>(KEYS.supplyItems) ?? [];
-export const setSupplyItems = (v: SupplyItem[]) => setData(KEYS.supplyItems, v);
+const getSupplyItems = () => getData<SupplyItem[]>(KEYS.supplyItems) ?? [];
+const setSupplyItems = (v: SupplyItem[]) => setData(KEYS.supplyItems, v);
 
-export const getSiteInventory = () => getData<SiteInventory[]>(KEYS.siteInventory) ?? [];
-export const setSiteInventory = (v: SiteInventory[]) => setData(KEYS.siteInventory, v);
+const getSiteInventory = () => getData<SiteInventory[]>(KEYS.siteInventory) ?? [];
+const setSiteInventory = (v: SiteInventory[]) => setData(KEYS.siteInventory, v);
 
-export const getInspections = () => getData<Inspection[]>(KEYS.inspections) ?? [];
-export const setInspections = (v: Inspection[]) => setData(KEYS.inspections, v);
+const getInspections = () => getData<Inspection[]>(KEYS.inspections) ?? [];
+const setInspections = (v: Inspection[]) => setData(KEYS.inspections, v);
 
-export const getInspectionTemplates = () => getData<InspectionItem[]>(KEYS.inspectionTemplates) ?? [];
-export const setInspectionTemplates = (v: InspectionItem[]) => setData(KEYS.inspectionTemplates, v);
+const getInspectionTemplates = () => getData<InspectionItem[]>(KEYS.inspectionTemplates) ?? [];
+const setInspectionTemplates = (v: InspectionItem[]) => setData(KEYS.inspectionTemplates, v);
 
-export const getIncidentReports = () => getData<IncidentReport[]>(KEYS.incidentReports) ?? [];
-export const setIncidentReports = (v: IncidentReport[]) => setData(KEYS.incidentReports, v);
+const getIncidentReports = () => getData<IncidentReport[]>(KEYS.incidentReports) ?? [];
+const setIncidentReports = (v: IncidentReport[]) => setData(KEYS.incidentReports, v);
 
 export const getSession = () => getData<Session>(KEYS.session);
 export const setSession = (v: Session | null) => {
@@ -105,96 +105,8 @@ export const setSession = (v: Session | null) => {
   else setData(KEYS.session, v);
 };
 
-// --- Storage Size ---
 
-export function getStorageUsage(): { usedBytes: number; usedMB: string; isNearLimit: boolean } {
-  let total = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key) {
-      total += (localStorage.getItem(key) || '').length * 2; // UTF-16 = 2 bytes per char
-    }
-  }
-  return {
-    usedBytes: total,
-    usedMB: (total / (1024 * 1024)).toFixed(2),
-    isNearLimit: total > 4 * 1024 * 1024, // warn at 4MB
-  };
-}
 
-// --- Photo Cleanup ---
-
-export function clearOldPhotos(days: number = 30): number {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutoffISO = cutoff.toISOString();
-  let cleared = 0;
-
-  const shifts = getShifts();
-  const idsToClear: string[] = [];
-  const updated = shifts.map(s => {
-    if (s.createdAt < cutoffISO) {
-      idsToClear.push(s.id);
-      return {
-        ...s,
-        clockInPhotoDataUrl: '',
-        clockOutPhotoDataUrl: '',
-      };
-    }
-    return s;
-  });
-  if (idsToClear.length > 0) {
-    setShifts(updated);
-    // Also clean up IndexedDB photos
-    import('./photoStore').then(({ deletePhotosByPrefix }) => {
-      idsToClear.forEach(id => {
-        deletePhotosByPrefix(`shift:${id}`);
-      });
-    });
-  }
-  cleared += idsToClear.length * 2;
-
-  const expenses = getExpenses();
-  const expIdsToClear: string[] = [];
-  const updatedExpenses = expenses.map(e => {
-    if (e.createdAt < cutoffISO && e.receiptPhotoDataUrl) {
-      expIdsToClear.push(e.id);
-      return { ...e, receiptPhotoDataUrl: null };
-    }
-    return e;
-  });
-  if (expIdsToClear.length > 0) {
-    setExpenses(updatedExpenses);
-    import('./photoStore').then(({ deletePhotosByPrefix }) => {
-      expIdsToClear.forEach(id => {
-        deletePhotosByPrefix(`expense:${id}`);
-      });
-    });
-  }
-  cleared += expIdsToClear.length;
-
-  return cleared;
-}
-
-// --- Export / Import ---
-
-export function exportAllData(): string {
-  const data: Record<string, unknown> = {};
-  Object.entries(KEYS).forEach(([, key]) => {
-    const raw = localStorage.getItem(key);
-    if (raw !== null) {
-      data[key] = JSON.parse(raw);
-    }
-  });
-  return JSON.stringify(data, null, 2);
-}
-
-export function importAllData(json: string): void {
-  const data = JSON.parse(json) as Record<string, unknown>;
-  Object.entries(data).forEach(([key, value]) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  });
-}
 
 export function clearAllData(): void {
   Object.values(KEYS).forEach(key => {
@@ -743,36 +655,3 @@ export function loadAllState() {
 
 // --- Persist State ---
 
-export function persistState(state: {
-  users: User[];
-  sites: Site[];
-  shifts: Shift[];
-  payments: Payment[];
-  expenses: Expense[];
-  payroll: PayrollRecord[];
-  tasks: Task[];
-  clients: Client[];
-  quotes: Quote[];
-  supplyItems: SupplyItem[];
-  siteInventory: SiteInventory[];
-  inspections: Inspection[];
-  inspectionTemplates: InspectionItem[];
-  incidentReports: IncidentReport[];
-  settings: AppSettings;
-}) {
-  setUsers(state.users);
-  setSites(state.sites);
-  setShifts(state.shifts);
-  setPayments(state.payments);
-  setExpenses(state.expenses);
-  setPayroll(state.payroll);
-  setTasks(state.tasks);
-  setClients(state.clients);
-  setQuotes(state.quotes);
-  setSupplyItems(state.supplyItems);
-  setSiteInventory(state.siteInventory);
-  setInspections(state.inspections);
-  setInspectionTemplates(state.inspectionTemplates);
-  setIncidentReports(state.incidentReports);
-  setSettings(state.settings);
-}

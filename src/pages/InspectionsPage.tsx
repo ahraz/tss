@@ -15,7 +15,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import { startCamera, capturePhoto, stopCamera, isCameraAvailable } from '../utils/camera';
+import { startCamera, capturePhoto, stopCamera } from '../utils/camera';
 import { compressImage } from '../utils/compressImage';
 import { putPhoto, getPhoto } from '../utils/photoStore';
 import type { Inspection, InspectionItem, InspectionResult, InspectionRating } from '../types';

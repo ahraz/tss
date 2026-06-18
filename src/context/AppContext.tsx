@@ -223,6 +223,10 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, originalDispatch] = useReducer(appReducer, initialState);
 
+  // Ref to always hold the latest settings (avoid stale closure in customDispatch)
+  const settingsRef = React.useRef(state.settings);
+  settingsRef.current = state.settings;
+
   // Memoized custom dispatch that intercepts modifying actions and sends them to Firestore
   const customDispatch = React.useCallback(
     (action: AppAction) => {
@@ -230,12 +234,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       originalDispatch(action);
 
       // 2. Sync changes to Cloud Firestore
-      syncActionToFirestore(action, state.settings).catch((err) => {
+      syncActionToFirestore(action, settingsRef.current).catch((err) => {
         console.error('Failed to sync action to Firestore:', err);
         toast.error('Sync failed. Check your connection or permissions.');
       });
     },
-    [state.settings]
+    [] // stable — never needs to be recreated
   );
 
   // ─── Init: Firestore is the source of truth ──────────────

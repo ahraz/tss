@@ -1,39 +1,20 @@
 import { NavLink } from 'react-router-dom';
-import { Sparkles, LayoutDashboard, Clock, ClipboardList, Building2, DollarSign, BarChart3, CheckSquare, Settings, LogOut, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle, Banknote, ClipboardCheck } from 'lucide-react';
+import { Sparkles, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
+import { linksForRole } from './navLinks';
 
 export function Sidebar() {
   const { currentUser, dispatch } = useApp();
 
   if (!currentUser) return null;
 
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
-  const links = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/profile', icon: User, label: 'My Profile' },
-    { to: '/clock', icon: Clock, label: 'Clock In/Out' },
-    { to: '/shifts', icon: ClipboardList, label: 'Shifts' },
-    { to: '/sites', icon: Building2, label: 'Sites' },
-    ...(isOwnerOrPartner ? [
-      { to: '/schedule', icon: CalendarDays, label: 'Schedule' },
-      { to: '/clients', icon: Briefcase, label: 'Clients' },
-      { to: '/quotes', icon: FileText, label: 'Quotes' },
-      { to: '/team', icon: Users, label: 'Team' },
-      { to: '/inventory', icon: Package, label: 'Inventory' },
-      { to: '/incidents', icon: AlertTriangle, label: 'Incidents' },
-      { to: '/inspections', icon: ClipboardCheck, label: 'Inspections' },
-      { to: '/money', icon: DollarSign, label: 'Money Book' },
-      { to: '/payroll', icon: Banknote, label: 'Payroll' },
-      { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-    ] : []),
-    { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-    ...(isOwnerOrPartner ? [
-      { to: '/settings', icon: Settings, label: 'Settings' },
-    ] : []),
-  ];
+  const links = linksForRole(
+    currentUser.role === 'owner' || currentUser.role === 'partner',
+    currentUser.role === 'owner',
+    currentUser.role
+  );
 
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });

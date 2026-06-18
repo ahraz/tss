@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Clock, Building2, DollarSign, Menu, BarChart3, CheckSquare, Settings, LogOut, X, Users, Briefcase, FileText, CalendarDays, User, Package, AlertTriangle } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { linksForRole } from './navLinks';
 
 export function BottomNav() {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -10,7 +11,13 @@ export function BottomNav() {
 
   if (!currentUser) return null;
 
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+  const links = linksForRole(
+    currentUser.role === 'owner' || currentUser.role === 'partner',
+    currentUser.role === 'owner',
+    currentUser.role
+  );
+
+  const bottomBarLinks = links.filter(l => l.mobileBar || l.to === '/');
 
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });
@@ -35,69 +42,18 @@ export function BottomNav() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-2 space-y-1">
-              <NavLink to="/profile" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                <User size={20} className="text-gray-400" />
-                <span className="font-medium">My Profile</span>
-              </NavLink>
-              {isOwnerOrPartner && (
-                <NavLink to="/schedule" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <CalendarDays size={20} className="text-gray-400" />
-                  <span className="font-medium">Schedule</span>
+            <div className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
+              {links.map(link => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setIsMoreOpen(false)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+                >
+                  <link.icon size={20} className="text-gray-400" />
+                  <span className="font-medium">{link.label}</span>
                 </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/clients" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Briefcase size={20} className="text-gray-400" />
-                  <span className="font-medium">Clients</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/quotes" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <FileText size={20} className="text-gray-400" />
-                  <span className="font-medium">Quotes</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/inventory" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Package size={20} className="text-gray-400" />
-                  <span className="font-medium">Inventory</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/incidents" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <AlertTriangle size={20} className="text-gray-400" />
-                  <span className="font-medium">Incidents</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/money" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <DollarSign size={20} className="text-gray-400" />
-                  <span className="font-medium">Money</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/team" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Users size={20} className="text-gray-400" />
-                  <span className="font-medium">Team</span>
-                </NavLink>
-              )}
-              {isOwnerOrPartner && (
-                <NavLink to="/analytics" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <BarChart3 size={20} className="text-gray-400" />
-                  <span className="font-medium">Analytics</span>
-                </NavLink>
-              )}
-              <NavLink to="/tasks" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                <CheckSquare size={20} className="text-gray-400" />
-                <span className="font-medium">Tasks</span>
-              </NavLink>
-              {isOwnerOrPartner && (
-                <NavLink to="/settings" onClick={() => setIsMoreOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700">
-                  <Settings size={20} className="text-gray-400" />
-                  <span className="font-medium">Settings</span>
-                </NavLink>
-              )}
+              ))}
               <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-red-600">
                 <LogOut size={20} className="text-red-500" />
                 <span className="font-medium">Logout</span>
@@ -109,22 +65,12 @@ export function BottomNav() {
 
       {/* Bottom Nav Bar */}
       <nav className="md:hidden fixed bottom-0 w-full h-16 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] z-30 pb-safe-bottom flex">
-        <NavLink to="/" end className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-          <Home size={20} />
-          <span className="text-[10px] font-medium">Home</span>
-        </NavLink>
-        <NavLink to="/clock" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-          <Clock size={20} />
-          <span className="text-[10px] font-medium">Clock</span>
-        </NavLink>
-        <NavLink to="/sites" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-          <Building2 size={20} />
-          <span className="text-[10px] font-medium">Sites</span>
-        </NavLink>
-        <NavLink to="/shifts" className={navItemClass} onClick={() => setIsMoreOpen(false)}>
-          <CheckSquare size={20} />
-          <span className="text-[10px] font-medium">Shifts</span>
-        </NavLink>
+        {bottomBarLinks.map(link => (
+          <NavLink key={link.to} to={link.to} end={link.to === '/'} className={navItemClass} onClick={() => setIsMoreOpen(false)}>
+            <link.icon size={20} />
+            <span className="text-[10px] font-medium">{link.label === 'Clock In/Out' ? 'Clock' : link.label === 'My Profile' ? 'Profile' : link.label}</span>
+          </NavLink>
+        ))}
         <button
           onClick={() => setIsMoreOpen(true)}
           className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isMoreOpen ? 'text-blue-600' : 'text-gray-500'}`}
