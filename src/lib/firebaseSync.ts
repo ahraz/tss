@@ -34,6 +34,10 @@ export function sanitizeForFirestore<T>(val: T): any {
         const value = val[key];
         if (value !== undefined) {
           res[key] = sanitizeForFirestore(value);
+        } else {
+          // Persist null so Firestore keeps the field key. Otherwise setDoc
+          // drops the key entirely, and the next read loses the field.
+          res[key] = null;
         }
       }
     }

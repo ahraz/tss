@@ -3,10 +3,9 @@ import type { AppState, AppAction, User } from '../types';
 import { toast } from 'react-hot-toast';
 import {
   initializeStorage, loadAllState,
-  setSession, clearAllData, importAllData, getSession
+  setSession, clearAllData, getSession
 } from '../utils/storage';
 import {
-  migrateLocalToFirebase,
   subscribeToCollections,
   syncActionToFirestore,
   fetchAllCollectionsOnce
@@ -261,9 +260,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
-        // One-time migration: push all local data to Firestore (rich fields, new collections)
-        await migrateLocalToFirebase();
-
         // Hydrate from Firestore (overwrites cached localStorage data)
         const remote = await fetchAllCollectionsOnce();
         originalDispatch({ type: 'SET_USERS', payload: remote.users });
@@ -282,6 +278,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
+        }
+
+        // Firestore is now the source of truth — wipe stale localStorage cache
+        // but preserve the session so the user stays logged in.
+        const cachedSession = getSession();
+        localStorage.removeItem('cleanops_data_version');
+        clearAllData();
+        initializeStorage();
+        if (cachedSession) {
+          setSession(cachedSession);
         }
 
         // Start real-time listeners
