@@ -358,7 +358,7 @@ export type AppAction =
   | { type: 'SET_SESSION'; payload: Session | null }
   | { type: 'LOGOUT' }
   // Initialize
-  | { type: 'INITIALIZE'; payload: Omit<AppState, 'isInitialized'> }
+  | { type: 'INITIALIZE'; payload: Partial<Omit<AppState, 'isInitialized'>> }
   // Real-time Sync Bulk Setters
   | { type: 'SET_USERS'; payload: User[] }
   | { type: 'SET_SITES'; payload: Site[] }

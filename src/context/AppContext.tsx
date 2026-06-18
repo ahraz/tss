@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { AppState, AppAction, User } from '../types';
 import { toast } from 'react-hot-toast';
-import {
-  initializeStorage, loadAllState,
-  setSession, clearAllData, getSession
-} from '../utils/storage';
+import { setSession, getSession } from '../utils/storage';
 import {
   subscribeToCollections,
   syncActionToFirestore,
@@ -198,12 +195,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, ...action.payload };
 
     // Clear all
-    case 'CLEAR_ALL_DATA': {
-      clearAllData();
-      initializeStorage();
-      const fresh = loadAllState();
-      return { ...state, ...fresh, session: null, isInitialized: true };
-    }
+    case 'CLEAR_ALL_DATA':
+      return { ...initialState, isInitialized: true };
 
     default:
       return state;
@@ -244,18 +237,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Init: Firestore is the source of truth ──────────────
   useEffect(() => {
-    // 1. Quick render from localStorage cache so the screen isn't blank
-    initializeStorage();
-    const cached = loadAllState();
-    originalDispatch({
-      type: 'INITIALIZE',
-      payload: {
-        ...cached,
-        session: getSession(),
-      },
-    });
+    // Restore session so the user stays logged in across page reloads
+    originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
 
-    // 2. Connect to Firestore — this is the real source of truth
     let unsubscribe: (() => void) | null = null;
 
     async function startFirebaseSync() {
@@ -264,7 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
-        // Hydrate from Firestore (overwrites cached localStorage data)
+        // Hydrate from Firestore
         const remote = await fetchAllCollectionsOnce();
         originalDispatch({ type: 'SET_USERS', payload: remote.users });
         originalDispatch({ type: 'SET_SITES', payload: remote.sites });
@@ -284,21 +268,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
 
-        // Firestore is now the source of truth — wipe stale localStorage cache
-        // but preserve the session so the user stays logged in.
-        const cachedSession = getSession();
-        localStorage.removeItem('cleanops_data_version');
-        clearAllData();
-        initializeStorage();
-        if (cachedSession) {
-          setSession(cachedSession);
-        }
+        // Mark initialized — app becomes visible
+        originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
 
-        // Start real-time listeners
+        // Start real-time listeners for live updates
         unsubscribe = subscribeToCollections(originalDispatch, handleError);
       } catch (err) {
         console.error('Firestore init failed:', err);
-        // Cached data from step 1 is still visible, so the app works with stale data
+        // Still mark initialized so the user sees the app (with empty data)
+        // rather than a permanent spinner. They'll see whatever Firestore
+        // listeners deliver (or an error toast).
+        originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
       }
     }
 
