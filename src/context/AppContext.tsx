@@ -5,7 +5,8 @@ import { setSession, getSession } from '../utils/storage';
 import {
   subscribeToCollections,
   syncActionToFirestore,
-  fetchAllCollectionsOnce
+  fetchAllCollectionsOnce,
+  seedIfEmpty
 } from '../lib/firebaseSync';
 
 // ─── Initial State ──────────────────────────────────────────
@@ -249,7 +250,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         // Hydrate from Firestore
-        const remote = await fetchAllCollectionsOnce();
+        let remote = await fetchAllCollectionsOnce();
+
+        // First-time setup: seed default users/sites if Firestore is empty
+        if (remote.users.length === 0) {
+          await seedIfEmpty();
+          remote = await fetchAllCollectionsOnce();
+        }
+
         originalDispatch({ type: 'SET_USERS', payload: remote.users });
         originalDispatch({ type: 'SET_SITES', payload: remote.sites });
         originalDispatch({ type: 'SET_SHIFTS', payload: remote.shifts });

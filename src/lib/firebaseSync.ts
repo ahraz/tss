@@ -486,3 +486,142 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
     throw error;
   }
 }
+
+// ─── First-time seed ─────────────────────────────────────────
+
+const DEFAULT_USERS: User[] = [
+  {
+    id: 'user-owner-001',
+    name: 'Ahraz Malik',
+    role: 'owner',
+    pin: '1234',
+    avatarInitials: 'AM',
+    avatarColor: 'bg-blue-600',
+    hourlyRate: 0,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'user-partner-yh',
+    name: 'Yusuf Haque',
+    role: 'partner',
+    pin: '4321',
+    avatarInitials: 'YH',
+    avatarColor: 'bg-purple-600',
+    hourlyRate: 0,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'user-partner-sm',
+    name: 'Shadan Malik',
+    role: 'partner',
+    pin: '4321',
+    avatarInitials: 'SM',
+    avatarColor: 'bg-green-600',
+    hourlyRate: 0,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'user-employee-001',
+    name: 'Sandy',
+    role: 'employee',
+    pin: '3456',
+    avatarInitials: 'S',
+    avatarColor: 'bg-orange-600',
+    hourlyRate: 18.50,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_SITES: Site[] = [
+  {
+    id: 'site-001',
+    name: 'Brampton Medical Clinic',
+    address: '123 Queen St W',
+    city: 'Brampton',
+    province: 'ON',
+    postalCode: 'L6X 1A1',
+    areaTags: ['L6X', 'Brampton-North'],
+    type: 'clinic',
+    contactName: 'Dr. Patel',
+    contactPhone: '905-555-0101',
+    contractRate: 280,
+    frequency: 'weekly',
+    cleaningDays: ['monday', 'thursday'],
+    scheduleStart: '17:00',
+    scheduleEnd: '19:00',
+    assignedUserIds: ['user-employee-001'],
+    accessNotes: 'Key code: 4521. Park at rear. Do not enter exam rooms.',
+    status: 'active',
+    checklist: [
+      { id: 'cl-001', label: 'Vacuum all floors', order: 1 },
+      { id: 'cl-002', label: 'Mop tile floors', order: 2 },
+      { id: 'cl-003', label: 'Clean and sanitize washrooms', order: 3 },
+      { id: 'cl-004', label: 'Empty all trash bins', order: 4 },
+      { id: 'cl-005', label: 'Wipe reception desk', order: 5 },
+      { id: 'cl-006', label: 'Clean glass doors', order: 6 },
+    ],
+    clientId: null,
+    isSubSite: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'site-002',
+    name: 'Gateway Plaza Office',
+    address: '456 Bovaird Dr E, Unit 7',
+    city: 'Brampton',
+    province: 'ON',
+    postalCode: 'L6Z 2N8',
+    areaTags: ['L6Z', 'Brampton-East'],
+    type: 'office',
+    contactName: 'Sandra Mills',
+    contactPhone: '905-555-0202',
+    contractRate: 180,
+    frequency: 'biweekly',
+    cleaningDays: ['wednesday'],
+    scheduleStart: '17:00',
+    scheduleEnd: '19:00',
+    assignedUserIds: ['user-employee-001', 'user-partner-yh'],
+    accessNotes: 'Buzz unit 7. Sandra leaves key under mat after 5pm.',
+    status: 'active',
+    checklist: [
+      { id: 'cl-007', label: 'Vacuum carpets', order: 1 },
+      { id: 'cl-008', label: 'Wipe all desks', order: 2 },
+      { id: 'cl-009', label: 'Clean kitchen area', order: 3 },
+      { id: 'cl-010', label: 'Empty trash', order: 4 },
+    ],
+    clientId: null,
+    isSubSite: false,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+/**
+ * Seed default users and sites into Firestore if the database is empty.
+ * This runs once on first load after localStorage removal.
+ */
+export async function seedIfEmpty(): Promise<void> {
+  const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
+  const settings: AppSettings = settingsSnap.exists()
+    ? (settingsSnap.data() as AppSettings)
+    : {
+        businessName: 'TSS Cleaners',
+        ownerName: 'Ahraz Malik',
+        currency: 'CAD',
+        payPeriod: 'biweekly',
+        dataVersion: 1,
+      };
+
+  for (const user of DEFAULT_USERS) {
+    await setDoc(doc(db, 'users', user.id), sanitizeForFirestore(user));
+  }
+  for (const site of DEFAULT_SITES) {
+    await setDoc(doc(db, 'sites', site.id), sanitizeForFirestore(site));
+  }
+  await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(settings));
+
+  console.log('✅ Seeded default data into Firestore');
+}
