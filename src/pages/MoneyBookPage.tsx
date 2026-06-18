@@ -21,7 +21,7 @@ import type { Payment, Expense, PayrollRecord, PaymentMethod, ExpenseCategory } 
 
 export function MoneyBookPage() {
   const { state, currentUser, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'revenue' | 'expenses' | 'payroll'>('revenue');
+  const [activeTab, setActiveTab] = useState<'revenue' | 'expenses'>('revenue');
   
   // Filters
   const [startDate, setStartDate] = useState(() => startOfMonth(new Date()).toISOString().split('T')[0]);
@@ -182,54 +182,6 @@ export function MoneyBookPage() {
     );
   };
 
-  const renderPayrollTab = () => {
-    const { start, end } = getPayPeriodDates(state.settings.payPeriod);
-    
-    return (
-      <div className="space-y-4">
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center">
-          <div>
-            <p className="text-xs font-semibold text-blue-600 uppercase">Current Pay Period ({state.settings.payPeriod})</p>
-            <p className="text-sm font-medium text-blue-900 mt-1">{formatDate(start.toISOString())} - {formatDate(end.toISOString())}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {state.users.filter(u => u.isActive && u.role === 'employee').map(user => {
-            const hours = calculateEmployeeHours(user.id, state.shifts, start, end);
-            const gross = calculateEmployeePay(user.id, state.shifts, user, start, end);
-            
-            return (
-              <Card key={user.id} className="flex flex-col">
-                <div className="flex items-center gap-3 mb-4 border-b border-gray-100 pb-4">
-                  <UserAvatar user={user} />
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{user.name}</h3>
-                    <p className="text-xs text-gray-500">{formatCAD(user.hourlyRate)}/hr</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Hours Worked</p>
-                    <p className="text-xl font-bold text-gray-900">{hours.toFixed(1)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Gross Pay</p>
-                    <p className="text-xl font-bold text-green-600">{formatCAD(gross)}</p>
-                  </div>
-                </div>
-                
-                <Button className="w-full mt-auto" disabled={hours === 0}>
-                  Mark as Paid
-                </Button>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <AppShell pageTitle="Money Book">
@@ -241,7 +193,6 @@ export function MoneyBookPage() {
             {[
               { id: 'revenue', icon: DollarSign, label: 'Revenue' },
               { id: 'expenses', icon: Receipt, label: 'Expenses' },
-              { id: 'payroll', icon: Users, label: 'Payroll' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -254,8 +205,7 @@ export function MoneyBookPage() {
             ))}
           </div>
 
-          {activeTab !== 'payroll' && (
-            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
               <DateRangePicker startDate={startDate} endDate={endDate} onStartChange={setStartDate} onEndChange={setEndDate} />
               <Select 
                 options={state.sites.map(s => ({value: s.id, label: s.name}))}
@@ -264,13 +214,11 @@ export function MoneyBookPage() {
                 placeholder="All Sites"
               />
             </div>
-          )}
         </div>
 
         {/* Content */}
         {activeTab === 'revenue' && renderRevenueTab()}
         {activeTab === 'expenses' && renderExpensesTab()}
-        {activeTab === 'payroll' && renderPayrollTab()}
 
       </div>
 

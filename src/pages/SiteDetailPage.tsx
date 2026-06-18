@@ -13,7 +13,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { formatCAD, formatTime } from '../utils/formatters';
+import { formatCAD, formatDate, formatTime } from '../utils/formatters';
 import { calculateSiteProfit } from '../utils/calculations';
 import { generateId } from '../utils/storage';
 import type { Site, SiteType, CleaningFrequency, DayOfWeek } from '../types';
@@ -21,7 +21,7 @@ import type { Site, SiteType, CleaningFrequency, DayOfWeek } from '../types';
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, currentUser, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'info'|'shifts'|'finances'|'checklist'|'tasks'>('info');
+  const [activeTab, setActiveTab] = useState<'info'|'shifts'|'finances'|'checklist'>('info');
   
   const site = state.sites.find(s => s.id === id);
   const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
@@ -254,7 +254,6 @@ export function SiteDetailPage() {
             { id: 'shifts', label: 'Recent Shifts' },
             { id: 'checklist', label: 'Checklist' },
             ...(isOwnerOrPartner ? [{ id: 'finances', label: 'Finances' }] : []),
-            { id: 'tasks', label: 'Tasks' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -276,14 +275,39 @@ export function SiteDetailPage() {
           {activeTab === 'checklist' && renderChecklistTab()}
           {activeTab === 'finances' && isOwnerOrPartner && renderFinancesTab()}
           {activeTab === 'shifts' && (
-            <Card>
-              <p className="text-gray-500 text-center py-8">Recent shifts component goes here.</p>
-            </Card>
-          )}
-          {activeTab === 'tasks' && (
-            <Card>
-              <p className="text-gray-500 text-center py-8">Tasks component goes here.</p>
-            </Card>
+            <div className="space-y-3">
+              {state.shifts.filter(s => s.siteId === site.id).length === 0 ? (
+                <Card>
+                  <p className="text-gray-500 text-center py-8">No shifts recorded for this site yet.</p>
+                </Card>
+              ) : (
+                [...state.shifts]
+                  .filter(s => s.siteId === site.id)
+                  .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime())
+                  .slice(0, 20)
+                  .map(shift => {
+                    const user = state.users.find(u => u.id === shift.userId);
+                    return (
+                      <Card key={shift.id} className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar user={user || null} size="sm" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user?.name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-500">{formatDate(shift.clockInTime)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge label={shift.status} variant={shift.status === 'completed' ? 'success' : 'warning'} />
+                          <p className="text-xs text-gray-400 mt-1">
+                            {shift.clockInTime ? formatTime(shift.clockInTime) : ''}
+                            {shift.durationMinutes ? ` · ${Math.round(shift.durationMinutes / 60 * 10) / 10}h` : ''}
+                          </p>
+                        </div>
+                      </Card>
+                    );
+                  })
+              )}
+            </div>
           )}
         </div>
 

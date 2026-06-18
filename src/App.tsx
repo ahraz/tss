@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from './context/AppContext';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PwaUpdatePrompt } from './components/ui/PwaUpdatePrompt';
 
 // Pages (eager — always needed immediately)
@@ -68,7 +69,8 @@ export default function App() {
 
   return (
     <>
-      <Routes>
+      <ErrorBoundary>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -99,6 +101,7 @@ export default function App() {
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
       <PwaUpdatePrompt />
     </>
   );
