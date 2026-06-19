@@ -330,6 +330,8 @@ export interface AppSettings {
 export type CallOutcome = 'completed' | 'no_answer' | 'wrong_number' | 'callback';
 
 export interface Lead {
+  /** Firestore document ID (automatically added by docToObj helper) */
+  id?: string;
   rowIndex: number;        // 1-based row in sheet (for write-back)
   type: string;
   phone: string;
@@ -386,6 +388,7 @@ export interface AppState {
   inspectionTemplates: InspectionItem[];
   incidentReports: IncidentReport[];
   callLogs: CallLogEntry[];
+  leads: Lead[];
 }
 
 // --- Action Types ---
@@ -471,6 +474,8 @@ export type AppAction =
   | { type: 'SET_CALL_LOGS'; payload: CallLogEntry[] }
   | { type: 'ADD_CALL_LOG'; payload: CallLogEntry }
   | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
+  // Leads (from Google Sheets, synced to Firestore)
+  | { type: 'SET_LEADS'; payload: Lead[] }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  PhoneCall, Building2, Star, MapPin, Search, Phone,
-  CheckCircle2, Clock, XCircle, RotateCcw, Filter,
-  ChevronDown, ExternalLink, User, Calendar, MessageSquare,
-  RefreshCw, AlertCircle
+  Building2, Star, MapPin, Search, Phone,
+  CheckCircle2, Clock, XCircle, RotateCcw,
+  ChevronDown, ExternalLink, User,
+  RefreshCw, AlertCircle, Database
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -60,15 +60,17 @@ export function LeadsPage() {
   const isOwner = currentUser?.role === 'owner';
   if (!isOwner) return null;
 
-  // ── Auth / Connection state ──
-  const [sheetsReady, setSheetsReady] = useState(false);
-  const [sheetsLoading, setSheetsLoading] = useState(true);
-  const [needsAuth, setNeedsAuth] = useState(true);
+  // ── Leads come from Firestore (synced via onSnapshot) ──
+  const leadsFromFirestore = state.leads;
+  const hasLeads = leadsFromFirestore.length > 0;
+
+  // ── Sheets import state (only needed when Firestore is empty) ──
+  const [importingFromSheets, setImportingFromSheets] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
 
   // ── Data state ──
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [loadingLeads, setLoadingLeads] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // ── UI state ──
@@ -77,58 +79,43 @@ export function LeadsPage() {
   const [outcome, setOutcome] = useState<CallOutcome>('completed');
   const [outcomeNotes, setOutcomeNotes] = useState('');
   const [savingOutcome, setSavingOutcome] = useState(false);
-  const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
 
-  // ── Init Sheets on mount ──
+  // ── Sync leads from Firestore into local state ──
   useEffect(() => {
-    async function init() {
-      setSheetsLoading(true);
-      try {
-        await waitForGis();
-        initTokenClient();
-        if (isSignedIn()) {
-          setNeedsAuth(false);
-          setSheetsReady(true);
-        }
-      } catch (err) {
-        console.warn('Sheets init error:', err);
-        setNeedsAuth(true);
-      } finally {
-        setSheetsLoading(false);
-      }
-    }
-    init();
-  }, []);
+    setLeads(leadsFromFirestore);
+  }, [leadsFromFirestore]);
 
-  // ── Fetch leads after auth ──
-  const loadLeads = useCallback(async () => {
-    setLoadingLeads(true);
+  // ── Pre-load GIS lib (in background) so it's ready if needed ──
+  useEffect(() => {
+    if (!hasLeads) {
+      waitForGis().then(initTokenClient).catch(() => {});
+    }
+  }, [hasLeads]);
+
+  // ── Import leads from Google Sheets ──
+  const importLeadsFromSheets = useCallback(async () => {
+    setImportingFromSheets(true);
     try {
       await ensureHeaderColumns();
-      const result = await fetchLeadsFromSheet();
-      setLeads(result);
+      const sheetLeads = await fetchLeadsFromSheet();
+      // Save to Firestore via customDispatch → syncActionToFirestore
+      dispatch({ type: 'SET_LEADS', payload: sheetLeads });
+      toast.success(`Imported ${sheetLeads.length} leads`);
     } catch (err: any) {
       if (err.message === 'NEEDS_AUTH') {
         setNeedsAuth(true);
-        setSheetsReady(false);
       } else {
         toast.error('Failed to load leads from sheet');
         console.error(err);
       }
     } finally {
-      setLoadingLeads(false);
+      setImportingFromSheets(false);
     }
-  }, []);
-
-  useEffect(() => {
-    if (sheetsReady && !loadingLeads && leads.length === 0) {
-      loadLeads();
-    }
-  }, [sheetsReady, loadLeads, loadingLeads, leads.length]);
+  }, [dispatch]);
 
   // ── Build map of leadId → latest call ──
   const latestCallsMap = useMemo(() => {
@@ -207,14 +194,15 @@ export function LeadsPage() {
     return { total, notCalled, calledToday, callbacks, completed };
   }, [leads, latestCallsMap, callLogs, todayLeadIds]);
 
-  // ── Connect to Google ──
+  // ── Connect to Google & import ──
   const handleConnect = async () => {
     setAuthInProgress(true);
     try {
+      await waitForGis();
+      initTokenClient();
       await signIn();
       setNeedsAuth(false);
-      setSheetsReady(true);
-      toast.success('Connected to Google Sheets');
+      await importLeadsFromSheets();
     } catch (err: any) {
       toast.error(err.message || 'Failed to connect');
     } finally {
@@ -260,31 +248,19 @@ export function LeadsPage() {
   };
 
   // ── Render ──
-  if (sheetsLoading) {
-    return (
-      <AppShell pageTitle="Leads">
-        <div className="page-container flex items-center justify-center min-h-[50vh]">
-          <div className="flex flex-col items-center gap-3 text-gray-400">
-            <RefreshCw size={32} className="animate-spin" />
-            <p className="text-sm">Connecting to Google Sheets...</p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (needsAuth) {
+  if (!hasLeads && needsAuth) {
     return (
       <AppShell pageTitle="Leads">
         <div className="page-container flex items-center justify-center min-h-[70vh]">
           <Card className="max-w-md w-full text-center py-12">
             <div className="flex flex-col items-center gap-4">
               <div className="bg-blue-100 p-4 rounded-full">
-                <PhoneCall size={40} className="text-blue-600" />
+                <Database size={40} className="text-blue-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900">Leads Call Center</h2>
               <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                Connect to Google Sheets to load leads from your "Results" tab and start tracking calls.
+                No leads found in your workspace. Connect to Google Sheets to import leads from your "Results" tab.
+                Once imported, all owners will see the same leads — no need to connect again.
               </p>
               <Button
                 icon={ExternalLink}
@@ -297,6 +273,33 @@ export function LeadsPage() {
               </Button>
             </div>
           </Card>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasLeads && importingFromSheets) {
+    return (
+      <AppShell pageTitle="Leads">
+        <div className="page-container flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <RefreshCw size={32} className="animate-spin" />
+            <p className="text-sm">Importing leads from Google Sheets...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasLeads && !needsAuth) {
+    // GIS loaded but no leads yet — waiting for user to connect
+    return (
+      <AppShell pageTitle="Leads">
+        <div className="page-container flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <Database size={32} className="opacity-50" />
+            <p className="text-sm">Ready to connect. Click the button above to import leads.</p>
+          </div>
         </div>
       </AppShell>
     );
@@ -344,18 +347,18 @@ export function LeadsPage() {
           </div>
         </div>
 
-        {/* Refresh */}
+        {/* Refresh from Sheets (only shown when leads exist in Firestore) */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
             {mergedLeads.length} of {leads.length} leads
           </p>
           <button
-            onClick={loadLeads}
-            disabled={loadingLeads}
+            onClick={importLeadsFromSheets}
+            disabled={importingFromSheets}
             className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
           >
-            <RefreshCw size={14} className={loadingLeads ? 'animate-spin' : ''} />
-            Refresh
+            <RefreshCw size={14} className={importingFromSheets ? 'animate-spin' : ''} />
+            {importingFromSheets ? 'Importing...' : 'Refresh from Sheets'}
           </button>
         </div>
 

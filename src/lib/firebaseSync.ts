@@ -5,12 +5,13 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { 
   User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
-  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry
+  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry, Lead
 } from '../types';
 
 /**
@@ -58,6 +59,7 @@ export async function fetchAllCollectionsOnce() {
     inspectionTemplatesSnap,
     incidentReportsSnap,
     callLogsSnap,
+    leadsSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'sites')),
@@ -74,6 +76,7 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'inspectionTemplates')),
     getDocs(collection(db, 'incidentReports')),
     getDocs(collection(db, 'callLogs')),
+    getDocs(collection(db, 'leads')),
   ]);
 
   const users = usersSnap.docs.map(d => docToObj<User>(d));
@@ -91,11 +94,12 @@ export async function fetchAllCollectionsOnce() {
   const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => docToObj<InspectionItem>(d));
   const incidentReports = incidentReportsSnap.docs.map(d => docToObj<IncidentReport>(d));
   const callLogs = callLogsSnap.docs.map(d => docToObj<CallLogEntry>(d));
+  const leads = leadsSnap.docs.map(d => docToObj<Lead>(d));
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, leads, settings };
 }
 
 /**
@@ -269,6 +273,16 @@ export function subscribeToCollections(
     (err) => onError?.('callLogs', err)
   );
 
+  const unsubLeads = onSnapshot(
+    collection(db, 'leads'),
+    (snapshot) => {
+      const list: Lead[] = [];
+      snapshot.forEach(doc => list.push(docToObj<Lead>(doc)));
+      dispatch({ type: 'SET_LEADS', payload: list });
+    },
+    (err) => onError?.('leads', err)
+  );
+
   // Return unsubscribe cleanup function
   return () => {
     unsubUsers();
@@ -287,6 +301,7 @@ export function subscribeToCollections(
     unsubInspectionTemplates();
     unsubIncidentReports();
     unsubCallLogs();
+    unsubLeads();
   };
 }
 
@@ -431,6 +446,20 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await setDoc(doc(db, 'callLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
 
+      // Leads — bulk replace from Sheets import
+      case 'SET_LEADS':
+        const leadsBatch = writeBatch(db);
+        // Delete all existing leads first (idempotent import)
+        const existingLeads = await getDocs(collection(db, 'leads'));
+        existingLeads.docs.forEach(d => leadsBatch.delete(d.ref));
+        // Write all incoming leads
+        for (const lead of action.payload) {
+          const docRef = doc(db, 'leads', lead.placeId || lead.rowIndex.toString());
+          leadsBatch.set(docRef, sanitizeForFirestore(lead));
+        }
+        await leadsBatch.commit();
+        break;
+
       // Import data (Bulk setup)
       case 'IMPORT_DATA':
         for (const item of action.payload.users) {
@@ -478,11 +507,15 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         for (const item of action.payload.callLogs) {
           await setDoc(doc(db, 'callLogs', item.id), sanitizeForFirestore(item));
         }
+        for (const item of action.payload.leads) {
+          const ref = doc(db, 'leads', item.placeId || item.rowIndex.toString());
+          await setDoc(ref, sanitizeForFirestore(item));
+        }
         await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
         break;
 
       case 'CLEAR_ALL_DATA':
-        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports', 'callLogs'];
+        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports', 'callLogs', 'leads'];
         for (const colName of collectionsToClear) {
           const snap = await getDocs(collection(db, colName));
           for (const docObj of snap.docs) {

@@ -28,6 +28,7 @@ const initialState: AppState = {
   inspectionTemplates: [],
   incidentReports: [],
   callLogs: [],
+  leads: [],
   settings: {
     businessName: 'TSS Cleaners',
     ownerName: 'Ahraz Malik',
@@ -202,6 +203,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_CALL_LOG':
       return { ...state, callLogs: state.callLogs.map(c => c.id === action.payload.id ? action.payload : c) };
 
+    // Leads
+    case 'SET_LEADS':
+      return { ...state, leads: action.payload };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -296,6 +301,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.inspectionTemplates) originalDispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: remote.inspectionTemplates });
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
+        if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
