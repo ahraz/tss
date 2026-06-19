@@ -241,7 +241,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ─── Init: Firestore is the source of truth ──────────────
   useEffect(() => {
     // Restore session so the user stays logged in across page reloads
-    originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
+    const session = getSession();
+    if (session) {
+      originalDispatch({ type: 'SET_SESSION', payload: session });
+    }
 
     let unsubscribe: (() => void) | null = null;
 
@@ -288,7 +291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Mark initialized — app becomes visible
-        originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
+        originalDispatch({ type: 'INITIALIZE', payload: {} });
 
         // Start real-time listeners for live updates
         unsubscribe = subscribeToCollections(originalDispatch, handleError);
@@ -297,7 +300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Still mark initialized so the user sees the app (with empty data)
         // rather than a permanent spinner. They'll see whatever Firestore
         // listeners deliver (or an error toast).
-        originalDispatch({ type: 'INITIALIZE', payload: { session: getSession() } });
+        originalDispatch({ type: 'INITIALIZE', payload: {} });
       }
     }
 
