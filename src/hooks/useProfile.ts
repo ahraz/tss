@@ -36,9 +36,14 @@ export function useProfile() {
   const [availability, setAvailability] = useState<Record<string, string>>({});
   const [documents, setDocuments] = useState<Record<string, string>>({});
 
-  // Load user data into form
+  // Load user data into form — only when the user identity changes, not on
+  // every data sync. Otherwise uploading a doc (which dispatches UPDATE_USER
+  // and updates currentUser) would wipe any in-progress form edits.
+  const loadedUserId = useRef<string | null>(null);
   useEffect(() => {
     if (!currentUser) return;
+    if (loadedUserId.current === currentUser.id) return;
+    loadedUserId.current = currentUser.id;
     setForm({
       name: currentUser.name, phone: currentUser.phone || '',
       email: currentUser.email || '', address: currentUser.address || '',
@@ -122,7 +127,9 @@ export function useProfile() {
       const updated = { ...documents, [label]: compressed };
       setDocuments(updated);
       setDocLabel('');
-      dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, documents: updated } });
+      // Only send the documents field to avoid overwriting other
+      // user data that may have changed since this callback captured currentUser.
+      dispatch({ type: 'UPDATE_USER', payload: { id: currentUser.id, documents: updated } });
       toast.success(`Document "${label}" saved`);
     };
     reader.readAsDataURL(file);
@@ -134,7 +141,7 @@ export function useProfile() {
     const updated = { ...documents };
     delete updated[label];
     setDocuments(updated);
-    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, documents: updated } });
+    dispatch({ type: 'UPDATE_USER', payload: { id: currentUser.id, documents: updated } });
     toast.success(`Document "${label}" removed`);
   };
 

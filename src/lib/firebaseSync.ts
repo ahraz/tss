@@ -315,6 +315,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       // Users
       case 'ADD_USER':
       case 'UPDATE_USER':
+        if (!action.payload.id) return;
         await setDoc(doc(db, 'users', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
       case 'DELETE_USER':
