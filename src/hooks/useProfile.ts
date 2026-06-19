@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { compressImage } from '../utils/compressImage';
 import { getInitials } from '../utils/formatters';
 import { saveProfilePhoto, removeProfilePhoto } from '../lib/firebaseStorage';
-import type { DayOfWeek } from '../types';
+import type { DayOfWeek, AvailabilitySlot } from '../types';
 import toast from 'react-hot-toast';
 
 const DAYS: { key: DayOfWeek; label: string }[] = [
@@ -12,6 +12,9 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'friday', label: 'Fri' }, { key: 'saturday', label: 'Sat' },
   { key: 'sunday', label: 'Sun' },
 ];
+
+// Default availability for a day: 9-to-5
+const DEFAULT_SLOT: AvailabilitySlot = { start: '09:00', end: '17:00' };
 
 export function useProfile() {
   const { state, currentUser, dispatch } = useApp();
@@ -25,15 +28,18 @@ export function useProfile() {
   const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
 
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', address: '', jobTitle: '',
-    hireDate: '', employeeId: '', sin: '', bankingInfo: '',
+    name: '', phone: '', email: '', address: '', dateOfBirth: '',
+    jobTitle: '', hireDate: '', employeeId: '', sin: '', bankingInfo: '',
     emergencyName: '', emergencyPhone: '', emergencyRelation: '',
-    tshirtSize: '', equipmentIssued: '', notes: '', performanceRating: 0,
+    tshirtSize: '', equipmentIssued: '', notes: '',
+    driversLicense: '', vehicleInfo: '',
     avatarInitials: '', avatarColor: '',
   });
 
   const [skills, setSkills] = useState<string[]>([]);
-  const [availability, setAvailability] = useState<Record<string, string>>({});
+  const [languages, setLanguages] = useState<string[]>([]);
+  // Each day maps to an AvailabilitySlot | null (null = unavailable)
+  const [availability, setAvailability] = useState<Record<string, AvailabilitySlot | null>>({});
   const [documents, setDocuments] = useState<Record<string, string>>({});
 
   // Load user data into form — only when the user identity changes, not on
@@ -47,6 +53,7 @@ export function useProfile() {
     setForm({
       name: currentUser.name, phone: currentUser.phone || '',
       email: currentUser.email || '', address: currentUser.address || '',
+      dateOfBirth: currentUser.dateOfBirth || '',
       jobTitle: currentUser.jobTitle || '', hireDate: currentUser.hireDate || '',
       employeeId: currentUser.employeeId || '', sin: currentUser.sin || '',
       bankingInfo: currentUser.bankingInfo || '',
@@ -56,15 +63,18 @@ export function useProfile() {
       tshirtSize: currentUser.tshirtSize || '',
       equipmentIssued: currentUser.equipmentIssued || '',
       notes: currentUser.notes || '',
-      performanceRating: currentUser.performanceRating || 0,
+      driversLicense: currentUser.driversLicense || '',
+      vehicleInfo: currentUser.vehicleInfo || '',
       avatarInitials: currentUser.avatarInitials, avatarColor: currentUser.avatarColor,
     });
     setSkills(currentUser.skills || []);
+    setLanguages(currentUser.languages || []);
     setAvailability(
       DAYS.reduce((acc, d) => {
-        acc[d.key] = currentUser.availability?.[d.key] || 'unavailable';
+        const slot = currentUser.availability?.[d.key];
+        acc[d.key] = slot ?? null;
         return acc;
-      }, {} as Record<string, string>)
+      }, {} as Record<string, AvailabilitySlot | null>)
     );
     setDocuments(currentUser.documents || {});
   }, [currentUser]);
@@ -121,10 +131,14 @@ export function useProfile() {
     const label = docLabel.trim();
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const compressed = await compressImage(reader.result as string, 1200, 0.7).catch(() => reader.result as string);
+      const raw = reader.result as string;
+      // Compress images, store other files as-is (PDF, DOCX, etc.)
+      const stored = file.type.startsWith('image/')
+        ? await compressImage(raw, 1200, 0.7).catch(() => raw)
+        : raw;
       // Store the data URL directly so it syncs to Firestore and is
       // accessible cross-device (owners can view employee docs).
-      const updated = { ...documents, [label]: compressed };
+      const updated = { ...documents, [label]: stored };
       setDocuments(updated);
       setDocLabel('');
       // Only send the documents field to avoid overwriting other
@@ -154,10 +168,10 @@ export function useProfile() {
     if (!form.name.trim()) { toast.error('Name cannot be empty'); return; }
 
     const avatarInitials = form.avatarInitials.length === 2 ? form.avatarInitials : getInitials(form.name);
-    const availabilityRecord: Partial<Record<DayOfWeek, 'morning' | 'afternoon' | 'evening' | 'unavailable'>> = {};
+    const availabilityRecord: Partial<Record<DayOfWeek, AvailabilitySlot>> = {};
     DAYS.forEach(d => {
       const val = availability[d.key];
-      if (val && val !== 'unavailable') availabilityRecord[d.key] = val as any;
+      if (val) availabilityRecord[d.key] = val;
     });
 
     // Destructure photoData so it's NOT included in the UPDATE_USER payload.
@@ -174,6 +188,7 @@ export function useProfile() {
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
         address: form.address.trim() || undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
         jobTitle: form.jobTitle.trim() || undefined,
         hireDate: form.hireDate || undefined,
         employeeId: form.employeeId.trim() || undefined,
@@ -185,9 +200,11 @@ export function useProfile() {
         tshirtSize: form.tshirtSize || undefined,
         equipmentIssued: form.equipmentIssued.trim() || undefined,
         notes: form.notes.trim() || undefined,
-        performanceRating: form.performanceRating || undefined,
+        driversLicense: form.driversLicense.trim() || undefined,
+        vehicleInfo: form.vehicleInfo.trim() || undefined,
         avatarInitials, avatarColor: form.avatarColor,
         skills: skills.length > 0 ? skills : undefined,
+        languages: languages.length > 0 ? languages : undefined,
         availability: Object.keys(availabilityRecord).length > 0 ? availabilityRecord : undefined,
         documents: Object.keys(documents).length > 0 ? documents : undefined,
       }
@@ -197,8 +214,8 @@ export function useProfile() {
 
   return {
     currentUser, isOwnerOrPartner, fileInputRef, docInputRef,
-    form, setForm, profilePhoto, photoLoading, skills, availability, documents,
-    docLabel, setDocLabel, setAvailability, DAYS,
+    form, setForm, profilePhoto, photoLoading, skills, languages, availability, documents,
+    docLabel, setDocLabel, setAvailability, setLanguages, DAYS, DEFAULT_SLOT,
     handleFilePick, handleRemovePhoto, handleDocUpload, handleRemoveDoc,
     toggleSkill, handleSave,
   };
