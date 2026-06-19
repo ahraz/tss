@@ -15,7 +15,7 @@ import type { UserRole } from '../types';
 
 export function TeamPage() {
   const {
-    state, isOwnerOrPartner,
+    state, currentUser, isOwnerOrPartner,
     showAddModal, setShowAddModal,
     showEditModal, setShowEditModal,
     showPinModal, setShowPinModal,
@@ -27,6 +27,12 @@ export function TeamPage() {
     handleAddUser, handleEditUser, handleDeleteUser,
     openEditModal, openPinModal, handleChangePin,
   } = useTeam();
+
+  const roleOptions = [
+    { value: 'employee' as const, label: 'Employee' },
+    { value: 'partner' as const, label: 'Partner' },
+    ...(currentUser?.role === 'owner' ? [{ value: 'owner' as const, label: 'Owner' }] : []),
+  ];
 
   if (!isOwnerOrPartner) return null;
 
@@ -129,7 +135,7 @@ export function TeamPage() {
         <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); }} title="Add Team Member" size="md">
           <div className="space-y-4">
             <Input label="Full Name" value={addFormData.name} onChange={e => setAddFormData({...addFormData, name: e.target.value})} placeholder="e.g. John Smith" />
-            <Select label="Role" value={addFormData.role} onChange={e => setAddFormData({...addFormData, role: e.target.value as UserRole})} options={[{value:'employee',label:'Employee'},{value:'partner',label:'Partner'}]} />
+            <Select label="Role" value={addFormData.role} onChange={e => setAddFormData({...addFormData, role: e.target.value as UserRole})} options={roleOptions} />
             <Input label="Hourly Rate (CAD)" type="number" value={addFormData.hourlyRate} onChange={e => setAddFormData({...addFormData, hourlyRate: e.target.value})} />
             <Input label="Phone (optional)" type="tel" value={addFormData.phone} onChange={e => setAddFormData({...addFormData, phone: e.target.value})} placeholder="e.g. 416-555-1234" />
             <Input label="Secure PIN (4 digits)" type="password" maxLength={4} value={addFormData.pin} onChange={e => setAddFormData({...addFormData, pin: e.target.value.replace(/\D/g, '').slice(0,4)})} placeholder="••••" />
@@ -144,7 +150,7 @@ export function TeamPage() {
         <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Account Details" size="md">
           <div className="space-y-4">
             <Input label="Full Name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
-            <Select label="Role" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value as UserRole})} options={[{value:'employee',label:'Employee'},{value:'partner',label:'Partner'}]} />
+            <Select label="Role" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value as UserRole})} options={roleOptions} />
             <Input label="Hourly Rate (CAD)" type="number" value={editFormData.hourlyRate} onChange={e => setEditFormData({...editFormData, hourlyRate: e.target.value})} />
             <Input label="Phone" type="tel" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} />
             <Select label="Status" value={editFormData.isActive ? 'active' : 'inactive'} onChange={e => setEditFormData({...editFormData, isActive: e.target.value === 'active'})} options={[{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]} />
