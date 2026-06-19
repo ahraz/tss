@@ -2,6 +2,8 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { AppState, AppAction, User } from '../types';
 import { toast } from 'react-hot-toast';
 import { setSession, getSession } from '../utils/storage';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import app from '../lib/firebase';
 import {
   subscribeToCollections,
   syncActionToFirestore,
@@ -249,6 +251,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
+        // Authenticate anonymously so Firestore rules (request.auth != null) pass
+        try {
+          const auth = getAuth(app);
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+        } catch (authErr) {
+          console.warn('Anonymous auth failed — Firestore reads may be denied', authErr);
+        }
         // Hydrate from Firestore
         let remote = await fetchAllCollectionsOnce();
 
