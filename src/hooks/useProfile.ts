@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { putPhoto, deletePhoto } from '../utils/photoStore';
 import { compressImage } from '../utils/compressImage';
 import { getInitials } from '../utils/formatters';
 import { saveProfilePhoto, removeProfilePhoto } from '../lib/firebaseStorage';
@@ -118,9 +117,9 @@ export function useProfile() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       const compressed = await compressImage(reader.result as string, 1200, 0.7).catch(() => reader.result as string);
-      const photoId = `doc:${currentUser.id}:${label}`;
-      await putPhoto(photoId, compressed);
-      const updated = { ...documents, [label]: photoId };
+      // Store the data URL directly so it syncs to Firestore and is
+      // accessible cross-device (owners can view employee docs).
+      const updated = { ...documents, [label]: compressed };
       setDocuments(updated);
       setDocLabel('');
       dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, documents: updated } });
@@ -132,8 +131,6 @@ export function useProfile() {
 
   const handleRemoveDoc = async (label: string) => {
     if (!currentUser) return;
-    const photoId = documents[label];
-    if (photoId) await deletePhoto(photoId).catch(() => {});
     const updated = { ...documents };
     delete updated[label];
     setDocuments(updated);

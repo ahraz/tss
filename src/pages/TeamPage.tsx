@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -11,7 +11,8 @@ import { Input } from '../components/ui/Input';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useTeam } from '../hooks/useTeam';
 import { formatCAD } from '../utils/formatters';
-import type { UserRole } from '../types';
+import { getPhoto } from '../utils/photoStore';
+import type { DayOfWeek, User, UserRole } from '../types';
 
 export function TeamPage() {
   const {
@@ -27,6 +28,31 @@ export function TeamPage() {
     handleAddUser, handleEditUser, handleDeleteUser,
     openEditModal, openPinModal, handleChangePin,
   } = useTeam();
+
+  const [viewedUser, setViewedUser] = useState<User | null>(null);
+  const [docData, setDocData] = useState<Record<string, string>>({});
+
+  // Load document data URLs from Firestore or fall back to IndexedDB
+  // for backward compat with docs stored before the Firestore change.
+  useEffect(() => {
+    if (!viewedUser?.documents) { setDocData({}); return; }
+    const entries = Object.entries(viewedUser.documents) as [string, string][];
+    const result: Record<string, string> = {};
+    let pending = entries.length;
+    if (pending === 0) { setDocData({}); return; }
+    for (const [label, value] of entries) {
+      if (value.startsWith('data:')) {
+        result[label] = value;
+        if (--pending === 0) setDocData({ ...result });
+      } else {
+        // Old-style IndexedDB key — try to load it
+        getPhoto(value).then(dataUrl => {
+          if (dataUrl) result[label] = dataUrl;
+          if (--pending === 0) setDocData({ ...result });
+        });
+      }
+    }
+  }, [viewedUser]);
 
   const roleOptions = [
     { value: 'employee' as const, label: 'Employee' },
@@ -103,6 +129,13 @@ export function TeamPage() {
 
               {/* Actions */}
               <div className="mt-auto flex gap-2 pt-3 border-t border-gray-100">
+                <button
+                  onClick={() => setViewedUser(user)}
+                  className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                  title="View profile"
+                >
+                  <Eye size={18} />
+                </button>
                 <Button variant="secondary" onClick={() => openEditModal(user)} size="sm" className="flex-1">
                   <Edit2 size={14} />
                   Edit
@@ -186,6 +219,160 @@ export function TeamPage() {
           confirmLabel="Yes, Delete Account"
           variant="danger"
         />
+
+        {/* View Profile Modal */}
+        <Modal isOpen={!!viewedUser} onClose={() => setViewedUser(null)} title={viewedUser?.name || 'Employee Profile'} size="lg">
+          {viewedUser && (
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Header */}
+              <div className="flex items-center gap-4">
+                <UserAvatar user={viewedUser} size="lg" />
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{viewedUser.name}</h2>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${roleColors[viewedUser.role] || ''}`}>
+                    {roleIcon[viewedUser.role]}
+                    {viewedUser.role}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Personal Info */}
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><UserIcon size={14} /> Personal</h4>
+                  <div className="space-y-2 text-sm">
+                    {viewedUser.phone && <div><span className="text-gray-500">Phone:</span> <span className="text-gray-900">{viewedUser.phone}</span></div>}
+                    {viewedUser.email && <div><span className="text-gray-500">Email:</span> <span className="text-gray-900">{viewedUser.email}</span></div>}
+                    {viewedUser.address && <div><span className="text-gray-500">Address:</span> <span className="text-gray-900">{viewedUser.address}</span></div>}
+                    {!viewedUser.phone && !viewedUser.email && !viewedUser.address && <span className="text-gray-400 italic">No info provided</span>}
+                  </div>
+                </Card>
+
+                {/* Job Details */}
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Briefcase size={14} /> Job</h4>
+                  <div className="space-y-2 text-sm">
+                    {viewedUser.jobTitle && <div><span className="text-gray-500">Title:</span> <span className="text-gray-900">{viewedUser.jobTitle}</span></div>}
+                    {viewedUser.hireDate && <div><span className="text-gray-500">Hired:</span> <span className="text-gray-900">{new Date(viewedUser.hireDate).toLocaleDateString()}</span></div>}
+                    {viewedUser.employeeId && <div><span className="text-gray-500">Employee ID:</span> <span className="text-gray-900">{viewedUser.employeeId}</span></div>}
+                    <div><span className="text-gray-500">Rate:</span> <span className="text-gray-900">{formatCAD(viewedUser.hourlyRate)}/hr</span></div>
+                    {!viewedUser.jobTitle && !viewedUser.hireDate && !viewedUser.employeeId && <span className="text-gray-400 italic">No job details</span>}
+                  </div>
+                </Card>
+
+                {/* Uniform & Equipment */}
+                {(viewedUser.tshirtSize || viewedUser.equipmentIssued) && (
+                  <Card>
+                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Shirt size={14} /> Uniform & Equipment</h4>
+                    <div className="space-y-2 text-sm">
+                      {viewedUser.tshirtSize && <div><span className="text-gray-500">T-Shirt:</span> <span className="text-gray-900">{viewedUser.tshirtSize}</span></div>}
+                      {viewedUser.equipmentIssued && <div><span className="text-gray-500">Equipment:</span> <span className="text-gray-900">{viewedUser.equipmentIssued}</span></div>}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Emergency Contact */}
+                {(viewedUser.emergencyName || viewedUser.emergencyPhone) && (
+                  <Card>
+                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><AlertTriangle size={14} /> Emergency Contact</h4>
+                    <div className="space-y-2 text-sm">
+                      {viewedUser.emergencyName && <div><span className="text-gray-500">Name:</span> <span className="text-gray-900">{viewedUser.emergencyName}</span></div>}
+                      {viewedUser.emergencyPhone && <div><span className="text-gray-500">Phone:</span> <span className="text-gray-900">{viewedUser.emergencyPhone}</span></div>}
+                      {viewedUser.emergencyRelation && <div><span className="text-gray-500">Relationship:</span> <span className="text-gray-900">{viewedUser.emergencyRelation}</span></div>}
+                    </div>
+                  </Card>
+                )}
+              </div>
+
+              {/* Skills */}
+              {viewedUser.skills && viewedUser.skills.length > 0 && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Award size={14} /> Skills</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewedUser.skills.map(s => (
+                      <span key={s} className="px-3 py-1 rounded-lg text-sm font-medium bg-blue-50 text-blue-700">{s}</span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Availability */}
+              {viewedUser.availability && Object.keys(viewedUser.availability).length > 0 && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Calendar size={14} /> Availability</h4>
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs">
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => {
+                      const dayKey = d.toLowerCase() as DayOfWeek;
+                      const slot = viewedUser.availability?.[dayKey];
+                      return (
+                        <div key={d} className={`p-2 rounded-lg font-medium ${slot ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-400'}`}>
+                          <div className="font-semibold">{d}</div>
+                          <div className="capitalize mt-1">{slot || '—'}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              )}
+
+              {/* Performance Rating */}
+              {viewedUser.performanceRating ? (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Star size={14} /> Performance</h4>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <Star key={n} size={20} fill={viewedUser.performanceRating! >= n ? '#eab308' : 'none'} className={viewedUser.performanceRating! >= n ? 'text-yellow-500' : 'text-gray-300'} />
+                    ))}
+                  </div>
+                </Card>
+              ) : null}
+
+              {/* Notes */}
+              {viewedUser.notes && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><FileText size={14} /> Notes</h4>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{viewedUser.notes}</p>
+                </Card>
+              )}
+
+              {/* Documents */}
+              {viewedUser.documents && Object.keys(viewedUser.documents).length > 0 && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><FileText size={14} /> Documents ({Object.keys(viewedUser.documents).length})</h4>
+                  <div className="space-y-3">
+                    {Object.entries(viewedUser.documents).map(([label, value]) => {
+                      const dataUrl = docData[label];
+                      return (
+                        <div key={label} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-700 mb-2">{label}</p>
+                          {dataUrl ? (
+                            dataUrl.startsWith('data:image/') ? (
+                              <img src={dataUrl} alt={label} className="max-w-full rounded border border-gray-200" style={{ maxHeight: 300 }} />
+                            ) : (
+                              <a href={dataUrl} download={label} className="text-blue-600 hover:underline text-sm">Download {label}</a>
+                            )
+                          ) : value && value.startsWith('doc:') ? (
+                            <p className="text-xs text-gray-400 italic">Document only available on the employee's device</p>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">Loading...</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              )}
+
+              {/* Banking (owner-only view) */}
+              {viewedUser.bankingInfo && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><DollarSign size={14} /> Banking & Payroll</h4>
+                  <p className="text-sm text-gray-700 font-mono">{viewedUser.bankingInfo}</p>
+                </Card>
+              )}
+            </div>
+          )}
+        </Modal>
       </div>
     </AppShell>
   );
