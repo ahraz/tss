@@ -27,6 +27,7 @@ const initialState: AppState = {
   inspections: [],
   inspectionTemplates: [],
   incidentReports: [],
+  callLogs: [],
   settings: {
     businessName: 'TSS Cleaners',
     ownerName: 'Ahraz Malik',
@@ -193,6 +194,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'DELETE_INCIDENT_REPORT':
       return { ...state, incidentReports: state.incidentReports.filter(r => r.id !== action.payload) };
 
+    // Call Logs
+    case 'SET_CALL_LOGS':
+      return { ...state, callLogs: action.payload };
+    case 'ADD_CALL_LOG':
+      return { ...state, callLogs: [...state.callLogs, action.payload] };
+    case 'UPDATE_CALL_LOG':
+      return { ...state, callLogs: state.callLogs.map(c => c.id === action.payload.id ? action.payload : c) };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -286,6 +295,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.inspections) originalDispatch({ type: 'SET_INSPECTIONS', payload: remote.inspections });
         if (remote.inspectionTemplates) originalDispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: remote.inspectionTemplates });
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
+        if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }

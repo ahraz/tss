@@ -10,7 +10,7 @@ import {
 import { db } from './firebase';
 import type { 
   User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
-  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport
+  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry
 } from '../types';
 
 /**
@@ -57,6 +57,7 @@ export async function fetchAllCollectionsOnce() {
     inspectionsSnap,
     inspectionTemplatesSnap,
     incidentReportsSnap,
+    callLogsSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'sites')),
@@ -72,6 +73,7 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'inspections')),
     getDocs(collection(db, 'inspectionTemplates')),
     getDocs(collection(db, 'incidentReports')),
+    getDocs(collection(db, 'callLogs')),
   ]);
 
   const users = usersSnap.docs.map(d => docToObj<User>(d));
@@ -88,11 +90,12 @@ export async function fetchAllCollectionsOnce() {
   const inspections = inspectionsSnap.docs.map(d => docToObj<Inspection>(d));
   const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => docToObj<InspectionItem>(d));
   const incidentReports = incidentReportsSnap.docs.map(d => docToObj<IncidentReport>(d));
+  const callLogs = callLogsSnap.docs.map(d => docToObj<CallLogEntry>(d));
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, settings };
 }
 
 /**
@@ -256,6 +259,16 @@ export function subscribeToCollections(
     (err) => onError?.('incidentReports', err)
   );
 
+  const unsubCallLogs = onSnapshot(
+    collection(db, 'callLogs'),
+    (snapshot) => {
+      const list: CallLogEntry[] = [];
+      snapshot.forEach(doc => list.push(docToObj<CallLogEntry>(doc)));
+      dispatch({ type: 'SET_CALL_LOGS', payload: list });
+    },
+    (err) => onError?.('callLogs', err)
+  );
+
   // Return unsubscribe cleanup function
   return () => {
     unsubUsers();
@@ -273,6 +286,7 @@ export function subscribeToCollections(
     unsubInspections();
     unsubInspectionTemplates();
     unsubIncidentReports();
+    unsubCallLogs();
   };
 }
 
@@ -411,6 +425,12 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await deleteDoc(doc(db, 'incidentReports', action.payload));
         break;
 
+      // Call Logs
+      case 'ADD_CALL_LOG':
+      case 'UPDATE_CALL_LOG':
+        await setDoc(doc(db, 'callLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
+        break;
+
       // Import data (Bulk setup)
       case 'IMPORT_DATA':
         for (const item of action.payload.users) {
@@ -455,11 +475,14 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         for (const item of action.payload.incidentReports) {
           await setDoc(doc(db, 'incidentReports', item.id), sanitizeForFirestore(item));
         }
+        for (const item of action.payload.callLogs) {
+          await setDoc(doc(db, 'callLogs', item.id), sanitizeForFirestore(item));
+        }
         await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
         break;
 
       case 'CLEAR_ALL_DATA':
-        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports'];
+        const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports', 'callLogs'];
         for (const colName of collectionsToClear) {
           const snap = await getDocs(collection(db, colName));
           for (const docObj of snap.docs) {

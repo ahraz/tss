@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Clock, ClipboardList, Building2, User,
   CalendarDays, Briefcase, FileText, Users, Package,
   AlertTriangle, ClipboardCheck, DollarSign, Banknote,
-  BarChart3, CheckSquare, Settings,
+  BarChart3, CheckSquare, Settings, PhoneCall,
   type LucideIcon
 } from 'lucide-react';
 
@@ -36,6 +36,7 @@ export const allNavLinks: NavLinkDef[] = [
   { to: '/payroll', icon: Banknote, label: 'Payroll', roles: ['owner', 'partner'] },
   { to: '/analytics', icon: BarChart3, label: 'Analytics', roles: ['owner', 'partner'] },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
+  { to: '/leads', icon: PhoneCall, label: 'Leads', roles: ['owner'] },
   { to: '/settings', icon: Settings, label: 'Settings', roles: ['owner'] },
 ];
 

@@ -25,6 +25,7 @@ import { InventoryPage } from './pages/InventoryPage';
 import { IncidentsPage } from './pages/IncidentsPage';
 import { InspectionsPage } from './pages/InspectionsPage';
 import { PayrollPage } from './pages/PayrollPage';
+import { LeadsPage } from './pages/LeadsPage';
 
 // AnalyticsPage lazy-loaded because it pulls in ~300 KB of recharts
 const AnalyticsPage = lazy(() =>
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Loading analytics…</div>}><AnalyticsPage /></Suspense></ProtectedRoute>} />
         <Route path="/payroll" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><PayrollPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['owner']}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute allowedRoles={['owner']}><LeadsPage /></ProtectedRoute>} />
         
         <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
         

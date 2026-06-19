@@ -325,6 +325,40 @@ export interface AppSettings {
   dataVersion: number;
 }
 
+// --- Leads / Call Tracking ---
+
+export type CallOutcome = 'completed' | 'no_answer' | 'wrong_number' | 'callback';
+
+export interface Lead {
+  rowIndex: number;        // 1-based row in sheet (for write-back)
+  type: string;
+  phone: string;
+  businessName: string;    // title
+  types: string;
+  rating: string;
+  address: string;
+  reviews: string;
+  website: string;
+  placeId: string;
+  gpsCoordinates: string;
+  // Computed / derived
+  latestCall?: CallLogEntry | null;
+}
+
+export interface CallLogEntry {
+  id: string;
+  leadId: string;           // = placeId (unique identifier for the lead)
+  businessName: string;
+  phone: string;
+  sheetRowIndex: number;    // for writing back to sheet
+  calledById: string;
+  calledByName: string;
+  calledAt: string;         // ISO timestamp
+  outcome: CallOutcome;
+  notes: string;
+  createdAt: string;
+}
+
 export interface Session {
   userId: string;
   loggedInAt: string;
@@ -351,6 +385,7 @@ export interface AppState {
   inspections: Inspection[];
   inspectionTemplates: InspectionItem[];
   incidentReports: IncidentReport[];
+  callLogs: CallLogEntry[];
 }
 
 // --- Action Types ---
@@ -432,6 +467,10 @@ export type AppAction =
   | { type: 'ADD_INCIDENT_REPORT'; payload: IncidentReport }
   | { type: 'UPDATE_INCIDENT_REPORT'; payload: IncidentReport }
   | { type: 'DELETE_INCIDENT_REPORT'; payload: string }
+  // Call Logs
+  | { type: 'SET_CALL_LOGS'; payload: CallLogEntry[] }
+  | { type: 'ADD_CALL_LOG'; payload: CallLogEntry }
+  | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };
