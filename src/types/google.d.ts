@@ -1,4 +1,4 @@
-// Type declarations for Google Identity Services and Google API Client
+// Type declarations for Google Identity Services
 
 declare namespace google {
   namespace accounts {
@@ -24,11 +24,3 @@ declare namespace google {
     }
   }
 }
-
-declare var gapi: {
-  load: (api: string, callback: () => void) => void;
-  client: {
-    init: (config?: Record<string, unknown>) => Promise<void>;
-    sheets?: unknown;
-  };
-};

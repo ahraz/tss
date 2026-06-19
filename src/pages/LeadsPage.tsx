@@ -20,7 +20,7 @@ import {
   updateLeadInSheet,
   signIn,
   isSignedIn,
-  initGapi,
+  waitForGis,
   initTokenClient,
   ensureHeaderColumns,
 } from '../lib/googleSheets';
@@ -75,7 +75,7 @@ export function LeadsPage() {
     async function init() {
       setSheetsLoading(true);
       try {
-        await initGapi();
+        await waitForGis();
         initTokenClient();
         if (isSignedIn()) {
           setNeedsAuth(false);

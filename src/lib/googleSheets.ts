@@ -34,22 +34,19 @@ const HEADER_LABELS: Record<number, string> = {
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 let accessToken: string | null = null;
 let tokenExpiresAt = 0;
-let gapiLoaded = false;
 let headersEnsured = false;
+let gisReady = false;
 
 // ─── Init ───────────────────────────────────────────────────
 
-/** Load the GAPI client library and initialize it. Call once. */
-export function initGapi(): Promise<void> {
+/** Wait for the GIS (Google Identity Services) library to load */
+export function waitForGis(): Promise<void> {
   return new Promise((resolve) => {
-    if (gapiLoaded) { resolve(); return; }
+    if (gisReady) { resolve(); return; }
     const check = () => {
-      if (typeof gapi !== 'undefined' && gapi.client) {
-        gapi.load('client', async () => {
-          await gapi.client.init({});
-          gapiLoaded = true;
-          resolve();
-        });
+      if (typeof google !== 'undefined' && google.accounts?.oauth2) {
+        gisReady = true;
+        resolve();
       } else {
         setTimeout(check, 200);
       }
@@ -67,7 +64,6 @@ export function initTokenClient(): void {
     callback: (resp) => {
       if (resp.access_token) {
         accessToken = resp.access_token;
-        // Expires in expires_in seconds — refresh 5 min early
         tokenExpiresAt = Date.now() + ((resp.expires_in ?? 3600) - 300) * 1000;
       }
     },
@@ -171,7 +167,7 @@ export async function ensureHeaderColumns(): Promise<void> {
 
 /** Fetch all leads from the "Results" tab */
 export async function fetchLeadsFromSheet(): Promise<Lead[]> {
-  await initGapi();
+  await waitForGis();
   initTokenClient();
 
   // If we don't have a token, throw so the UI can show the connect button
