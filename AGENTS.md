@@ -58,3 +58,8 @@ useEffect(() => {
 **Bug:** Admin modal showed dashes for all days even when availability data existed.
 **Root cause:** `TeamPage.tsx` computed day keys via `d.toLowerCase()` (e.g. `'Mon'` → `'mon'`), but the `DayOfWeek` type uses full names (`'monday'`, `'tuesday'`, etc.). The lookup always returned `undefined`, and the code rendered `—` when `slot == null`.
 **Fix:** Added a `DAY_MAP` Record mapping short labels (`'Mon'`) to full keys (`'monday'`).
+
+### Availability save bug (June 2026)
+**Bug:** When a user unchecks days and saves, the unchecked days reappear after refresh.
+**Root cause:** In `useProfile.ts`'s `handleSave()`, the availability record was built with `if (val)` which skipped `null` (unchecked) values. The absent keys were never sent to Firestore during the `setDoc(..., { merge: true })` sync, so the old (checked) values remained.
+**Fix:** Always include all 7 day keys: `availabilityRecord[d.key] = val ?? undefined`. Null values become `null` via `sanitizeForFirestore`, which clears the old values during the merge.
