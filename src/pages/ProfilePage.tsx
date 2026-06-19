@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Upload, X, Star, FileText, User, Award, Calendar, Shirt, DollarSign, Briefcase, AlertTriangle, Save } from 'lucide-react';
+import { Camera, Upload, X, FileText, User, Award, Calendar, Shirt, DollarSign, Briefcase, AlertTriangle, Save, Car, Globe } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -13,14 +13,19 @@ const SKILL_OPTIONS = [
   'Biohazard Cleaning', 'Construction Cleanup', 'Deep Cleaning', 'Floor Waxing'
 ];
 
+const LANGUAGE_OPTIONS = [
+  'English', 'French', 'Spanish', 'Punjabi', 'Hindi', 'Tagalog',
+  'Mandarin', 'Arabic', 'Portuguese', 'Urdu', 'Tamil',
+];
+
 const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-const SHIFT_SLOTS = ['morning', 'afternoon', 'evening'] as const;
+const PROVINCES = ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
 
 export function ProfilePage() {
   const {
     currentUser, isOwnerOrPartner, fileInputRef, docInputRef,
-    form, setForm, profilePhoto, photoLoading, skills, availability, documents,
-    docLabel, setDocLabel, setAvailability, DAYS,
+    form, setForm, profilePhoto, photoLoading, skills, languages, availability, documents,
+    docLabel, setDocLabel, setAvailability, setLanguages, DAYS, DEFAULT_SLOT,
     handleFilePick, handleRemovePhoto, handleDocUpload, handleRemoveDoc,
     toggleSkill, handleSave,
   } = useProfile();
@@ -60,6 +65,7 @@ export function ProfilePage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><User size={20} /> Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Full Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="md:col-span-2" />
+            <Input label="Date of Birth" type="date" value={form.dateOfBirth} onChange={e => setForm({...form, dateOfBirth: e.target.value})} />
             <Input label="Phone" type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
             <Input label="Email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
             <Input label="Address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="md:col-span-2" />
@@ -101,26 +107,66 @@ export function ProfilePage() {
           </div>
         </Card>
 
+        {/* Languages */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Globe size={20} /> Languages</h3>
+          <div className="flex flex-wrap gap-2">
+            {LANGUAGE_OPTIONS.map(lang => {
+              const selected = languages.includes(lang);
+              return (
+                <button key={lang} onClick={() => setLanguages(prev => prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang])}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${selected ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {lang}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Driver Info */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Car size={20} /> Driver & Vehicle</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input label="Driver's License" value={form.driversLicense} onChange={e => setForm({...form, driversLicense: e.target.value})} placeholder="e.g. G Class - ON" />
+            <Input label="Vehicle Info" value={form.vehicleInfo} onChange={e => setForm({...form, vehicleInfo: e.target.value})} placeholder="e.g. 2018 Toyota Corolla - White" />
+          </div>
+        </Card>
+
         {/* Availability */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Calendar size={20} /> Availability</h3>
           <div className="space-y-3">
-            {DAYS.map(d => (
-              <div key={d.key} className="flex items-center gap-4">
-                <span className="w-12 text-sm font-medium text-gray-700">{d.label}</span>
-                <div className="flex gap-2">
-                  {SHIFT_SLOTS.map(slot => {
-                    const active = availability[d.key] === slot;
-                    return (
-                      <button key={slot} onClick={() => setAvailability({...availability, [d.key]: active ? 'unavailable' : slot})}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${active ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                        {slot}
-                      </button>
-                    );
-                  })}
+            {DAYS.map(d => {
+              const slot = availability[d.key];
+              const isAvail = slot !== null;
+              return (
+                <div key={d.key} className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-2 w-20 text-sm font-medium text-gray-700">
+                    <input type="checkbox" checked={isAvail} onChange={() =>
+                      setAvailability({...availability, [d.key]: isAvail ? null : { ...DEFAULT_SLOT }})
+                    } className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    {d.label}
+                  </label>
+                  {isAvail && (
+                    <>
+                      <input type="time" value={slot!.start} onChange={e =>
+                        setAvailability({...availability, [d.key]: { ...slot!, start: e.target.value }})
+                      } className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <span className="text-gray-400 text-sm">to</span>
+                      <input type="time" value={slot!.end} onChange={e =>
+                        setAvailability({...availability, [d.key]: { ...slot!, end: e.target.value }})
+                      } className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="flex items-center gap-1.5 text-sm text-gray-600 ml-1">
+                        <input type="checkbox" checked={!!slot!.allDay} onChange={() =>
+                          setAvailability({...availability, [d.key]: { ...slot!, allDay: !slot!.allDay }})
+                        } className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                        All day
+                      </label>
+                    </>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 
@@ -150,19 +196,6 @@ export function ProfilePage() {
           </div>
         </Card>
 
-        {/* Performance */}
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Star size={20} /> Performance Rating</h3>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} onClick={() => setForm({...form, performanceRating: form.performanceRating === n ? 0 : n})}
-                className={`p-2 rounded-lg transition-all ${form.performanceRating >= n ? 'text-yellow-500 bg-yellow-50' : 'text-gray-300 hover:text-gray-400'}`}>
-                <Star size={28} fill={form.performanceRating >= n ? 'currentColor' : 'none'} />
-              </button>
-            ))}
-          </div>
-        </Card>
-
         {/* Notes */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><FileText size={20} /> Notes</h3>
@@ -174,15 +207,25 @@ export function ProfilePage() {
         {/* Documents */}
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><FileText size={20} /> Documents</h3>
+          <p className="text-sm text-gray-500 mb-3">Upload any document type — contracts, certificates, licenses, IDs, insurance, etc.</p>
           <div className="space-y-3">
-            {Object.entries(documents).map(([label]) => (
-              <div key={label} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                <span className="text-sm text-gray-700">{label}</span>
-                <button onClick={() => handleRemoveDoc(label)} className="text-red-500 hover:text-red-700 transition-colors"><X size={16} /></button>
+            {Object.entries(documents).map(([label, dataUrl]) => (
+              <div key={label} className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">{label}</span>
+                  <button onClick={() => handleRemoveDoc(label)} className="text-red-500 hover:text-red-700 transition-colors"><X size={16} /></button>
+                </div>
+                {dataUrl.startsWith('data:image/') ? (
+                  <img src={dataUrl} alt={label} className="max-w-full rounded border border-gray-200" style={{ maxHeight: 200 }} />
+                ) : (
+                  <a href={dataUrl} download={label} className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                    <FileText size={14} /> View / Download
+                  </a>
+                )}
               </div>
             ))}
             <div className="flex gap-2">
-              <input type="text" value={docLabel} onChange={e => setDocLabel(e.target.value)} placeholder="Document name..."
+              <input type="text" value={docLabel} onChange={e => setDocLabel(e.target.value)} placeholder="Document name (e.g. SIN Card, Certificate)..."
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <input type="file" ref={docInputRef} className="hidden" onChange={handleDocUpload} />
               <Button variant="secondary" onClick={() => docInputRef.current?.click()} disabled={!docLabel.trim()}>

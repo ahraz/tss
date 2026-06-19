@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon } from 'lucide-react';
+import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon, Car, Globe } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -244,7 +244,8 @@ export function TeamPage() {
                     {viewedUser.phone && <div><span className="text-gray-500">Phone:</span> <span className="text-gray-900">{viewedUser.phone}</span></div>}
                     {viewedUser.email && <div><span className="text-gray-500">Email:</span> <span className="text-gray-900">{viewedUser.email}</span></div>}
                     {viewedUser.address && <div><span className="text-gray-500">Address:</span> <span className="text-gray-900">{viewedUser.address}</span></div>}
-                    {!viewedUser.phone && !viewedUser.email && !viewedUser.address && <span className="text-gray-400 italic">No info provided</span>}
+                    {viewedUser.dateOfBirth && <div><span className="text-gray-500">DOB:</span> <span className="text-gray-900">{new Date(viewedUser.dateOfBirth).toLocaleDateString()}</span></div>}
+                    {!viewedUser.phone && !viewedUser.email && !viewedUser.address && !viewedUser.dateOfBirth && <span className="text-gray-400 italic">No info provided</span>}
                   </div>
                 </Card>
 
@@ -305,12 +306,43 @@ export function TeamPage() {
                       const dayKey = d.toLowerCase() as DayOfWeek;
                       const slot = viewedUser.availability?.[dayKey];
                       return (
-                        <div key={d} className={`p-2 rounded-lg font-medium ${slot ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-400'}`}>
-                          <div className="font-semibold">{d}</div>
-                          <div className="capitalize mt-1">{slot || '—'}</div>
+                        <div key={d} className={`p-2 rounded-lg font-medium ${slot ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
+                          <div className="font-semibold mb-1">{d}</div>
+                          {slot ? (
+                            slot.allDay ? (
+                              <div className="text-green-600">All day</div>
+                            ) : (
+                              <div className="text-green-600">{slot.start}–{slot.end}</div>
+                            )
+                          ) : (
+                            <div>—</div>
+                          )}
                         </div>
                       );
                     })}
+                  </div>
+                </Card>
+              )}
+
+              {/* Languages */}
+              {viewedUser.languages && viewedUser.languages.length > 0 && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Globe size={14} /> Languages</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewedUser.languages.map(l => (
+                      <span key={l} className="px-3 py-1 rounded-lg text-sm font-medium bg-purple-50 text-purple-700">{l}</span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Driver & Vehicle */}
+              {(viewedUser.driversLicense || viewedUser.vehicleInfo) && (
+                <Card>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Car size={14} /> Driver & Vehicle</h4>
+                  <div className="space-y-2 text-sm">
+                    {viewedUser.driversLicense && <div><span className="text-gray-500">License:</span> <span className="text-gray-900">{viewedUser.driversLicense}</span></div>}
+                    {viewedUser.vehicleInfo && <div><span className="text-gray-500">Vehicle:</span> <span className="text-gray-900">{viewedUser.vehicleInfo}</span></div>}
                   </div>
                 </Card>
               )}
@@ -348,10 +380,14 @@ export function TeamPage() {
                           {dataUrl ? (
                             dataUrl.startsWith('data:image/') ? (
                               <img src={dataUrl} alt={label} className="max-w-full rounded border border-gray-200" style={{ maxHeight: 300 }} />
+                            ) : dataUrl.startsWith('data:application/pdf') ? (
+                              <iframe src={dataUrl} title={label} className="w-full rounded border border-gray-200" style={{ height: 400 }} />
                             ) : (
-                              <a href={dataUrl} download={label} className="text-blue-600 hover:underline text-sm">Download {label}</a>
+                              <a href={dataUrl} download={label} className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                                <FileText size={14} /> View / Download
+                              </a>
                             )
-                          ) : value && value.startsWith('doc:') ? (
+                          ) : value && !value.startsWith('data:') ? (
                             <p className="text-xs text-gray-400 italic">Document only available on the employee's device</p>
                           ) : (
                             <p className="text-xs text-gray-400 italic">Loading...</p>

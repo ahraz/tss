@@ -9,6 +9,12 @@ export type UserRole = 'owner' | 'partner' | 'employee';
 export type SiteType = 'clinic' | 'office' | 'plaza' | 'retail' | 'warehouse' | 'other';
 export type SiteStatus = 'active' | 'paused' | 'cancelled';
 export type CleaningFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export interface AvailabilitySlot {
+  start: string;   // "09:00"
+  end: string;     // "17:00"
+  allDay?: boolean;
+}
+
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 export type ShiftStatus = 'active' | 'completed';
@@ -147,6 +153,7 @@ export interface User {
   phone?: string;
   email?: string;
   address?: string;
+  dateOfBirth?: string;
   // Employment
   jobTitle?: string;
   hireDate?: string;
@@ -159,8 +166,13 @@ export interface User {
   emergencyRelation?: string;
   // Skills & certifications
   skills?: string[];        // e.g. ["High Dusting", "Carpet Cleaning", "Floor Buffing"]
-  // Availability (day → "morning" | "afternoon" | "evening" | "unavailable")
-  availability?: Partial<Record<DayOfWeek, 'morning' | 'afternoon' | 'evening' | 'unavailable'>>;
+  // Availability (day → time-slot, or absent = unavailable)
+  availability?: Partial<Record<DayOfWeek, AvailabilitySlot>>;
+  // Driver info
+  driversLicense?: string;
+  vehicleInfo?: string;
+  // Languages
+  languages?: string[];
   // Documents (key = label, value = photoStore key)
   documents?: Record<string, string>;
   // Uniform & equipment
