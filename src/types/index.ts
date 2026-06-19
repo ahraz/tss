@@ -411,7 +411,7 @@ export type AppAction =
   | { type: 'SET_SETTINGS'; payload: AppSettings }
   // Users
   | { type: 'ADD_USER'; payload: User }
-  | { type: 'UPDATE_USER'; payload: User }
+  | { type: 'UPDATE_USER'; payload: Partial<User> }
   | { type: 'DELETE_USER'; payload: string }
   // Sites
   | { type: 'ADD_SITE'; payload: Site }
