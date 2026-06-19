@@ -176,7 +176,11 @@ export function useProfile() {
     const availabilityRecord: Partial<Record<DayOfWeek, AvailabilitySlot>> = {};
     DAYS.forEach(d => {
       const val = availability[d.key];
-      if (val) availabilityRecord[d.key] = val;
+      // Include all 7 day keys — null/undefined means "unavailable" and
+      // will become null in Firestore via sanitizeForFirestore, clearing
+      // the old value during the merge. Omitting the key would leave the
+      // stale value in place.
+      availabilityRecord[d.key] = val ?? undefined;
     });
 
     // Destructure photoData so it's NOT included in the UPDATE_USER payload.
