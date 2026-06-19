@@ -156,14 +156,24 @@ export function useProfile() {
       if (val && val !== 'unavailable') availabilityRecord[d.key] = val as any;
     });
 
+    // Destructure photoData so it's NOT included in the UPDATE_USER payload.
+    // Photo is managed by saveProfilePhoto() directly — including it here
+    // would nullify it if the Firestore onSnapshot hasn't synced the new
+    // photoData into currentUser yet (race condition).
+    const { photoData: _, ...userForSave } = currentUser;
+
     dispatch({
       type: 'UPDATE_USER',
       payload: {
-        ...currentUser,
-        name: form.name.trim(), phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined, address: form.address.trim() || undefined,
-        jobTitle: form.jobTitle.trim() || undefined, hireDate: form.hireDate || undefined,
-        employeeId: form.employeeId.trim() || undefined, sin: form.sin.trim() || undefined,
+        ...userForSave,
+        name: form.name.trim(),
+        phone: form.phone.trim() || undefined,
+        email: form.email.trim() || undefined,
+        address: form.address.trim() || undefined,
+        jobTitle: form.jobTitle.trim() || undefined,
+        hireDate: form.hireDate || undefined,
+        employeeId: form.employeeId.trim() || undefined,
+        sin: form.sin.trim() || undefined,
         bankingInfo: form.bankingInfo.trim() || undefined,
         emergencyName: form.emergencyName.trim() || undefined,
         emergencyPhone: form.emergencyPhone.trim() || undefined,

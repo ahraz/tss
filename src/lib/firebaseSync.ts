@@ -22,10 +22,7 @@ function docToObj<T extends { id?: string }>(snap: { id: string; data(): Record<
   return { ...data, id: data?.id ?? snap.id } as T;
 }
 export function sanitizeForFirestore<T>(val: T): any {
-  if (val === undefined) {
-    return null;
-  }
-  if (val === null) {
+  if (val === undefined || val === null) {
     return null;
   }
   if (Array.isArray(val)) {
@@ -35,14 +32,8 @@ export function sanitizeForFirestore<T>(val: T): any {
     const res: any = {};
     for (const key in val) {
       if (Object.prototype.hasOwnProperty.call(val, key)) {
-        const value = val[key];
-        if (value !== undefined) {
-          res[key] = sanitizeForFirestore(value);
-        } else {
-          // Persist null so Firestore keeps the field key. Otherwise setDoc
-          // drops the key entirely, and the next read loses the field.
-          res[key] = null;
-        }
+        // Convert undefined to null so Firestore keeps/clears the field
+        res[key] = sanitizeForFirestore(val[key]);
       }
     }
     return res;

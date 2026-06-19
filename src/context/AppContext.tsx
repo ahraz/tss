@@ -77,7 +77,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'ADD_USER':
       return { ...state, users: [...state.users, action.payload] };
     case 'UPDATE_USER':
-      return { ...state, users: state.users.map(u => u.id === action.payload.id ? action.payload : u) };
+      return { ...state, users: state.users.map(u => u.id === action.payload.id ? { ...u, ...action.payload } : u) };
     case 'DELETE_USER':
       return { ...state, users: state.users.filter(u => u.id !== action.payload) };
 
