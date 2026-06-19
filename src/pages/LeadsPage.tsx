@@ -66,7 +66,6 @@ export function LeadsPage() {
 
   // ── Sheets import state (only needed when Firestore is empty) ──
   const [importingFromSheets, setImportingFromSheets] = useState(false);
-  const [needsAuth, setNeedsAuth] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
 
   // ── Data state ──
@@ -102,12 +101,11 @@ export function LeadsPage() {
     try {
       await ensureHeaderColumns();
       const sheetLeads = await fetchLeadsFromSheet();
-      // Save to Firestore via customDispatch → syncActionToFirestore
       dispatch({ type: 'SET_LEADS', payload: sheetLeads });
       toast.success(`Imported ${sheetLeads.length} leads`);
     } catch (err: any) {
       if (err.message === 'NEEDS_AUTH') {
-        setNeedsAuth(true);
+        toast.error('Please connect Google Sheets first');
       } else {
         toast.error('Failed to load leads from sheet');
         console.error(err);
@@ -195,21 +193,31 @@ export function LeadsPage() {
   }, [leads, latestCallsMap, callLogs, todayLeadIds]);
 
   // ── Connect to Google & import ──
-  const handleConnect = async () => {
+  // ── Connect to Google & import ──
+  const handleConnect = useCallback(async () => {
     setAuthInProgress(true);
     try {
       await waitForGis();
       initTokenClient();
       await signIn();
-      setNeedsAuth(false);
-      await importLeadsFromSheets();
+      // Retry the import now that we have a token
+      setImportingFromSheets(true);
+      try {
+        await ensureHeaderColumns();
+        const sheetLeads = await fetchLeadsFromSheet();
+        dispatch({ type: 'SET_LEADS', payload: sheetLeads });
+        toast.success(`Imported ${sheetLeads.length} leads`);
+      } catch (err2: any) {
+        toast.error(err2.message || 'Failed to import leads');
+      } finally {
+        setImportingFromSheets(false);
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to connect');
     } finally {
       setAuthInProgress(false);
     }
-  };
-
+  }, [dispatch]);
   // ── Handle call outcome ──
   const handleSaveOutcome = async () => {
     if (!outcomeLead || !currentUser) return;
@@ -248,7 +256,20 @@ export function LeadsPage() {
   };
 
   // ── Render ──
-  if (!hasLeads && needsAuth) {
+  if (importingFromSheets) {
+    return (
+      <AppShell pageTitle="Leads">
+        <div className="page-container flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <RefreshCw size={32} className="animate-spin" />
+            <p className="text-sm">Importing leads from Google Sheets...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasLeads) {
     return (
       <AppShell pageTitle="Leads">
         <div className="page-container flex items-center justify-center min-h-[70vh]">
@@ -269,37 +290,10 @@ export function LeadsPage() {
                 size="lg"
                 className="mt-4"
               >
-                {authInProgress ? 'Connecting...' : 'Connect Google Sheets'}
+                {authInProgress ? 'Connecting...' : 'Connect Google Sheets & Import'}
               </Button>
             </div>
           </Card>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!hasLeads && importingFromSheets) {
-    return (
-      <AppShell pageTitle="Leads">
-        <div className="page-container flex items-center justify-center min-h-[50vh]">
-          <div className="flex flex-col items-center gap-3 text-gray-400">
-            <RefreshCw size={32} className="animate-spin" />
-            <p className="text-sm">Importing leads from Google Sheets...</p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!hasLeads && !needsAuth) {
-    // GIS loaded but no leads yet — waiting for user to connect
-    return (
-      <AppShell pageTitle="Leads">
-        <div className="page-container flex items-center justify-center min-h-[50vh]">
-          <div className="flex flex-col items-center gap-3 text-gray-400">
-            <Database size={32} className="opacity-50" />
-            <p className="text-sm">Ready to connect. Click the button above to import leads.</p>
-          </div>
         </div>
       </AppShell>
     );
