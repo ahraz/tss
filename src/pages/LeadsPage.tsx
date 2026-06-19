@@ -42,6 +42,19 @@ const OUTCOME_OPTIONS: { value: CallOutcome; label: string; icon: React.ReactNod
   { value: 'callback', label: 'Callback', icon: <RotateCcw size={20} />, color: 'text-blue-600 bg-blue-100' },
 ];
 
+/** Extracts the review count from the Places API JSON blob in the sheet. */
+function ReviewCount({ raw }: { raw: string }) {
+  let count = raw.trim();
+  // If it looks like a JSON array, extract its length
+  if (raw.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw.trim());
+      if (Array.isArray(parsed)) count = parsed.length.toString();
+    } catch { /* fall through */ }
+  }
+  return <span className="text-gray-400">({count})</span>;
+}
+
 export function LeadsPage() {
   const { state, dispatch, currentUser } = useApp();
   const isOwner = currentUser?.role === 'owner';
@@ -398,7 +411,9 @@ export function LeadsPage() {
                             <span className="flex items-center gap-1">
                               <Star size={12} className="text-amber-400 fill-amber-400" />
                               {lead.rating}
-                              {lead.reviews ? <span className="text-gray-400">({lead.reviews})</span> : null}
+                              {lead.reviews ? (
+                                <ReviewCount raw={lead.reviews} />
+                              ) : null}
                             </span>
                           )}
                           {lead.address && (
