@@ -72,7 +72,12 @@ export function useProfile() {
     setAvailability(
       DAYS.reduce((acc, d) => {
         const slot = currentUser.availability?.[d.key];
-        acc[d.key] = slot ?? null;
+        // Convert old-format string values ("morning"/"afternoon"/"evening") to new AvailabilitySlot
+        if (typeof slot === 'string') {
+          acc[d.key] = { start: '09:00', end: '17:00' };
+        } else {
+          acc[d.key] = slot ?? null;
+        }
         return acc;
       }, {} as Record<string, AvailabilitySlot | null>)
     );

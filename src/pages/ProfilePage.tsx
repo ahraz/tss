@@ -138,7 +138,7 @@ export function ProfilePage() {
           <div className="space-y-3">
             {DAYS.map(d => {
               const slot = availability[d.key];
-              const isAvail = slot !== null;
+              const isAvail = slot != null;
               return (
                 <div key={d.key} className="flex items-center gap-3 flex-wrap">
                   <label className="flex items-center gap-2 w-20 text-sm font-medium text-gray-700">
