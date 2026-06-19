@@ -298,21 +298,22 @@ export function TeamPage() {
               )}
 
               {/* Availability */}
-              {viewedUser.availability && Object.keys(viewedUser.availability).length > 0 && (
-                <Card>
-                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Calendar size={14} /> Availability</h4>
+              <Card>
+                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Calendar size={14} /> Availability</h4>
+                {viewedUser.availability && Object.keys(viewedUser.availability).length > 0 ? (
                   <div className="grid grid-cols-7 gap-2 text-center text-xs">
                     {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => {
                       const dayKey = d.toLowerCase() as DayOfWeek;
                       const slot = viewedUser.availability?.[dayKey];
+                      const isAvail = slot != null && typeof slot !== 'string';
                       return (
-                        <div key={d} className={`p-2 rounded-lg font-medium ${slot ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
+                        <div key={d} className={`p-2 rounded-lg font-medium ${isAvail ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
                           <div className="font-semibold mb-1">{d}</div>
-                          {slot ? (
-                            slot.allDay ? (
+                          {isAvail ? (
+                            slot?.allDay ? (
                               <div className="text-green-600">All day</div>
                             ) : (
-                              <div className="text-green-600">{slot.start}–{slot.end}</div>
+                              <div className="text-green-600">{slot?.start}–{slot?.end}</div>
                             )
                           ) : (
                             <div>—</div>
@@ -321,8 +322,10 @@ export function TeamPage() {
                       );
                     })}
                   </div>
-                </Card>
-              )}
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No availability set yet</p>
+                )}
+              </Card>
 
               {/* Languages */}
               {viewedUser.languages && viewedUser.languages.length > 0 && (
