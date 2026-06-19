@@ -302,8 +302,9 @@ export function TeamPage() {
                 <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Calendar size={14} /> Availability</h4>
                 {viewedUser.availability && Object.keys(viewedUser.availability).length > 0 ? (
                   <div className="grid grid-cols-7 gap-2 text-center text-xs">
-                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => {
-                      const dayKey = d.toLowerCase() as DayOfWeek;
+                    {(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as const).map(d => {
+                      const DAY_MAP: Record<string, DayOfWeek> = { 'Mon':'monday', 'Tue':'tuesday', 'Wed':'wednesday', 'Thu':'thursday', 'Fri':'friday', 'Sat':'saturday', 'Sun':'sunday' };
+                      const dayKey = DAY_MAP[d];
                       const slot = viewedUser.availability?.[dayKey];
                       const isAvail = slot != null && typeof slot !== 'string';
                       return (
