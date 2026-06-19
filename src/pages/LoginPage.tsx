@@ -1,22 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Delete } from 'lucide-react';
+import { Delete, ArrowLeft, User, LogIn } from 'lucide-react';
 import { Logo } from '../assets/Logo';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { UserAvatar } from '../components/ui/UserAvatar';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
+
+type LoginStep = 'username' | 'pin';
 
 export function LoginPage() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [step, setStep] = useState<LoginStep>('username');
+  const [username, setUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [matchedUser, setMatchedUser] = useState<typeof state.users[0] | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const activeUsers = state.users.filter(u => u.isActive);
-  const selectedUser = activeUsers.find(u => u.id === selectedUserId);
+
+  useEffect(() => {
+    if (step === 'username') {
+      inputRef.current?.focus();
+    }
+  }, [step]);
+
+  const handleUsernameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = username.trim();
+    if (!trimmed) {
+      setUsernameError('Please enter your name');
+      return;
+    }
+
+    const match = activeUsers.find(
+      u => u.name.toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (!match) {
+      setUsernameError('No user found with that name');
+      return;
+    }
+
+    setMatchedUser(match);
+    setUsernameError('');
+    setStep('pin');
+    setPin('');
+    setError(false);
+  };
 
   const handlePinEntry = (digit: string) => {
     if (error) {
@@ -43,11 +76,11 @@ export function LoginPage() {
   };
 
   const verifyPin = (enteredPin: string) => {
-    if (!selectedUser) return;
-    if (enteredPin === selectedUser.pin) {
+    if (!matchedUser) return;
+    if (enteredPin === matchedUser.pin) {
       dispatch({
         type: 'SET_SESSION',
-        payload: { userId: selectedUser.id, loggedInAt: new Date().toISOString() }
+        payload: { userId: matchedUser.id, loggedInAt: new Date().toISOString() }
       });
       navigate('/');
     } else {
@@ -56,10 +89,12 @@ export function LoginPage() {
     }
   };
 
-  const handleClose = () => {
-    setSelectedUserId(null);
+  const handleBack = () => {
+    setStep('username');
+    setMatchedUser(null);
     setPin('');
     setError(false);
+    setUsernameError('');
   };
 
   return (
@@ -67,7 +102,7 @@ export function LoginPage() {
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
       
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-md flex flex-col items-center">
         <div className="flex flex-col items-center mb-12 animate-fade-in">
           <div className="p-4 rounded-2xl mb-4">
             <Logo size={80} light showText={false} />
@@ -76,36 +111,50 @@ export function LoginPage() {
           <p className="text-blue-200 mt-2 text-lg">Professional Cleaning Management</p>
         </div>
 
-        <div className="w-full">
-          <h2 className="text-center text-gray-400 text-sm font-medium uppercase tracking-widest mb-6">Select your profile</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {activeUsers.map(user => (
-              <button
-                key={user.id}
-                onClick={() => setSelectedUserId(user.id)}
-                className="bg-white/10 hover:bg-white/15 active:bg-white/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 transition-all duration-200 text-left flex items-center gap-4 group"
-              >
-                <UserAvatar user={user} size="lg" className="shadow-lg" />
-                <div>
-                  <h3 className="text-white font-semibold text-lg group-hover:text-blue-300 transition-colors">{user.name}</h3>
-                  <Badge 
-                    label={user.role} 
-                    variant={user.role === 'owner' ? 'warning' : user.role === 'partner' ? 'info' : 'neutral'} 
-                    className="mt-1 bg-black/30 text-xs border-none"
+        {step === 'username' && (
+          <div className="w-full">
+            <h2 className="text-center text-gray-400 text-sm font-medium uppercase tracking-widest mb-6">Sign In</h2>
+            <form onSubmit={handleUsernameSubmit} className="space-y-4">
+              <div>
+                <div className="relative">
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={username}
+                    onChange={e => { setUsername(e.target.value); setUsernameError(''); }}
+                    placeholder="Enter your name"
+                    className={`w-full pl-11 pr-4 py-3.5 bg-white/10 backdrop-blur-md border ${
+                      usernameError ? 'border-red-400' : 'border-white/20'
+                    } rounded-xl text-white placeholder-gray-400 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                    autoComplete="off"
                   />
                 </div>
+                {usernameError && (
+                  <p className="text-red-400 text-sm mt-2 text-center">{usernameError}</p>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 text-lg"
+              >
+                <LogIn size={20} />
+                Continue
               </button>
-            ))}
+            </form>
           </div>
-        </div>
-      </div>
+        )}
 
-      <Modal isOpen={!!selectedUserId} onClose={handleClose} size="sm">
-        {selectedUser && (
-          <div className="flex flex-col items-center pb-4">
-            <UserAvatar user={selectedUser} size="lg" className="mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-1">Welcome, {selectedUser.name.split(' ')[0]}</h3>
-            <p className="text-sm text-gray-500 mb-8">Enter your 4-digit PIN</p>
+        {step === 'pin' && matchedUser && (
+          <div className="w-full flex flex-col items-center animate-fade-in">
+            <button onClick={handleBack} className="self-start flex items-center gap-1 text-gray-400 hover:text-white transition-colors mb-6 text-sm">
+              <ArrowLeft size={16} />
+              Back
+            </button>
+
+            <UserAvatar user={matchedUser} size="lg" className="mb-4 shadow-lg" />
+            <h2 className="text-xl font-semibold text-white mb-1">Welcome, {matchedUser.name.split(' ')[0]}</h2>
+            <p className="text-gray-400 mb-8">Enter your 4-digit PIN</p>
 
             <div className={`flex gap-4 mb-8 ${error ? 'animate-shake' : ''}`}>
               {[0, 1, 2, 3].map(i => (
@@ -113,8 +162,8 @@ export function LoginPage() {
                   key={i} 
                   className={`w-4 h-4 rounded-full transition-all duration-200 ${
                     pin.length > i 
-                      ? 'bg-blue-600 scale-110 shadow-[0_0_8px_rgba(37,99,235,0.5)]' 
-                      : 'bg-gray-200'
+                      ? 'bg-blue-500 scale-110 shadow-[0_0_8px_rgba(59,130,246,0.5)]' 
+                      : 'bg-white/30'
                   } ${error ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : ''}`} 
                 />
               ))}
@@ -125,28 +174,28 @@ export function LoginPage() {
                 <button
                   key={num}
                   onClick={() => handlePinEntry(num.toString())}
-                  className="w-16 h-16 rounded-full bg-gray-50 hover:bg-blue-50 active:bg-blue-100 text-xl font-medium text-gray-900 transition-colors flex items-center justify-center mx-auto"
+                  className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-xl font-medium text-white transition-colors flex items-center justify-center mx-auto"
                 >
                   {num}
                 </button>
               ))}
-              <div /> {/* Empty space for bottom row alignment */}
+              <div />
               <button
                 onClick={() => handlePinEntry('0')}
-                className="w-16 h-16 rounded-full bg-gray-50 hover:bg-blue-50 active:bg-blue-100 text-xl font-medium text-gray-900 transition-colors flex items-center justify-center mx-auto"
+                className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-xl font-medium text-white transition-colors flex items-center justify-center mx-auto"
               >
                 0
               </button>
               <button
                 onClick={handleBackspace}
-                className="w-16 h-16 rounded-full bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition-colors flex items-center justify-center mx-auto"
+                className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-gray-400 transition-colors flex items-center justify-center mx-auto"
               >
                 <Delete size={24} />
               </button>
             </div>
           </div>
         )}
-      </Modal>
+      </div>
     </div>
   );
 }
