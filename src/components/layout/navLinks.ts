@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Clock, ClipboardList, Building2, User,
+  LayoutDashboard, Clock, ClipboardList, Building2,
   CalendarDays, Briefcase, FileText, Users, Package,
   AlertTriangle, ClipboardCheck, DollarSign, Banknote,
   BarChart3, CheckSquare, PhoneCall,
@@ -29,7 +29,6 @@ export const sectionLabels: Record<NavSection, string> = {
 /** Single source of truth for all navigation links */
 export const allNavLinks: NavLinkDef[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', section: 'main', mobileBar: true },
-  { to: '/profile', icon: User, label: 'My Profile', section: 'main' },
   { to: '/clock', icon: Clock, label: 'Clock In/Out', section: 'main', mobileBar: true },
   { to: '/shifts', icon: ClipboardList, label: 'Shifts', section: 'main', mobileBar: true },
   { to: '/sites', icon: Building2, label: 'Sites', section: 'main', mobileBar: true },
