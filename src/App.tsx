@@ -22,9 +22,7 @@ import { TasksPage } from './pages/TasksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TeamPage } from './pages/TeamPage';
 import { InventoryPage } from './pages/InventoryPage';
-import { IncidentsPage } from './pages/IncidentsPage';
-import { InspectionsPage } from './pages/InspectionsPage';
-import { PayrollPage } from './pages/PayrollPage';
+import { QualityPage } from './pages/QualityPage';
 import { LeadsPage } from './pages/LeadsPage';
 
 // AnalyticsPage lazy-loaded because it pulls in ~300 KB of recharts
@@ -91,11 +89,12 @@ export default function App() {
         
         <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><InventoryPage /></ProtectedRoute>} />
-        <Route path="/incidents" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><IncidentsPage /></ProtectedRoute>} />
-        <Route path="/inspections" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><InspectionsPage /></ProtectedRoute>} />
+        <Route path="/incidents" element={<Navigate to="/quality" replace />} />
+        <Route path="/inspections" element={<Navigate to="/quality" replace />} />
+        <Route path="/quality" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QualityPage /></ProtectedRoute>} />
         <Route path="/money" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><MoneyBookPage /></ProtectedRoute>} />
+        <Route path="/payroll" element={<Navigate to="/money" replace />} />
         <Route path="/analytics" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Loading analytics…</div>}><AnalyticsPage /></Suspense></ProtectedRoute>} />
-        <Route path="/payroll" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><PayrollPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['owner']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute allowedRoles={['owner']}><LeadsPage /></ProtectedRoute>} />
         

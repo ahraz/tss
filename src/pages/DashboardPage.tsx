@@ -239,7 +239,7 @@ export function DashboardPage() {
               <Button variant="secondary" className="justify-start" icon={DollarSign} onClick={() => navigate('/money')}>Add Payment</Button>
               <Button variant="secondary" className="justify-start" icon={CheckCircle2} onClick={() => navigate('/tasks')}>Add Task</Button>
               <Button variant="secondary" className="justify-start" icon={Plus} onClick={() => navigate('/money')}>New Expense</Button>
-              <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/payroll')}>Process Payroll</Button>
+              <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/money')}>Process Payroll</Button>
               {currentUser.role === 'owner' && (
                 <Button variant="secondary" className="justify-start" icon={PhoneCall} onClick={() => navigate('/leads')}>View Leads</Button>
               )}
