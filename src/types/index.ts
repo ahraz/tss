@@ -336,6 +336,7 @@ export interface AppSettings {
   currency: string;
   payPeriod: PayPeriod;
   dataVersion: number;
+  seeded?: boolean;
 }
 
 // --- Leads / Call Tracking ---

@@ -280,8 +280,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Hydrate from Firestore
         let remote = await fetchAllCollectionsOnce();
 
-        // First-time setup: seed default users/sites if Firestore is empty
-        if (remote.users.length === 0) {
+        // First-time setup: seed default users/sites only when Firestore is
+        // genuinely brand new (no users AND no settings doc). The settings doc
+        // persists independently in Firestore, so its existence proves seeding
+        // has been done before. Without this guard, deleting all users would
+        // cause seedIfEmpty() to re-run on every page load — resurrecting them.
+        if (remote.users.length === 0 && !remote.settings) {
           await seedIfEmpty();
           remote = await fetchAllCollectionsOnce();
         }

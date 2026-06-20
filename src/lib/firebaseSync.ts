@@ -669,7 +669,10 @@ export async function seedIfEmpty(): Promise<void> {
   for (const site of DEFAULT_SITES) {
     await setDoc(doc(db, 'sites', site.id), sanitizeForFirestore(site));
   }
-  await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(settings));
+  await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore({
+    ...settings,
+    seeded: true,
+  }));
 
   console.log('✅ Seeded default data into Firestore');
 }
