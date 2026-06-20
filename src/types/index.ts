@@ -326,6 +326,7 @@ export interface Task {
   isRecurring: boolean;
   recurringFrequency: CleaningFrequency | null;
   completedAt: string | null;
+  completedNote?: string;     // Note about how the task was completed
   createdAt: string;
 }
 

@@ -182,7 +182,7 @@ export function SitesPage() {
                     </div>
                   </div>
                   
-                  <div className="mt-auto pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                  <div className="mt-auto pt-4 border-t border-gray-100 grid grid-cols-3 gap-4">
                     <div className="flex items-center gap-2 text-sm">
                       <div className="p-1.5 bg-green-50 text-green-600 rounded-lg"><DollarSign size={16}/></div>
                       <div>
@@ -195,6 +195,13 @@ export function SitesPage() {
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Last Visit</p>
                         <p className="font-medium text-gray-900">{lastVisit ? formatDate(lastVisit) : 'Never'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg"><Calendar size={16}/></div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Cleaning Days</p>
+                        <p className="font-medium text-gray-900 text-xs truncate">{site.cleaningDays.map(d => d.slice(0, 2).toUpperCase()).join(', ') || '—'}</p>
                       </div>
                     </div>
                   </div>

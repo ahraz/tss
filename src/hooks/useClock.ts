@@ -17,13 +17,32 @@ export function useClock() {
   const [showSummary, setShowSummary] = useState(false);
   const [summaryData, setSummaryData] = useState<any>(null);
 
+  // Break tracking
+  const [breakStart, setBreakStart] = useState<Date | null>(null);
+  const [breakTotalSeconds, setBreakTotalSeconds] = useState(0);
+  const [onBreak, setOnBreak] = useState(false);
+
+  // Supply/issue reporting
+  const [showSupplyModal, setShowSupplyModal] = useState(false);
+  const [supplyDescription, setSupplyDescription] = useState('');
+
   // Clock in state
   const [selectedSiteId, setSelectedSiteId] = useState('');
+
+  // Track break time accumulation
+  useEffect(() => {
+    if (!onBreak || !breakStart) return;
+    const interval = setInterval(() => {
+      setBreakTotalSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [onBreak, breakStart]);
 
   useEffect(() => {
     if (activeShift) {
       const interval = setInterval(() => {
-        setElapsed(Math.floor((new Date().getTime() - new Date(activeShift.clockInTime).getTime()) / 1000));
+        const totalSeconds = Math.floor((new Date().getTime() - new Date(activeShift.clockInTime).getTime()) / 1000);
+        setElapsed(totalSeconds);
       }, 1000);
 
       if (checklist.length === 0) {
@@ -130,11 +149,63 @@ export function useClock() {
     setChecklist(prev => prev.map(c => c.itemId === itemId ? { ...c, completed: !c.completed } : c));
   };
 
+  // ─── Break Controls ───────────────────────────────────────
+
+  const handleStartBreak = () => {
+    setOnBreak(true);
+    setBreakStart(new Date());
+    toast.success('Break started');
+  };
+
+  const handleEndBreak = () => {
+    setOnBreak(false);
+    setBreakStart(null);
+    const breakMins = Math.floor(breakTotalSeconds / 60);
+    if (breakMins > 0) {
+      toast.success(`Break ended — ${breakMins} min break recorded`);
+    }
+  };
+
+  // ─── Supply Issue Reporting ───────────────────────────────
+
+  const handleReportSupplyIssue = () => {
+    if (!supplyDescription.trim() || !activeShift || !currentUser) return;
+    const site = state.sites.find(s => s.id === activeShift.siteId);
+    const newTask = {
+      id: generateId(),
+      title: `Supply needed: ${supplyDescription.trim()}`,
+      description: `Reported during shift at ${site?.name || 'unknown site'} on ${new Date().toLocaleDateString()}. ${notes ? `Shift notes: ${notes}` : ''}`,
+      assignedUserId: null,
+      siteId: activeShift.siteId,
+      priority: 'medium' as const,
+      status: 'todo' as const,
+      dueDate: null,
+      isRecurring: false,
+      recurringFrequency: null as any,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    dispatch({ type: 'ADD_TASK', payload: newTask });
+    toast.success('Supply request created as a task');
+    setSupplyDescription('');
+    setShowSupplyModal(false);
+  };
+
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Work time = elapsed - break time
+  const workSeconds = elapsed - breakTotalSeconds;
+  const formatWorkElapsed = () => {
+    const s = Math.max(0, workSeconds);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
   const siteOptions = currentUser
@@ -155,5 +226,11 @@ export function useClock() {
     handleCapture, handleRetake, handleFallbackUpload,
     handleClockIn, handleClockOut, toggleChecklist,
     formatElapsed,
+    // New superpowers
+    onBreak, breakTotalSeconds, workSeconds, formatWorkElapsed,
+    handleStartBreak, handleEndBreak,
+    showSupplyModal, setShowSupplyModal,
+    supplyDescription, setSupplyDescription,
+    handleReportSupplyIssue,
   };
 }

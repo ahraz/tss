@@ -22,7 +22,7 @@ import type { Payment, Expense, PayrollRecord, PaymentMethod, ExpenseCategory } 
 
 export function MoneyBookPage() {
   const { state, currentUser, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'revenue' | 'expenses'>('revenue');
+  const [activeTab, setActiveTab] = useState<'revenue' | 'expenses' | 'profit'>('revenue');
   
   // Filters
   const [startDate, setStartDate] = useState(() => startOfMonth(new Date()).toISOString().split('T')[0]);
@@ -249,6 +249,104 @@ export function MoneyBookPage() {
     );
   };
 
+  const renderProfitTab = () => {
+    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+    
+    const siteProfits = state.sites.map(site => {
+      const payments = state.payments
+        .filter(p => p.siteId === site.id && isWithinInterval(new Date(p.date), { start, end }))
+        .reduce((sum, p) => sum + p.amount, 0);
+      const expenses = state.expenses
+        .filter(e => e.siteId === site.id && isWithinInterval(new Date(e.date), { start, end }))
+        .reduce((sum, e) => sum + e.amount, 0);
+      const shiftCosts = state.shifts
+        .filter(s => s.siteId === site.id && s.status === 'completed' && isWithinInterval(new Date(s.clockInTime), { start, end }))
+        .reduce((sum, s) => {
+          const user = state.users.find(u => u.id === s.userId);
+          return sum + ((s.durationMinutes || 0) / 60) * (user?.hourlyRate || 0);
+        }, 0);
+      const totalCosts = expenses + shiftCosts;
+      return { site, revenue: payments, expenses, labour: shiftCosts, net: payments - totalCosts };
+    }).sort((a, b) => b.net - a.net);
+
+    const totalRevenue = siteProfits.reduce((s, p) => s + p.revenue, 0);
+    const totalExpenses = siteProfits.reduce((s, p) => s + p.expenses, 0);
+    const totalLabour = siteProfits.reduce((s, p) => s + p.labour, 0);
+    const totalNet = siteProfits.reduce((s, p) => s + p.net, 0);
+
+    if (siteProfits.length === 0) {
+      return <EmptyState icon={DollarSign} title="No data" description="Add sites to see profitability." />;
+    }
+
+    return (
+      <div className="space-y-4 flex-1 flex flex-col min-h-0">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 border-green-200 bg-green-50/30">
+            <p className="text-xs text-gray-500 uppercase font-medium">Revenue</p>
+            <p className="text-xl font-bold text-green-600">{formatCAD(totalRevenue)}</p>
+          </Card>
+          <Card className="p-4 border-red-200 bg-red-50/30">
+            <p className="text-xs text-gray-500 uppercase font-medium">Expenses</p>
+            <p className="text-xl font-bold text-red-500">{formatCAD(totalExpenses)}</p>
+          </Card>
+          <Card className="p-4 border-amber-200 bg-amber-50/30">
+            <p className="text-xs text-gray-500 uppercase font-medium">Labour</p>
+            <p className="text-xl font-bold text-amber-600">{formatCAD(totalLabour)}</p>
+          </Card>
+          <Card className="p-4 border-blue-200 bg-blue-50/30">
+            <p className="text-xs text-gray-500 uppercase font-medium">Net Profit</p>
+            <p className={`text-xl font-bold ${totalNet >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCAD(totalNet)}</p>
+          </Card>
+        </div>
+
+        {/* Per-site breakdown */}
+        <Card className="flex-1 p-0 overflow-hidden flex flex-col">
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                <tr>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Site</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Revenue</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Expenses</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Labour</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Net</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Margin</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {siteProfits.map(({ site, revenue, expenses, labour, net }) => {
+                  const margin = revenue > 0 ? ((net / revenue) * 100).toFixed(0) : '—';
+                  return (
+                    <tr key={site.id} className="hover:bg-gray-50">
+                      <td className="p-4">
+                        <p className="font-medium text-sm text-gray-900">{site.name}</p>
+                      </td>
+                      <td className="p-4 text-sm text-green-600 font-medium">{formatCAD(revenue)}</td>
+                      <td className="p-4 text-sm text-red-500 font-medium">{formatCAD(expenses)}</td>
+                      <td className="p-4 text-sm text-amber-600 font-medium">{formatCAD(labour)}</td>
+                      <td className="p-4">
+                        <span className={`text-sm font-bold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {formatCAD(net)}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <Badge
+                          label={margin === '—' ? '—' : `${margin}%`}
+                          variant={margin === '—' ? 'neutral' : parseInt(margin) >= 20 ? 'success' : parseInt(margin) >= 0 ? 'warning' : 'danger'}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <AppShell pageTitle="Money Book">
@@ -260,6 +358,7 @@ export function MoneyBookPage() {
             {[
               { id: 'revenue', icon: DollarSign, label: 'Revenue' },
               { id: 'expenses', icon: Receipt, label: 'Expenses' },
+              { id: 'profit', icon: Users, label: 'Profit by Site' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -286,6 +385,7 @@ export function MoneyBookPage() {
         {/* Content */}
         {activeTab === 'revenue' && renderRevenueTab()}
         {activeTab === 'expenses' && renderExpensesTab()}
+        {activeTab === 'profit' && renderProfitTab()}
 
       </div>
 
