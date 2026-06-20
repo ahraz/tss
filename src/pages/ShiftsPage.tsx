@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Download, FileWarning } from 'lucide-react';
+import { Download, FileWarning, Trash2 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -12,6 +12,7 @@ import { UserAvatar } from '../components/ui/UserAvatar';
 import { Modal } from '../components/ui/Modal';
 import { Textarea } from '../components/ui/Textarea';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { getPhoto } from '../utils/photoStore';
 import { formatDateTime, formatDate, formatDuration, formatCAD } from '../utils/formatters';
 import { exportToCSV } from '../utils/csv';
@@ -27,6 +28,7 @@ export function ShiftsPage() {
   
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [editNotes, setEditNotes] = useState('');
+  const [deleteShiftId, setDeleteShiftId] = useState<string | null>(null);
   const [clockInPhoto, setClockInPhoto] = useState<string | null>(null);
   const [clockOutPhoto, setClockOutPhoto] = useState<string | null>(null);
 
@@ -101,6 +103,14 @@ export function ShiftsPage() {
     if (selectedShift) {
       dispatch({ type: 'UPDATE_SHIFT', payload: { ...selectedShift, notes: editNotes } });
       setSelectedShift({ ...selectedShift, notes: editNotes });
+    }
+  };
+
+  const handleDeleteShift = () => {
+    if (deleteShiftId) {
+      dispatch({ type: 'DELETE_SHIFT', payload: deleteShiftId });
+      if (selectedShift?.id === deleteShiftId) setSelectedShift(null);
+      setDeleteShiftId(null);
     }
   };
 
@@ -317,10 +327,32 @@ export function ShiftsPage() {
                     </p>
                   )}
                 </div>
+
+                {isOwnerOrPartner && (
+                  <div className="pt-2 border-t border-gray-100 flex justify-end">
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon={Trash2}
+                      onClick={() => setDeleteShiftId(selectedShift.id)}
+                    >
+                      Delete Shift
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })()}
         </Modal>
+
+        <ConfirmModal
+          isOpen={!!deleteShiftId}
+          onClose={() => setDeleteShiftId(null)}
+          onConfirm={handleDeleteShift}
+          title="Delete Shift"
+          message="Are you sure you want to delete this shift? This action cannot be undone."
+          confirmLabel="Delete"
+        />
       </div>
     </AppShell>
   );

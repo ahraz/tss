@@ -34,6 +34,9 @@ export function SiteDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<Partial<Site>>({});
 
+  // Delete Site State
+  const [deleteSiteId, setDeleteSiteId] = useState<string | null>(null);
+
   if (!site || !currentUser) return null;
 
   const handleAddChecklist = () => {
@@ -79,6 +82,13 @@ export function SiteDetailPage() {
     if (!formData.name || !formData.address) return;
     dispatch({ type: 'UPDATE_SITE', payload: formData as Site });
     setShowEditModal(false);
+  };
+
+  const handleDeleteSite = () => {
+    if (deleteSiteId) {
+      dispatch({ type: 'DELETE_SITE', payload: deleteSiteId });
+      setDeleteSiteId(null);
+    }
   };
 
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -242,7 +252,10 @@ export function SiteDetailPage() {
               </div>
             </div>
             {isOwnerOrPartner && (
-              <Button variant="secondary" icon={Edit3} onClick={openEditModal}>Edit Site</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" icon={Edit3} onClick={openEditModal}>Edit Site</Button>
+                <Button variant="danger" icon={Trash2} onClick={() => setDeleteSiteId(site.id)}>Delete</Button>
+              </div>
             )}
           </div>
         </div>
@@ -319,6 +332,15 @@ export function SiteDetailPage() {
         onConfirm={handleDeleteChecklist}
         title="Delete Checklist Item"
         message="Are you sure you want to remove this item? This will not affect past shifts."
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteSiteId}
+        onClose={() => setDeleteSiteId(null)}
+        onConfirm={handleDeleteSite}
+        title="Delete Site"
+        message="Are you sure you want to delete this site? This action cannot be undone. All associated data will be removed."
+        confirmLabel="Delete"
       />
 
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Site" size="lg">
