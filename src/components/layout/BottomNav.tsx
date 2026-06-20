@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { linksForRole } from './navLinks';
 
@@ -54,6 +54,17 @@ export function BottomNav() {
                   <span className="font-medium">{link.label}</span>
                 </NavLink>
               ))}
+              <hr className="my-2 border-gray-100" />
+              {(currentUser.role === 'owner' || currentUser.role === 'partner') && (
+                <NavLink
+                  to="/settings"
+                  onClick={() => setIsMoreOpen(false)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+                >
+                  <Settings size={20} className="text-gray-400" />
+                  <span className="font-medium">Settings</span>
+                </NavLink>
+              )}
               <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-red-600">
                 <LogOut size={20} className="text-red-500" />
                 <span className="font-medium">Logout</span>

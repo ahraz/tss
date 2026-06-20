@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Sparkles, LogOut, Settings } from 'lucide-react';
+import { Sparkles, LogOut, Settings, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
@@ -101,6 +101,14 @@ export function Sidebar() {
 
         {isUserMenuOpen && (
           <div className="absolute bottom-full left-4 right-4 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+            <NavLink
+              to="/profile"
+              onClick={() => setIsUserMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors"
+            >
+              <User size={16} />
+              Profile
+            </NavLink>
             {showSettings && (
               <NavLink
                 to="/settings"
