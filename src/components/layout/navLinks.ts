@@ -1,8 +1,8 @@
 import {
   LayoutDashboard, Clock, ClipboardList, Building2,
   CalendarDays, Briefcase, FileText, Users, Package,
-  AlertTriangle, ClipboardCheck, DollarSign, Banknote,
-  BarChart3, CheckSquare, PhoneCall,
+  ClipboardCheck, DollarSign,
+  BarChart3, PhoneCall,
   type LucideIcon
 } from 'lucide-react';
 
@@ -32,17 +32,16 @@ export const allNavLinks: NavLinkDef[] = [
   { to: '/clock', icon: Clock, label: 'Clock In/Out', section: 'main', mobileBar: true },
   { to: '/shifts', icon: ClipboardList, label: 'Shifts', section: 'main', mobileBar: true },
   { to: '/sites', icon: Building2, label: 'Sites', section: 'main', mobileBar: true },
-  { to: '/schedule', icon: CalendarDays, label: 'Schedule', section: 'management', roles: ['owner', 'partner'] },
+  { to: '/schedule', icon: CalendarDays, label: 'Schedule', section: 'management', roles: ['owner', 'partner'], mobileBar: false },
   { to: '/clients', icon: Briefcase, label: 'Clients', section: 'management', roles: ['owner', 'partner'] },
   { to: '/quotes', icon: FileText, label: 'Quotes', section: 'management', roles: ['owner', 'partner'] },
   { to: '/team', icon: Users, label: 'Team', section: 'management', roles: ['owner', 'partner'] },
   { to: '/inventory', icon: Package, label: 'Inventory', section: 'management', roles: ['owner', 'partner'] },
-  { to: '/incidents', icon: AlertTriangle, label: 'Incidents', section: 'operations', roles: ['owner', 'partner'] },
-  { to: '/inspections', icon: ClipboardCheck, label: 'Inspections', section: 'operations', roles: ['owner', 'partner'] },
-  { to: '/money', icon: DollarSign, label: 'Money Book', section: 'operations', roles: ['owner', 'partner'] },
-  { to: '/payroll', icon: Banknote, label: 'Payroll', section: 'operations', roles: ['owner', 'partner'] },
+  { to: '/quality', icon: ClipboardCheck, label: 'Quality & Safety', section: 'operations', roles: ['owner', 'partner'] },
+  { to: '/money', icon: DollarSign, label: 'Finance', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/analytics', icon: BarChart3, label: 'Analytics', section: 'operations', roles: ['owner', 'partner'] },
-  { to: '/tasks', icon: CheckSquare, label: 'Tasks', section: 'main' },
+  // Tasks accessed from Dashboard only
+
   { to: '/leads', icon: PhoneCall, label: 'Leads', section: 'sales', roles: ['owner'] },
 ];
 
