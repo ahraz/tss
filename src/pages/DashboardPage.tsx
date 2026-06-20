@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -197,6 +197,9 @@ export function DashboardPage() {
             <Button variant="secondary" className="justify-start" icon={CheckCircle2} onClick={() => navigate('/tasks')}>Add Task</Button>
             <Button variant="secondary" className="justify-start" icon={Plus} onClick={() => navigate('/money')}>New Expense</Button>
             <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/payroll')}>Process Payroll</Button>
+            {currentUser.role === 'owner' && (
+              <Button variant="secondary" className="justify-start" icon={PhoneCall} onClick={() => navigate('/leads')}>View Leads</Button>
+            )}
           </div>
         </Card>
       </div>

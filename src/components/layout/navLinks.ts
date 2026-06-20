@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Clock, ClipboardList, Building2, User,
   CalendarDays, Briefcase, FileText, Users, Package,
   AlertTriangle, ClipboardCheck, DollarSign, Banknote,
-  BarChart3, CheckSquare, Settings, PhoneCall,
+  BarChart3, CheckSquare, PhoneCall,
   type LucideIcon
 } from 'lucide-react';
 
@@ -45,7 +45,6 @@ export const allNavLinks: NavLinkDef[] = [
   { to: '/analytics', icon: BarChart3, label: 'Analytics', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks', section: 'main' },
   { to: '/leads', icon: PhoneCall, label: 'Leads', section: 'sales', roles: ['owner'] },
-  { to: '/settings', icon: Settings, label: 'Settings', section: 'main', roles: ['owner'] },
 ];
 
 /** Filter links for a given user role */
