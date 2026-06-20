@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { DollarSign, Receipt, Users, Plus, Download, CheckCircle2, XCircle } from 'lucide-react';
+import { DollarSign, Receipt, Users, Plus, Download, CheckCircle2, XCircle, Edit3, Trash2 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/Badge';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { calculateEmployeePay, calculateEmployeeHours, getPayPeriodDates } from '../utils/calculations';
 import { generateId } from '../utils/storage';
@@ -39,6 +40,14 @@ export function MoneyBookPage() {
   const [expenseFormData, setExpenseFormData] = useState<Partial<Expense>>({
     description: '', amount: 0, date: new Date().toISOString().split('T')[0], category: 'supplies', siteId: '', notes: ''
   });
+
+  // Edit/Delete State
+  const [editPayment, setEditPayment] = useState<Payment | null>(null);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [editPaymentFormData, setEditPaymentFormData] = useState<Partial<Payment>>({});
+  const [editExpenseFormData, setEditExpenseFormData] = useState<Partial<Expense>>({});
+  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
 
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'partner')) return null;
 
@@ -68,6 +77,42 @@ export function MoneyBookPage() {
     dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
     setShowAddExpense(false);
     setExpenseFormData({ description: '', amount: 0, date: new Date().toISOString().split('T')[0], category: 'supplies', siteId: '', notes: '' });
+  };
+
+  const openEditPayment = (p: Payment) => {
+    setEditPayment(p);
+    setEditPaymentFormData(p);
+  };
+
+  const handleUpdatePayment = () => {
+    if (!editPayment) return;
+    dispatch({ type: 'UPDATE_PAYMENT', payload: { ...editPaymentFormData, id: editPayment.id } as Payment });
+    setEditPayment(null);
+  };
+
+  const handleDeletePayment = () => {
+    if (deletePaymentId) {
+      dispatch({ type: 'DELETE_PAYMENT', payload: deletePaymentId });
+      setDeletePaymentId(null);
+    }
+  };
+
+  const openEditExpense = (e: Expense) => {
+    setEditExpense(e);
+    setEditExpenseFormData(e);
+  };
+
+  const handleUpdateExpense = () => {
+    if (!editExpense) return;
+    dispatch({ type: 'UPDATE_EXPENSE', payload: { ...editExpenseFormData, id: editExpense.id } as Expense });
+    setEditExpense(null);
+  };
+
+  const handleDeleteExpense = () => {
+    if (deleteExpenseId) {
+      dispatch({ type: 'DELETE_EXPENSE', payload: deleteExpenseId });
+      setDeleteExpenseId(null);
+    }
   };
 
   const renderRevenueTab = () => {
@@ -102,6 +147,7 @@ export function MoneyBookPage() {
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Amount</th>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Method</th>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -116,6 +162,16 @@ export function MoneyBookPage() {
                           {p.isPaid ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
                           {p.isPaid ? 'Paid' : 'Unpaid'}
                         </button>
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditPayment(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                            <Edit3 size={15} />
+                          </button>
+                          <button onClick={() => setDeletePaymentId(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -159,6 +215,7 @@ export function MoneyBookPage() {
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Description</th>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Category</th>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Amount</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -171,6 +228,16 @@ export function MoneyBookPage() {
                       </td>
                       <td className="p-4"><Badge label={e.category} variant="neutral" /></td>
                       <td className="p-4 text-sm font-semibold text-red-600">{formatCAD(e.amount)}</td>
+                      <td className="p-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditExpense(e)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                            <Edit3 size={15} />
+                          </button>
+                          <button onClick={() => setDeleteExpenseId(e.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -255,6 +322,60 @@ export function MoneyBookPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Edit Payment Modal */}
+      <Modal isOpen={!!editPayment} onClose={() => setEditPayment(null)} title="Edit Payment" size="md">
+        <div className="space-y-4">
+          <Select label="Site" options={state.sites.map(s => ({value: s.id, label: s.name}))} value={editPaymentFormData.siteId || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, siteId: e.target.value})} placeholder="Select a site" />
+          <Input label="Amount (CAD)" type="number" value={editPaymentFormData.amount || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, amount: Number(e.target.value)})} />
+          <Input label="Date" type="date" value={editPaymentFormData.date || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, date: e.target.value})} />
+          <Select label="Method" options={[{value:'etransfer',label:'E-Transfer'},{value:'cheque',label:'Cheque'},{value:'cash',label:'Cash'},{value:'other',label:'Other'}]} value={editPaymentFormData.method || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, method: e.target.value as PaymentMethod})} />
+          <Input label="For Period" value={editPaymentFormData.forPeriod || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, forPeriod: e.target.value})} placeholder="e.g. Week of Oct 10" />
+          <Textarea label="Notes" value={editPaymentFormData.notes || ''} onChange={e => setEditPaymentFormData({...editPaymentFormData, notes: e.target.value})} />
+          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+            <input type="checkbox" checked={editPaymentFormData.isPaid || false} onChange={e => setEditPaymentFormData({...editPaymentFormData, isPaid: e.target.checked})} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5" />
+            <span className="text-sm font-medium text-gray-700">Payment Received</span>
+          </label>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setEditPayment(null)}>Cancel</Button>
+            <Button onClick={handleUpdatePayment} disabled={!editPaymentFormData.siteId || !editPaymentFormData.amount}>Save Changes</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Expense Modal */}
+      <Modal isOpen={!!editExpense} onClose={() => setEditExpense(null)} title="Edit Expense" size="md">
+        <div className="space-y-4">
+          <Input label="Description" value={editExpenseFormData.description || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, description: e.target.value})} />
+          <Input label="Amount (CAD)" type="number" value={editExpenseFormData.amount || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, amount: Number(e.target.value)})} />
+          <Input label="Date" type="date" value={editExpenseFormData.date || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, date: e.target.value})} />
+          <Select label="Category" options={[{value:'supplies',label:'Supplies'},{value:'fuel',label:'Fuel'},{value:'equipment',label:'Equipment'},{value:'insurance',label:'Insurance'},{value:'other',label:'Other'}]} value={editExpenseFormData.category || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, category: e.target.value as ExpenseCategory})} />
+          <Select label="Linked Site (Optional)" options={state.sites.map(s => ({value: s.id, label: s.name}))} value={editExpenseFormData.siteId || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, siteId: e.target.value})} placeholder="None" />
+          <Textarea label="Notes" value={editExpenseFormData.notes || ''} onChange={e => setEditExpenseFormData({...editExpenseFormData, notes: e.target.value})} />
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setEditExpense(null)}>Cancel</Button>
+            <Button onClick={handleUpdateExpense} disabled={!editExpenseFormData.description || !editExpenseFormData.amount}>Save Changes</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirm Modals */}
+      <ConfirmModal
+        isOpen={!!deletePaymentId}
+        onClose={() => setDeletePaymentId(null)}
+        onConfirm={handleDeletePayment}
+        title="Delete Payment"
+        message="Are you sure you want to delete this payment record? This action cannot be undone."
+        confirmLabel="Delete"
+      />
+      <ConfirmModal
+        isOpen={!!deleteExpenseId}
+        onClose={() => setDeleteExpenseId(null)}
+        onConfirm={handleDeleteExpense}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense record? This action cannot be undone."
+        confirmLabel="Delete"
+      />
     </AppShell>
   );
 }
