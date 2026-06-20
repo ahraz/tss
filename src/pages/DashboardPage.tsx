@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall, Calendar, ArrowRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek, parseISO, isSameDay } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { StatCard } from '../components/ui/StatCard';
@@ -13,7 +13,7 @@ import { formatCAD, formatDuration } from '../utils/formatters';
 import { calculateSiteProfit, calculateEmployeePay } from '../utils/calculations';
 
 export function DashboardPage() {
-  const { state, currentUser } = useApp();
+  const { state, currentUser, dispatch } = useApp();
   const navigate = useNavigate();
 
   if (!currentUser) return null;
@@ -163,6 +163,24 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* Cash Flow Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4 border-green-200 bg-green-50/30">
+          <p className="text-xs text-gray-500 uppercase font-medium mb-1">Monthly Revenue</p>
+          <p className="text-xl font-bold text-green-600">{formatCAD(monthlyRevenue)}</p>
+        </Card>
+        <Card className="p-4 border-red-200 bg-red-50/30">
+          <p className="text-xs text-gray-500 uppercase font-medium mb-1">Monthly Expenses</p>
+          <p className="text-xl font-bold text-red-500">{formatCAD(monthlyExpenses)}</p>
+        </Card>
+        <Card className="p-4 border-blue-200 bg-blue-50/30">
+          <p className="text-xs text-gray-500 uppercase font-medium mb-1">Net Cash Flow</p>
+          <p className={`text-xl font-bold ${monthlyRevenue - monthlyExpenses >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {formatCAD(monthlyRevenue - monthlyExpenses)}
+          </p>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 flex flex-col">
           <div className="flex justify-between items-center mb-4">
@@ -189,22 +207,77 @@ export function DashboardPage() {
           </div>
         </Card>
 
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="flex flex-col gap-3">
-            <Button variant="secondary" className="justify-start" icon={Clock} onClick={() => navigate('/clock')}>Clock In / Out</Button>
-            <Button variant="secondary" className="justify-start" icon={DollarSign} onClick={() => navigate('/money')}>Add Payment</Button>
-            <Button variant="secondary" className="justify-start" icon={CheckCircle2} onClick={() => navigate('/tasks')}>Add Task</Button>
-            <Button variant="secondary" className="justify-start" icon={Plus} onClick={() => navigate('/money')}>New Expense</Button>
-            <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/payroll')}>Process Payroll</Button>
-            {currentUser.role === 'owner' && (
-              <Button variant="secondary" className="justify-start" icon={PhoneCall} onClick={() => navigate('/leads')}>View Leads</Button>
-            )}
-          </div>
-        </Card>
+        <div className="flex flex-col gap-6">
+          {/* Recent Payments */}
+          {recentPayments.length > 0 && (
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Recent Payments</h3>
+              <div className="space-y-2">
+                {recentPayments.map(p => {
+                  const site = state.sites.find(s => s.id === p.siteId);
+                  return (
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{site?.name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-400">{format(parseISO(p.date), 'MMM d')}</p>
+                      </div>
+                      <span className="text-sm font-semibold text-green-600">{formatCAD(p.amount)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button variant="ghost" size="sm" className="w-full mt-2" onClick={() => navigate('/money')}>
+                <ArrowRight size={14} /> View All
+              </Button>
+            </Card>
+          )}
+
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="flex flex-col gap-3">
+              <Button variant="secondary" className="justify-start" icon={Clock} onClick={() => navigate('/clock')}>Clock In / Out</Button>
+              <Button variant="secondary" className="justify-start" icon={DollarSign} onClick={() => navigate('/money')}>Add Payment</Button>
+              <Button variant="secondary" className="justify-start" icon={CheckCircle2} onClick={() => navigate('/tasks')}>Add Task</Button>
+              <Button variant="secondary" className="justify-start" icon={Plus} onClick={() => navigate('/money')}>New Expense</Button>
+              <Button variant="secondary" className="justify-start" icon={Banknote} onClick={() => navigate('/payroll')}>Process Payroll</Button>
+              {currentUser.role === 'owner' && (
+                <Button variant="secondary" className="justify-start" icon={PhoneCall} onClick={() => navigate('/leads')}>View Leads</Button>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
+
+  // ─── Employee: Today's assigned sites ──────────────────────
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const todayDayName = dayNames[today.getDay()] as string;
+  const mySitesToday = state.sites.filter(s =>
+    s.assignedUserIds.includes(currentUser.id) &&
+    s.status === 'active' &&
+    s.cleaningDays.some(d => d.toLowerCase() === todayDayName)
+  );
+
+  // Check if I already clocked in at each site today
+  const myShiftsToday = state.shifts.filter(s =>
+    s.userId === currentUser.id &&
+    isSameDay(parseISO(s.clockInTime), today)
+  );
+
+  // ─── Owner: Monthly expenses ───────────────────────────────
+  const monthlyExpenses = isOwnerOrPartner ? state.expenses
+    .filter(e => isWithinInterval(new Date(e.date), { start: monthStart, end: monthEnd }))
+    .reduce((sum, e) => sum + e.amount, 0) : 0;
+
+  const monthlyRevenue = isOwnerOrPartner ? state.payments
+    .filter(p => isWithinInterval(new Date(p.date), { start: monthStart, end: monthEnd }))
+    .reduce((sum, p) => sum + p.amount, 0) : 0;
+
+  // ─── Owner: Recent payments ────────────────────────────────
+  const recentPayments = [...state.payments]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5);
 
   const renderEmployeeDashboard = () => (
     <div className="space-y-6">
@@ -225,6 +298,31 @@ export function DashboardPage() {
         </Button>
       </Card>
 
+      {/* Today's Schedule */}
+      {mySitesToday.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar size={20} className="text-blue-600" /> Today's Schedule
+          </h3>
+          <div className="space-y-3">
+            {mySitesToday.map(site => {
+              const clockedIn = myShiftsToday.some(s => s.siteId === site.id && s.status === 'active');
+              const completed = myShiftsToday.some(s => s.siteId === site.id && s.status === 'completed');
+              return (
+                <div key={site.id} className="flex items-center gap-4 p-3 rounded-lg border border-gray-100">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${completed ? 'bg-green-500' : clockedIn ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-gray-900">{site.name}</p>
+                    <p className="text-xs text-gray-500">{site.scheduleStart} - {site.scheduleEnd} · {site.address}</p>
+                  </div>
+                  <Badge label={completed ? 'Done' : clockedIn ? 'Active' : 'Due'} variant={completed ? 'success' : clockedIn ? 'info' : 'neutral'} />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard label="My Hours This Week" value={myHoursThisWeek.toFixed(1) + 'h'} icon={Clock} />
         <StatCard label="Estimated Earnings" value={formatCAD(myEarningsThisWeek)} icon={DollarSign} iconColor="text-green-600" iconBg="bg-green-100" />
@@ -235,21 +333,36 @@ export function DashboardPage() {
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <CheckCircle2 size={20} className="text-blue-600"/> My Tasks
           </h3>
-          <Badge label={`${myTasks.length} pending`} variant="info" />
+          <div className="flex items-center gap-2">
+            <Badge label={`${myTasks.length} pending`} variant="info" />
+            <Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>View All</Button>
+          </div>
         </div>
         <div className="space-y-2">
           {myTasks.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-4">You're all caught up!</p>
           ) : (
             myTasks.map(task => (
-              <div key={task.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
+              <div key={task.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <button
+                    onClick={() => {
+                      dispatch({
+                        type: 'UPDATE_TASK',
+                        payload: { ...task, status: 'done', completedAt: new Date().toISOString() }
+                      });
+                    }}
+                    className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 hover:border-green-500 hover:bg-green-50 transition-colors cursor-pointer"
+                    title="Mark as done"
+                  >
+                    <CheckCircle2 size={14} className="opacity-0 hover:opacity-100 text-green-500" />
+                  </button>
+                  <div className="min-w-0">
                     <p className="font-medium text-sm text-gray-900">{task.title}</p>
                     {task.siteId && <p className="text-xs text-gray-500 mt-0.5">{state.sites.find(s => s.id === task.siteId)?.name}</p>}
                   </div>
-                  <Badge label={task.priority} variant={task.priority === 'urgent' ? 'danger' : 'neutral'} />
                 </div>
+                <Badge label={task.priority} variant={task.priority === 'urgent' ? 'danger' : 'neutral'} />
               </div>
             ))
           )}

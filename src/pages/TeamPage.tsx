@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon, Car, Globe } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon, Car, Globe, Clock, CheckCircle2 } from 'lucide-react';
+import { startOfWeek, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -10,7 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useTeam } from '../hooks/useTeam';
-import { formatCAD } from '../utils/formatters';
+import { formatCAD, formatDuration } from '../utils/formatters';
 import { getPhoto } from '../utils/photoStore';
 import type { DayOfWeek, User, UserRole } from '../types';
 
@@ -260,6 +261,46 @@ export function TeamPage() {
                     {!viewedUser.jobTitle && !viewedUser.hireDate && !viewedUser.employeeId && <span className="text-gray-400 italic">No job details</span>}
                   </div>
                 </Card>
+
+                {/* Performance Stats */}
+                {viewedUser.role === 'employee' && (() => {
+                  const now = new Date();
+                  const weekStart = startOfWeek(now);
+                  const monthStartDate = startOfMonth(now);
+                  const monthEndDate = endOfMonth(now);
+                  const userShifts = state.shifts.filter(s => s.userId === viewedUser.id && s.status === 'completed');
+                  const weekHours = userShifts
+                    .filter(s => isWithinInterval(new Date(s.clockInTime), { start: weekStart, end: now }))
+                    .reduce((sum, s) => sum + ((s.durationMinutes || 0) / 60), 0);
+                  const monthHours = userShifts
+                    .filter(s => isWithinInterval(new Date(s.clockInTime), { start: monthStartDate, end: monthEndDate }))
+                    .reduce((sum, s) => sum + ((s.durationMinutes || 0) / 60), 0);
+                  const monthShifts = userShifts.filter(s => isWithinInterval(new Date(s.clockInTime), { start: monthStartDate, end: monthEndDate })).length;
+                  const completedTasks = state.tasks.filter(t => t.assignedUserId === viewedUser.id && t.status === 'done').length;
+                  return (
+                    <Card>
+                      <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Award size={14} /> Performance</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-blue-50 rounded-lg p-3 text-center">
+                          <p className="text-xs text-blue-600 font-medium">Week Hours</p>
+                          <p className="text-lg font-bold text-blue-700">{weekHours.toFixed(1)}</p>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-3 text-center">
+                          <p className="text-xs text-green-600 font-medium">Month Hours</p>
+                          <p className="text-lg font-bold text-green-700">{monthHours.toFixed(1)}</p>
+                        </div>
+                        <div className="bg-purple-50 rounded-lg p-3 text-center">
+                          <p className="text-xs text-purple-600 font-medium">Month Shifts</p>
+                          <p className="text-lg font-bold text-purple-700">{monthShifts}</p>
+                        </div>
+                        <div className="bg-amber-50 rounded-lg p-3 text-center">
+                          <p className="text-xs text-amber-600 font-medium">Tasks Done</p>
+                          <p className="text-lg font-bold text-amber-700">{completedTasks}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })()}
 
                 {/* Uniform & Equipment */}
                 {(viewedUser.tshirtSize || viewedUser.equipmentIssued) && (

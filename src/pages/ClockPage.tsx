@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Camera } from 'lucide-react';
+import { CheckSquare, Camera, Coffee, AlertTriangle, ShoppingCart, Clock as ClockIcon } from 'lucide-react';
 
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
 import { CameraCapture } from '../components/ui/CameraCapture';
 import { useClock } from '../hooks/useClock';
 import { formatDuration, formatCAD } from '../utils/formatters';
@@ -27,6 +28,11 @@ export function ClockPage() {
     handleCapture, handleRetake, handleFallbackUpload,
     handleClockIn, handleClockOut, toggleChecklist,
     formatElapsed,
+    // New superpowers
+    onBreak, workSeconds, breakTotalSeconds, formatWorkElapsed, handleStartBreak, handleEndBreak,
+    showSupplyModal, setShowSupplyModal,
+    supplyDescription, setSupplyDescription,
+    handleReportSupplyIssue,
   } = useClock();
 
   if (!currentUser) return null;
@@ -66,12 +72,44 @@ export function ClockPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-blue-600 text-white rounded-xl p-6 text-center shadow-lg">
-              <p className="text-blue-200 text-sm font-medium uppercase tracking-wider mb-1">Currently Clocked In</p>
+            {/* Clock In Header */}
+            <div className={`rounded-xl p-6 text-center shadow-lg ${onBreak ? 'bg-amber-500' : 'bg-blue-600'}`}>
+              {onBreak && (
+                <p className="text-amber-200 text-sm font-medium uppercase tracking-wider mb-1">ON BREAK</p>
+              )}
+              <p className={`text-sm font-medium uppercase tracking-wider mb-1 ${onBreak ? 'text-amber-200' : 'text-blue-200'}`}>
+                {onBreak ? 'Take your time' : 'Currently Clocked In'}
+              </p>
               <h2 className="text-xl font-bold mb-4">{state.sites.find(s => s.id === activeShift.siteId)?.name}</h2>
               <div className="font-mono text-5xl sm:text-6xl font-light tracking-tight">{formatElapsed(elapsed)}</div>
-              <p className="text-blue-200 text-sm mt-4">Started at {new Date(activeShift.clockInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+              <p className="text-xs mt-2 text-white/70">Work: {formatWorkElapsed()} · Break: {Math.floor(breakTotalSeconds / 60)}min</p>
+              <p className={`text-sm mt-4 ${onBreak ? 'text-amber-200' : 'text-blue-200'}`}>
+                Started at {new Date(activeShift.clockInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </p>
             </div>
+
+            {/* Break Controls */}
+            <Card className={onBreak ? 'border-amber-200 bg-amber-50/30' : ''}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Coffee size={18} /> Break
+                </h3>
+                {onBreak ? (
+                  <Button variant="secondary" size="sm" onClick={handleEndBreak} className="bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200">
+                    <ClockIcon size={14} /> End Break
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={handleStartBreak}>
+                    <Coffee size={14} /> Start Break
+                  </Button>
+                )}
+              </div>
+              {onBreak && (
+                <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
+                  <AlertTriangle size={14} /> Break in progress — clock is paused
+                </p>
+              )}
+            </Card>
 
             <Card>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><CheckSquare size={18} /> Cleaning Checklist</h3>
@@ -100,6 +138,19 @@ export function ClockPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </Card>
+
+            {/* Supply / Issue Reporting */}
+            <Card className="border-dashed border-2 border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={18} className="text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">Need supplies or reporting an issue?</span>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => setShowSupplyModal(true)}>
+                  <AlertTriangle size={14} /> Report
+                </Button>
+              </div>
             </Card>
 
             <Card className="space-y-6 border-amber-200 bg-amber-50/30">
@@ -137,6 +188,10 @@ export function ClockPage() {
                   <p className="text-lg font-semibold text-gray-900">{formatDuration(summaryData.duration)}</p>
                 </div>
                 <div>
+                  <p className="text-xs text-gray-500 uppercase font-medium">Break</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatDuration(Math.floor(breakTotalSeconds / 60))}</p>
+                </div>
+                <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">Tasks</p>
                   <p className="text-lg font-semibold text-gray-900">{summaryData.tasks} / {summaryData.totalTasks}</p>
                 </div>
@@ -150,6 +205,24 @@ export function ClockPage() {
               <Button className="w-full" onClick={() => { setShowSummary(false); navigate('/'); }}>Back to Dashboard</Button>
             </div>
           )}
+        </Modal>
+
+        {/* Supply / Issue Report Modal */}
+        <Modal isOpen={showSupplyModal} onClose={() => setShowSupplyModal(false)} title="Report Supply Need or Issue" size="sm">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">Describe what supplies are needed or what issue you're encountering. A task will be created for management.</p>
+            <Textarea
+              value={supplyDescription}
+              onChange={e => setSupplyDescription(e.target.value)}
+              placeholder="e.g., Running low on glass cleaner, need new mop head..."
+            />
+            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+              <Button variant="secondary" onClick={() => setShowSupplyModal(false)}>Cancel</Button>
+              <Button onClick={handleReportSupplyIssue} disabled={!supplyDescription.trim()}>
+                <AlertTriangle size={14} /> Submit Report
+              </Button>
+            </div>
+          </div>
         </Modal>
 
       </div>

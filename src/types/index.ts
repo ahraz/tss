@@ -326,6 +326,7 @@ export interface Task {
   isRecurring: boolean;
   recurringFrequency: CleaningFrequency | null;
   completedAt: string | null;
+  completedNote?: string;     // Note about how the task was completed
   createdAt: string;
 }
 
@@ -335,6 +336,7 @@ export interface AppSettings {
   currency: string;
   payPeriod: PayPeriod;
   dataVersion: number;
+  seeded?: boolean;
 }
 
 // --- Leads / Call Tracking ---

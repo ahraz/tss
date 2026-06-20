@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Download, FileWarning, Trash2 } from 'lucide-react';
+import { Download, FileWarning, Trash2, Clock } from 'lucide-react';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -11,6 +12,7 @@ import { Badge } from '../components/ui/Badge';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { Modal } from '../components/ui/Modal';
 import { Textarea } from '../components/ui/Textarea';
+import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { getPhoto } from '../utils/photoStore';
@@ -31,6 +33,9 @@ export function ShiftsPage() {
   const [deleteShiftId, setDeleteShiftId] = useState<string | null>(null);
   const [clockInPhoto, setClockInPhoto] = useState<string | null>(null);
   const [clockOutPhoto, setClockOutPhoto] = useState<string | null>(null);
+  // Time correction
+  const [editClockIn, setEditClockIn] = useState('');
+  const [editClockOut, setEditClockOut] = useState('');
 
   // Load photos from IndexedDB when a shift is selected
   useEffect(() => {
@@ -106,6 +111,27 @@ export function ShiftsPage() {
     }
   };
 
+  const handleSaveTimeCorrection = () => {
+    if (!selectedShift || !editClockIn) return;
+    const newClockIn = new Date(editClockIn).toISOString();
+    const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : null;
+    let durationMinutes = selectedShift.durationMinutes;
+    if (newClockOut) {
+      durationMinutes = Math.floor((new Date(newClockOut).getTime() - new Date(newClockIn).getTime()) / 60000);
+    }
+    dispatch({
+      type: 'UPDATE_SHIFT',
+      payload: {
+        ...selectedShift,
+        clockInTime: newClockIn,
+        clockOutTime: newClockOut,
+        durationMinutes: durationMinutes,
+      }
+    });
+    setSelectedShift({ ...selectedShift, clockInTime: newClockIn, clockOutTime: newClockOut, durationMinutes });
+    toast.success('Shift times updated');
+  };
+
   const handleDeleteShift = () => {
     if (deleteShiftId) {
       dispatch({ type: 'DELETE_SHIFT', payload: deleteShiftId });
@@ -162,7 +188,7 @@ export function ShiftsPage() {
                     <div 
                       key={shift.id}
                       className="p-4 hover:bg-gray-50 cursor-pointer transition-colors active:bg-gray-100"
-                      onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); }}
+                      onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); setEditClockIn(shift.clockInTime ? new Date(shift.clockInTime).toLocaleString('sv').replace(' ', 'T').slice(0, 16) : ''); setEditClockOut(shift.clockOutTime ? new Date(shift.clockOutTime).toLocaleString('sv').replace(' ', 'T').slice(0, 16) : ''); }}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -207,7 +233,7 @@ export function ShiftsPage() {
                         <tr 
                           key={shift.id} 
                           className="hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); }}
+                          onClick={() => { setSelectedShift(shift); setEditNotes(shift.notes); setEditClockIn(shift.clockInTime ? new Date(shift.clockInTime).toLocaleString('sv').replace(' ', 'T').slice(0, 16) : ''); setEditClockOut(shift.clockOutTime ? new Date(shift.clockOutTime).toLocaleString('sv').replace(' ', 'T').slice(0, 16) : ''); }}
                         >
                           <td className="p-4 whitespace-nowrap">
                             <p className="font-medium text-gray-900 text-sm">{formatDate(shift.clockInTime)}</p>
@@ -289,6 +315,42 @@ export function ShiftsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Time Correction (owner/partner only) */}
+                {isOwnerOrPartner && selectedShift.status === 'completed' && (
+                  <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock size={16} className="text-amber-600" />
+                      <h4 className="text-sm font-semibold text-amber-800">Time Correction</h4>
+                    </div>
+                    <p className="text-xs text-amber-600 mb-3">Adjust clock-in/out times if the employee forgot to clock in/out correctly.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="Clock In"
+                        type="datetime-local"
+                        value={editClockIn}
+                        onChange={e => setEditClockIn(e.target.value)}
+                      />
+                      <Input
+                        label="Clock Out"
+                        type="datetime-local"
+                        value={editClockOut}
+                        onChange={e => setEditClockOut(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end mt-3">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleSaveTimeCorrection}
+                        disabled={!editClockIn}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200"
+                      >
+                        <Clock size={14} /> Save Corrections
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {isOwnerOrPartner && user && selectedShift.status === 'completed' && selectedShift.durationMinutes && (
                   <div className="p-4 bg-green-50 rounded-xl border border-green-100 flex justify-between items-center">
