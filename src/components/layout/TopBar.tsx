@@ -3,6 +3,7 @@ import { useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { ArrowLeft, User, LogOut, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
+import { Logo } from '../../assets/Logo';
 
 interface TopBarProps {
   title?: string;
@@ -47,9 +48,11 @@ export function TopBar({ title }: TopBarProps) {
         ) : (
           <div className="w-6" />
         )}
-        <h1 className="text-lg font-semibold text-gray-900 truncate">
-          {title || 'GTA Scrub'}
-        </h1>
+        {title ? (
+          <h1 className="text-lg font-semibold text-gray-900 truncate">{title}</h1>
+        ) : (
+          <Logo size={32} variant="full" />
+        )}
       </div>
       <div className="relative" ref={menuRef}>
         <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>

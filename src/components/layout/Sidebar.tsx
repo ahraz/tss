@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Sparkles, LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
+import { Logo } from '../../assets/Logo';
 import { groupedLinks, sectionLabels } from './navLinks';
 import type { NavSection } from './navLinks';
 
@@ -41,11 +42,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-gray-900 text-gray-300 flex-shrink-0">
-      <div className="p-6 flex items-center gap-3 text-white font-bold text-xl tracking-tight">
-        <div className="bg-blue-600 p-1.5 rounded-lg">
-          <Sparkles size={20} className="text-white" />
-        </div>
-        GTA Scrub
+      <div className="p-4 flex items-center gap-3 border-b border-gray-800">
+          <Logo size={36} variant="full" light />
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto space-y-6">
