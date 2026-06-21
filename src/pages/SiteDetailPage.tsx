@@ -17,7 +17,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate, formatTime } from '../utils/formatters';
 import { calculateSiteProfit } from '../utils/calculations';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek, SupplyItem } from '../types';
+import type { Site, SiteType, CleaningFrequency, DayOfWeek, SupplyItem, SupplyCategory, SupplyUnit } from '../types';
 
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +35,10 @@ export function SiteDetailPage() {
   // Edit Site Form State
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<Partial<Site>>({});
+
+  // Add supply item inline
+  const [showAddSupply, setShowAddSupply] = useState(false);
+  const [supplyForm, setSupplyForm] = useState({ name: '', category: 'other' as SupplyCategory, unit: 'each' as SupplyUnit, reorderAt: 5, perVisitUsage: 0 });
 
   // Delete Site State
   const [deleteSiteId, setDeleteSiteId] = useState<string | null>(null);
@@ -282,14 +286,78 @@ export function SiteDetailPage() {
   const renderInventoryTab = () => {
     const siteInv = state.siteInventory.filter(si => si.siteId === site.id);
     if (!isOwnerOrPartner) return null;
+
+    const handleAddSupply = () => {
+      if (!supplyForm.name.trim()) { toast.error('Item name required'); return; }
+      const item: SupplyItem = { id: generateId(), ...supplyForm, name: supplyForm.name.trim(), notes: '' };
+      dispatch({ type: 'ADD_SUPPLY_ITEM', payload: item });
+      // Auto-stock at this site
+      dispatch({ type: 'ADD_SITE_INVENTORY', payload: { id: generateId(), siteId: site.id, itemId: item.id, quantity: item.reorderAt * 3, lastRestocked: new Date().toISOString() } });
+      setSupplyForm({ name: '', category: 'other', unit: 'each', reorderAt: 5, perVisitUsage: 0 });
+      setShowAddSupply(false);
+      toast.success(`Added ${item.name} + stocked ${item.reorderAt * 3} ${item.unit}`);
+    };
+
+    const handleSeedDefaults = () => {
+      const defaults = [
+        { name: 'Paper Towels', category: 'paper' as SupplyCategory, unit: 'roll' as SupplyUnit, reorderAt: 6, perVisitUsage: 1.5 },
+        { name: 'Toilet Paper', category: 'paper' as SupplyCategory, unit: 'roll' as SupplyUnit, reorderAt: 12, perVisitUsage: 2 },
+        { name: 'Garbage Bags (Large)', category: 'plastic' as SupplyCategory, unit: 'box' as SupplyUnit, reorderAt: 1, perVisitUsage: 0.3 },
+        { name: 'All-Purpose Cleaner', category: 'chemical' as SupplyCategory, unit: 'bottle' as SupplyUnit, reorderAt: 2, perVisitUsage: 0.2 },
+        { name: 'Glass Cleaner', category: 'chemical' as SupplyCategory, unit: 'bottle' as SupplyUnit, reorderAt: 2, perVisitUsage: 0.15 },
+        { name: 'Disinfectant Spray', category: 'chemical' as SupplyCategory, unit: 'bottle' as SupplyUnit, reorderAt: 2, perVisitUsage: 0.2 },
+        { name: 'Hand Soap', category: 'chemical' as SupplyCategory, unit: 'bottle' as SupplyUnit, reorderAt: 3, perVisitUsage: 0.15 },
+        { name: 'Microfiber Cloths', category: 'equipment' as SupplyCategory, unit: 'each' as SupplyUnit, reorderAt: 10, perVisitUsage: 0.5 },
+        { name: 'Latex Gloves', category: 'safety' as SupplyCategory, unit: 'box' as SupplyUnit, reorderAt: 2, perVisitUsage: 0.1 },
+      ];
+      defaults.forEach(s => {
+        const item: SupplyItem = { id: generateId(), ...s, notes: '' };
+        dispatch({ type: 'ADD_SUPPLY_ITEM', payload: item });
+        dispatch({ type: 'ADD_SITE_INVENTORY', payload: { id: generateId(), siteId: site.id, itemId: item.id, quantity: s.reorderAt * 3, lastRestocked: new Date().toISOString() } });
+      });
+      toast.success(`Added ${defaults.length} supplies to ${site.name}`);
+    };
+
     return (
       <div className="space-y-4 max-w-3xl">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-lg font-semibold text-gray-900">Stock at {site.name}</h3>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" icon={Plus} onClick={() => setShowAddSupply(true)}>Add Item</Button>
+            {state.supplyItems.length === 0 && (
+              <Button variant="secondary" size="sm" onClick={handleSeedDefaults}>Seed Defaults</Button>
+            )}
+          </div>
         </div>
-        {state.supplyItems.length === 0 ? (
+
+        {/* Inline add supply form */}
+        {showAddSupply && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <Input placeholder="Item name" value={supplyForm.name} onChange={e => setSupplyForm({...supplyForm, name: e.target.value})} className="sm:col-span-2" />
+              <Select options={[
+                { value: 'paper', label: 'Paper' }, { value: 'chemical', label: 'Chemical' },
+                { value: 'plastic', label: 'Plastic' }, { value: 'equipment', label: 'Equipment' },
+                { value: 'safety', label: 'Safety' }, { value: 'other', label: 'Other' },
+              ]} value={supplyForm.category} onChange={e => setSupplyForm({...supplyForm, category: e.target.value as SupplyCategory})} />
+              <Select options={[
+                { value: 'each', label: 'Each' }, { value: 'roll', label: 'Roll' },
+                { value: 'bottle', label: 'Bottle' }, { value: 'box', label: 'Box' },
+                { value: 'case', label: 'Case' }, { value: 'litre', label: 'Litre' },
+              ]} value={supplyForm.unit} onChange={e => setSupplyForm({...supplyForm, unit: e.target.value as SupplyUnit})} />
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <Button variant="secondary" size="sm" onClick={() => setShowAddSupply(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleAddSupply} disabled={!supplyForm.name.trim()}>Add & Stock</Button>
+            </div>
+          </Card>
+        )}
+
+        {state.supplyItems.length === 0 && !showAddSupply ? (
           <Card>
-            <p className="text-gray-500 text-sm text-center py-8">No supply items defined. Add inventory items first.</p>
+            <p className="text-gray-500 text-sm text-center py-8">
+              No supplies yet. Use <strong>"Seed Defaults"</strong> to auto-add common cleaning supplies, or <strong>"Add Item"</strong> to create custom ones.
+            </p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -533,6 +601,18 @@ export function SiteDetailPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Client</label>
+            <Select
+              options={[
+                { value: '', label: '— No client —' },
+                ...state.clients.map(c => ({ value: c.id, label: c.name })),
+              ]}
+              value={formData.clientId || ''}
+              onChange={e => setFormData({...formData, clientId: e.target.value || null})}
+            />
           </div>
 
           <Textarea label="Access Notes" placeholder="Door codes, alarms, special instructions..." value={formData.accessNotes || ''} onChange={e => setFormData({...formData, accessNotes: e.target.value})} />
