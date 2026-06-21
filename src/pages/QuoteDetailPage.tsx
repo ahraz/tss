@@ -181,8 +181,8 @@ export function QuoteDetailPage() {
               <div className="flex items-center gap-4">
                 <Logo size={64} showText={false} />
                 <div>
-                  <div className="text-xl font-bold text-gray-900">THE SCRUB SQUAD</div>
-                  <div className="text-sm text-gray-500">Professional Cleaning Services</div>
+                  <div className="text-xl font-bold text-gray-900">GTA Scrub</div>
+                  <div className="text-sm text-gray-500">Commercial Cleaning Services</div>
                 </div>
               </div>
               <div className="text-right">
@@ -275,7 +275,7 @@ export function QuoteDetailPage() {
               <Logo size={24} variant="icon" />
               <span className="font-medium text-gray-500">{state.settings.businessName}</span>
             </div>
-            <p>Professional Cleaning Services</p>
+            <p>Commercial Cleaning Services</p>
             <p>This proposal is valid until {formatDate(quote.validUntil)}. Prices subject to change.</p>
           </div>
         </div>

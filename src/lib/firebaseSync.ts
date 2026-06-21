@@ -656,7 +656,7 @@ export async function seedIfEmpty(): Promise<void> {
   const settings: AppSettings = settingsSnap.exists()
     ? (settingsSnap.data() as AppSettings)
     : {
-        businessName: 'TSS Cleaners',
+        businessName: 'GTA Scrub',
         ownerName: 'Ahraz Malik',
         currency: 'CAD',
         payPeriod: 'biweekly',

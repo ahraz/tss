@@ -113,7 +113,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tss_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `gta-scrub_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -310,7 +310,7 @@ export function SettingsPage() {
             <Card className="border-red-200">
               <h3 className="text-lg font-semibold text-red-900 mb-4 flex items-center gap-2"><Database size={20}/> Data Management</h3>
               <p className="text-sm text-gray-600 mb-6">
-                TSS Cleaners stores all data locally in your browser. It is highly recommended to export your data regularly as a backup.
+                GTA Scrub stores all data locally in your browser. It is highly recommended to export your data regularly as a backup.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 mb-8">

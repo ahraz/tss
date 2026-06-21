@@ -107,8 +107,8 @@ export function LoginPage() {
           <div className="p-4 rounded-2xl mb-4">
             <Logo size={80} light showText={false} />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">THE SCRUB SQUAD</h1>
-          <p className="text-blue-200 mt-2 text-lg">Professional Cleaning Management</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">GTA Scrub</h1>
+          <p className="text-blue-200 mt-2 text-lg">Commercial Cleaning Management</p>
         </div>
 
         {step === 'username' && (

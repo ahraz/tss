@@ -45,7 +45,7 @@ export function Sidebar() {
         <div className="bg-blue-600 p-1.5 rounded-lg">
           <Sparkles size={20} className="text-white" />
         </div>
-        TSS Cleaners
+        GTA Scrub
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto space-y-6">

@@ -1,4 +1,4 @@
-# TSS Cleaners — Architecture Overview
+# GTA Scrub — Architecture Overview
 
 Last updated: 2026-06-20
 

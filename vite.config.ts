@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'TSS Cleaners',
-        short_name: 'TSS',
-        description: 'TSS Cleaners — Commercial Cleaning Business OS',
+        name: 'GTA Scrub',
+        short_name: 'GTA Scrub',
+        description: 'GTA Scrub — Commercial Cleaning Business OS',
         theme_color: '#1d4ed8',
         background_color: '#ffffff',
         display: 'standalone',

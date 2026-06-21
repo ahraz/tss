@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — Google Sheets API Service
+// GTA Scrub — Google Sheets API Service
 // ============================================================
 // Handles OAuth token management and Sheets API read/write
 // for the Leads Call Center feature.

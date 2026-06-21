@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — Display Formatters
+// GTA Scrub — Display Formatters
 // ============================================================
 
 const cadFormatter = new Intl.NumberFormat('en-CA', {

@@ -30,7 +30,7 @@ const initialState: AppState = {
   callLogs: [],
   leads: [],
   settings: {
-    businessName: 'TSS Cleaners',
+    businessName: 'GTA Scrub',
     ownerName: 'Ahraz Malik',
     currency: 'CAD',
     payPeriod: 'biweekly',

@@ -1,4 +1,4 @@
-# TSS Cleaners — Change Log
+# GTA Scrub — Change Log
 
 This file tracks all modifications made to the project. Entries are reverse-chronological.
 
