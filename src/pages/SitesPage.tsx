@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, DollarSign, Calendar, Search, Building2, Layers, Edit2, Trash2 } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Calendar, Search, Building2, Layers, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -15,7 +15,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek } from '../types';
+import type { Site, SiteType, CleaningFrequency, DayOfWeek, SiteStatus } from '../types';
 
 export function SitesPage() {
   const { state, currentUser, dispatch } = useApp();
@@ -39,6 +39,15 @@ export function SitesPage() {
 
   // Delete Site State
   const [deleteSiteId, setDeleteSiteId] = useState<string | null>(null);
+
+  // Add Client State
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [clientForm, setClientForm] = useState({
+    name: '', address: '', city: 'Brampton', province: 'ON', postalCode: '',
+    contactName: '', contactPhone: '', contractRate: 0,
+    frequency: 'weekly' as CleaningFrequency, cleaningDays: ['monday'] as DayOfWeek[],
+    status: 'active' as SiteStatus, notes: '',
+  });
 
   if (!currentUser) return null;
   const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
@@ -92,6 +101,21 @@ export function SitesPage() {
     }
   };
 
+  const handleAddClient = () => {
+    if (!clientForm.name.trim()) return;
+    const newClient = {
+      id: generateId(),
+      ...clientForm,
+      name: clientForm.name.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    dispatch({ type: 'ADD_CLIENT', payload: newClient });
+    setShowAddClientModal(false);
+    setClientForm({ name: '', address: '', city: 'Brampton', province: 'ON', postalCode: '',
+      contactName: '', contactPhone: '', contractRate: 0, frequency: 'weekly',
+      cleaningDays: ['monday'], status: 'active', notes: '' });
+  };
+
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
@@ -129,6 +153,9 @@ export function SitesPage() {
             )}
             {isOwnerOrPartner && (
               <Button icon={Plus} onClick={() => setShowAddModal(true)}>Add Site</Button>
+            )}
+            {isOwnerOrPartner && (
+              <Button icon={UserPlus} variant="secondary" onClick={() => setShowAddClientModal(true)}>Add Client</Button>
             )}
           </div>
         </div>
@@ -391,6 +418,30 @@ export function SitesPage() {
           message="Are you sure you want to delete this site? This action cannot be undone."
           confirmLabel="Delete"
         />
+
+        {/* Add Client Modal */}
+        <Modal isOpen={showAddClientModal} onClose={() => setShowAddClientModal(false)} title="Add New Client" size="lg">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <Input label="Client/Business Name" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} placeholder="e.g. Kennedy Medical Clinic" required />
+            <Input label="Address" value={clientForm.address} onChange={e => setClientForm({...clientForm, address: e.target.value})} />
+            <div className="grid grid-cols-3 gap-4">
+              <Input label="City" value={clientForm.city} onChange={e => setClientForm({...clientForm, city: e.target.value})} />
+              <Input label="Province" value={clientForm.province} onChange={e => setClientForm({...clientForm, province: e.target.value})} />
+              <Input label="Postal Code" value={clientForm.postalCode} onChange={e => setClientForm({...clientForm, postalCode: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Contact Name" value={clientForm.contactName} onChange={e => setClientForm({...clientForm, contactName: e.target.value})} />
+              <Input label="Contact Phone" value={clientForm.contactPhone} onChange={e => setClientForm({...clientForm, contactPhone: e.target.value})} />
+            </div>
+            <Input label="Contract Rate (CAD/month)" type="number" value={String(clientForm.contractRate)} onChange={e => setClientForm({...clientForm, contractRate: parseFloat(e.target.value) || 0})} />
+            <Select label="Status" options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'cancelled', label: 'Cancelled' }]} value={clientForm.status} onChange={e => setClientForm({...clientForm, status: e.target.value as SiteStatus})} />
+            <Textarea label="Notes" value={clientForm.notes} onChange={e => setClientForm({...clientForm, notes: e.target.value})} rows={3} />
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <Button variant="secondary" onClick={() => setShowAddClientModal(false)}>Cancel</Button>
+              <Button onClick={handleAddClient} disabled={!clientForm.name}>Add Client</Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </AppShell>
   );
