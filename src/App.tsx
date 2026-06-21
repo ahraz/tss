@@ -12,8 +12,6 @@ import { ClockPage } from './pages/ClockPage';
 import { ShiftsPage } from './pages/ShiftsPage';
 import { SitesPage } from './pages/SitesPage';
 import { SiteDetailPage } from './pages/SiteDetailPage';
-import { ClientsPage } from './pages/ClientsPage';
-import { ClientDetailPage } from './pages/ClientDetailPage';
 import { QuotesPage } from './pages/QuotesPage';
 import { QuoteDetailPage } from './pages/QuoteDetailPage';
 import { SchedulePage } from './pages/SchedulePage';
@@ -21,7 +19,6 @@ import { MoneyBookPage } from './pages/MoneyBookPage';
 import { TasksPage } from './pages/TasksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TeamPage } from './pages/TeamPage';
-import { InventoryPage } from './pages/InventoryPage';
 import { QualityPage } from './pages/QualityPage';
 import { LeadsPage } from './pages/LeadsPage';
 
@@ -81,14 +78,14 @@ export default function App() {
         <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
         <Route path="/sites/:id" element={<ProtectedRoute><SiteDetailPage /></ProtectedRoute>} />
         
-        <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
-        <Route path="/clients/:id" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
+        <Route path="/clients" element={<Navigate to="/sites" replace />} />
+        <Route path="/clients/:id" element={<Navigate to="/sites" replace />} />
+        <Route path="/inventory" element={<Navigate to="/sites" replace />} />
         
         <Route path="/quotes" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuotesPage /></ProtectedRoute>} />
         <Route path="/quotes/:id" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuoteDetailPage /></ProtectedRoute>} />
         
         <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
-        <Route path="/inventory" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><InventoryPage /></ProtectedRoute>} />
         <Route path="/incidents" element={<Navigate to="/quality" replace />} />
         <Route path="/inspections" element={<Navigate to="/quality" replace />} />
         <Route path="/quality" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QualityPage /></ProtectedRoute>} />

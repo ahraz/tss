@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { MapPin, Phone, KeySquare, Users, Edit3, Trash2, Plus } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Phone, KeySquare, Users, Edit3, Trash2, Plus, Building2, AlertTriangle, Package } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -16,12 +17,13 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate, formatTime } from '../utils/formatters';
 import { calculateSiteProfit } from '../utils/calculations';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek } from '../types';
+import type { Site, SiteType, CleaningFrequency, DayOfWeek, SupplyItem } from '../types';
 
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, currentUser, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'info'|'shifts'|'finances'|'checklist'>('info');
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'info'|'shifts'|'finances'|'checklist'|'inventory'>('info');
   
   const site = state.sites.find(s => s.id === id);
   const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
@@ -158,6 +160,53 @@ export function SiteDetailPage() {
             {site.assignedUserIds.length === 0 && <p className="text-sm text-gray-500">No employees assigned</p>}
           </div>
         </Card>
+
+        {/* Client info inline */}
+        {site.clientId && (() => {
+          const client = state.clients.find(c => c.id === site.clientId);
+          if (!client) return null;
+          const otherSites = state.sites.filter(s => s.clientId === site.clientId && s.id !== site.id);
+          return (
+            <Card className="bg-indigo-50 border-indigo-200">
+              <h3 className="text-sm font-semibold text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Building2 size={16} /> Client
+              </h3>
+              <div className="space-y-2">
+                <p className="font-semibold text-indigo-900">{client.name}</p>
+                <p className="text-sm text-indigo-800 flex items-center gap-2">
+                  <MapPin size={14} /> {client.address}, {client.city}
+                </p>
+                {client.contactName && (
+                  <p className="text-sm text-indigo-800 flex items-center gap-2">
+                    <Users size={14} /> {client.contactName}
+                  </p>
+                )}
+                {client.contactPhone && (
+                  <p className="text-sm text-indigo-800 flex items-center gap-2">
+                    <Phone size={14} />
+                    <a href={`tel:${client.contactPhone}`} className="hover:underline">{client.contactPhone}</a>
+                  </p>
+                )}
+                {otherSites.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-indigo-200">
+                    <p className="text-xs font-medium text-indigo-600 mb-1">Other sites for this client:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {otherSites.map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => navigate(`/sites/${s.id}`)}
+                          className="text-xs bg-white px-2.5 py-1 rounded-full text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })()}
       </div>
     </div>
   );
@@ -230,6 +279,74 @@ export function SiteDetailPage() {
     );
   };
 
+  const renderInventoryTab = () => {
+    const siteInv = state.siteInventory.filter(si => si.siteId === site.id);
+    if (!isOwnerOrPartner) return null;
+    return (
+      <div className="space-y-4 max-w-3xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Stock at {site.name}</h3>
+        </div>
+        {state.supplyItems.length === 0 ? (
+          <Card>
+            <p className="text-gray-500 text-sm text-center py-8">No supply items defined. Add inventory items first.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {state.supplyItems.map((item: SupplyItem) => {
+              const inv = siteInv.find(si => si.itemId === item.id);
+              const qty = inv ? inv.quantity : 0;
+              const isLow = qty <= item.reorderAt;
+              return (
+                <Card key={item.id} className={`${isLow ? 'border-amber-200 bg-amber-50/30' : ''}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 text-sm truncate">{item.name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-lg font-bold ${isLow ? 'text-red-600' : 'text-gray-800'}`}>{qty}</span>
+                        <span className="text-xs text-gray-500">{item.unit}</span>
+                        {isLow && <AlertTriangle size={14} className="text-amber-500" />}
+                      </div>
+                      {isLow && <p className="text-[10px] text-red-600 mt-0.5">Reorder at {item.reorderAt}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          const existing = state.siteInventory.find(si => si.siteId === site.id && si.itemId === item.id);
+                          if (existing) {
+                            dispatch({ type: 'UPDATE_SITE_INVENTORY', payload: { ...existing, quantity: existing.quantity + 1, lastRestocked: new Date().toISOString() } });
+                          } else {
+                            dispatch({ type: 'ADD_SITE_INVENTORY', payload: { id: generateId(), siteId: site.id, itemId: item.id, quantity: 1, lastRestocked: new Date().toISOString() } });
+                          }
+                          toast.success('Restocked +1');
+                        }}
+                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Restock +1"
+                      >
+                        <Plus size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const existing = state.siteInventory.find(si => si.siteId === site.id && si.itemId === item.id);
+                          if (existing && existing.quantity > 0) {
+                            dispatch({ type: 'UPDATE_SITE_INVENTORY', payload: { ...existing, quantity: Math.max(0, existing.quantity - 1) } });
+                            toast.success('Used 1');
+                          } else { toast.error('None in stock'); }
+                        }}
+                        className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Use 1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <AppShell pageTitle="Site Details">
       <div className="page-container flex flex-col gap-6">
@@ -266,6 +383,7 @@ export function SiteDetailPage() {
             { id: 'info', label: 'Information' },
             { id: 'shifts', label: 'Recent Shifts' },
             { id: 'checklist', label: 'Checklist' },
+            ...(isOwnerOrPartner ? [{ id: 'inventory', label: 'Inventory' }] : []),
             ...(isOwnerOrPartner ? [{ id: 'finances', label: 'Finances' }] : []),
           ].map(tab => (
             <button
@@ -286,6 +404,7 @@ export function SiteDetailPage() {
         <div className="pt-2">
           {activeTab === 'info' && renderInfoTab()}
           {activeTab === 'checklist' && renderChecklistTab()}
+          {activeTab === 'inventory' && isOwnerOrPartner && renderInventoryTab()}
           {activeTab === 'finances' && isOwnerOrPartner && renderFinancesTab()}
           {activeTab === 'shifts' && (
             <div className="space-y-3">
