@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Clock, ClipboardList, Building2,
-  CalendarDays, Briefcase, FileText, Users, Package,
+  CalendarDays, FileText, Users,
   ClipboardCheck, DollarSign,
   BarChart3, PhoneCall,
   type LucideIcon
@@ -33,10 +33,9 @@ export const allNavLinks: NavLinkDef[] = [
   { to: '/shifts', icon: ClipboardList, label: 'Shifts', section: 'main', mobileBar: true },
   { to: '/sites', icon: Building2, label: 'Sites', section: 'main', mobileBar: true },
   { to: '/schedule', icon: CalendarDays, label: 'Schedule', section: 'management', roles: ['owner', 'partner'], mobileBar: false },
-  { to: '/clients', icon: Briefcase, label: 'Clients', section: 'management', roles: ['owner', 'partner'] },
   { to: '/quotes', icon: FileText, label: 'Quotes', section: 'management', roles: ['owner', 'partner'] },
   { to: '/team', icon: Users, label: 'Team', section: 'management', roles: ['owner', 'partner'] },
-  { to: '/inventory', icon: Package, label: 'Inventory', section: 'management', roles: ['owner', 'partner'] },
+  // Clients & Inventory accessible from Sites detail page
   { to: '/quality', icon: ClipboardCheck, label: 'Quality & Safety', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/money', icon: DollarSign, label: 'Finance', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/analytics', icon: BarChart3, label: 'Analytics', section: 'operations', roles: ['owner', 'partner'] },
