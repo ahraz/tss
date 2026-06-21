@@ -166,8 +166,43 @@ export function MoneyBookPage() {
           {filteredPayments.length === 0 ? (
             <EmptyState icon={DollarSign} title="No payments found" description="Adjust your filters or add a new payment." />
           ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left">
+            <>
+              {/* Mobile View - Card List */}
+              <div className="md:hidden flex-1 overflow-y-auto divide-y divide-gray-100">
+                {filteredPayments.map(p => {
+                  const site = state.sites.find(s => s.id === p.siteId);
+                  return (
+                    <div key={p.id} className="p-4 space-y-2 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{site?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">{formatDate(p.date)}</p>
+                        </div>
+                        <p className="text-sm font-bold text-gray-900">{formatCAD(p.amount)}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge label={p.method} />
+                        <button onClick={() => handleTogglePaid(p)} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${p.isPaid ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
+                          {p.isPaid ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
+                          {p.isPaid ? 'Paid' : 'Unpaid'}
+                        </button>
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => openEditPayment(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                          <Edit3 size={15} />
+                        </button>
+                        <button onClick={() => setDeletePaymentId(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop View - Table */}
+              <div className="hidden md:block overflow-x-auto flex-1">
+                <table className="w-full text-left">
                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                   <tr>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Date</th>
@@ -206,6 +241,7 @@ export function MoneyBookPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
       </div>
@@ -235,8 +271,40 @@ export function MoneyBookPage() {
           {filteredExpenses.length === 0 ? (
             <EmptyState icon={Receipt} title="No expenses found" description="Adjust your filters or add a new expense." />
           ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left">
+            <>
+              {/* Mobile View - Card List */}
+              <div className="md:hidden flex-1 overflow-y-auto divide-y divide-gray-100">
+                {filteredExpenses.map(e => {
+                  const site = state.sites.find(s => s.id === e.siteId);
+                  return (
+                    <div key={e.id} className="p-4 space-y-2 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{e.description}</p>
+                          <p className="text-xs text-gray-500">{formatDate(e.date)}</p>
+                        </div>
+                        <p className="text-sm font-bold text-red-600">{formatCAD(e.amount)}</p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge label={e.category} variant="neutral" />
+                        {site && <span className="text-xs text-gray-500">{site.name}</span>}
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => openEditExpense(e)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                          <Edit3 size={15} />
+                        </button>
+                        <button onClick={() => setDeleteExpenseId(e.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop View - Table */}
+              <div className="hidden md:block overflow-x-auto flex-1">
+                <table className="w-full text-left">
                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                   <tr>
                     <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Date</th>
@@ -271,6 +339,7 @@ export function MoneyBookPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
       </div>
@@ -331,7 +400,35 @@ export function MoneyBookPage() {
 
         {/* Per-site breakdown */}
         <Card className="flex-1 p-0 overflow-hidden flex flex-col">
-          <div className="overflow-x-auto flex-1">
+          {/* Mobile View - Card List */}
+          <div className="md:hidden flex-1 overflow-y-auto divide-y divide-gray-100">
+            {siteProfits.map(({ site, revenue, expenses, labour, net }) => {
+              const margin = revenue > 0 ? ((net / revenue) * 100).toFixed(0) : '—';
+              return (
+                <div key={site.id} className="p-4 space-y-2 hover:bg-gray-50 transition-colors">
+                  <p className="text-sm font-semibold text-gray-900">{site.name}</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-gray-500">Revenue:</span> <span className="font-medium text-green-600">{formatCAD(revenue)}</span></div>
+                    <div><span className="text-gray-500">Labour:</span> <span className="font-medium text-amber-600">{formatCAD(labour)}</span></div>
+                    <div><span className="text-gray-500">Expenses:</span> <span className="font-medium text-red-500">{formatCAD(expenses)}</span></div>
+                    <div>
+                      <span className="text-gray-500">Net:</span>{' '}
+                      <span className={`font-bold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCAD(net)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Badge
+                      label={margin === '—' ? '—' : `${margin}% margin`}
+                      variant={margin === '—' ? 'neutral' : parseInt(margin) >= 20 ? 'success' : parseInt(margin) >= 0 ? 'warning' : 'danger'}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop View - Table */}
+          <div className="hidden md:block overflow-x-auto flex-1">
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                 <tr>
