@@ -159,7 +159,32 @@ export function AnalyticsPage() {
           <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h3 className="text-lg font-semibold text-gray-900">Site Performance</h3>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile View - Card List */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {siteProfits.map((s, idx) => (
+              <div key={s.site.id} className="p-4 space-y-2 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-2">
+                  {idx < 3 && s.net > 0 && <span title={`#${idx+1} Most Profitable`}>🏆</span>}
+                  {s.net < 0 && <AlertTriangle size={16} className="text-red-500" />}
+                  <p className="font-semibold text-gray-900">{s.site.name}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-gray-500">Revenue:</span> <span className="font-medium text-green-600">{formatCAD(s.revenue)}</span></div>
+                  <div><span className="text-gray-500">Labour:</span> <span className="font-medium text-amber-600">{formatCAD(s.labourCost)}</span></div>
+                  <div><span className="text-gray-500">Expenses:</span> <span className="font-medium text-red-500">{formatCAD(s.expenses)}</span></div>
+                  <div>
+                    <span className="text-gray-500">Net:</span>{' '}
+                    <span className={`font-bold ${s.net >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCAD(s.net)}</span>
+                  </div>
+                </div>
+                <Badge label={`${s.margin.toFixed(1)}% margin`} variant={s.margin >= 40 ? 'success' : s.margin >= 20 ? 'warning' : 'danger'} />
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View - Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
