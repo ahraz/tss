@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — Session persistence only (Firestore is source of truth)
+// GTA Scrub — Session persistence only (Firestore is source of truth)
 // ============================================================
 
 import type { Session } from '../types';

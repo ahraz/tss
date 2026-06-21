@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — IndexedDB Photo Store
+// GTA Scrub — IndexedDB Photo Store
 // ============================================================
 // Photos (clock-in/out, receipts) are stored as base64 data URLs
 // in IndexedDB instead of localStorage, so they don't blow the
@@ -7,7 +7,7 @@
 // photo ID reference in localStorage; the actual blob lives here.
 // ============================================================
 
-const DB_NAME = 'tss-photo-store';
+const DB_NAME = 'gta-scrub-photo-store';
 const DB_VERSION = 1;
 const STORE_NAME = 'photos';
 

@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — CSV Export Utility
+// GTA Scrub — CSV Export Utility
 // ============================================================
 
 export interface CSVColumn<T> {

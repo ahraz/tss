@@ -48,7 +48,7 @@ export function TopBar({ title }: TopBarProps) {
           <div className="w-6" />
         )}
         <h1 className="text-lg font-semibold text-gray-900 truncate">
-          {title || 'TSS Cleaners'}
+          {title || 'GTA Scrub'}
         </h1>
       </div>
       <div className="relative" ref={menuRef}>

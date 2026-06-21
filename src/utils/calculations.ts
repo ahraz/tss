@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — Business Calculations
+// GTA Scrub — Business Calculations
 // ============================================================
 
 import { isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, previousSunday, nextSaturday, isSunday } from 'date-fns';

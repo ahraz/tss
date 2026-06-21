@@ -1,4 +1,4 @@
-# TSS Cleaners — Data Model & Database Reference
+# GTA Scrub — Data Model & Database Reference
 
 Last updated: 2026-06-20
 

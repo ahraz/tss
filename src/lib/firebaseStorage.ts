@@ -1,5 +1,5 @@
 // ============================================================
-// TSS Cleaners — Photo helpers (Firestore-only, no Storage needed)
+// GTA Scrub — Photo helpers (Firestore-only, no Storage needed)
 // ============================================================
 
 import { doc, setDoc } from 'firebase/firestore';
