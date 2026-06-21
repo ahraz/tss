@@ -29,7 +29,7 @@ export function SitesPage() {
   const [formData, setFormData] = useState<Partial<Site>>({
     name: '', address: '', city: 'Brampton', province: 'ON', postalCode: '',
     type: 'clinic', contactName: '', contactPhone: '', contractRate: 0,
-    frequency: 'weekly', cleaningDays: [], assignedUserIds: [], accessNotes: '', status: 'active',
+    frequency: 'weekly', cleaningDays: [], assignedUserIds: [], accessNotes: '', status: 'active', clientId: null,
   });
 
   // Edit Site State
@@ -319,6 +319,18 @@ export function SitesPage() {
 
             <Textarea label="Access Notes" placeholder="Door codes, alarms, special instructions..." value={formData.accessNotes} onChange={e => setFormData({...formData, accessNotes: e.target.value})} />
 
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-2">Client</label>
+              <Select
+                options={[
+                  { value: '', label: '— No client —' },
+                  ...state.clients.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                value={formData.clientId || ''}
+                onChange={e => setFormData({...formData, clientId: e.target.value || null})}
+              />
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
               <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
               <Button onClick={handleAddSite} disabled={!formData.name || !formData.address}>Create Site</Button>
@@ -401,6 +413,18 @@ export function SitesPage() {
             </div>
 
             <Textarea label="Access Notes" placeholder="Door codes, alarms, special instructions..." value={editFormData.accessNotes || ''} onChange={e => setEditFormData({...editFormData, accessNotes: e.target.value})} />
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-2">Client</label>
+              <Select
+                options={[
+                  { value: '', label: '— No client —' },
+                  ...state.clients.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                value={editFormData.clientId || ''}
+                onChange={e => setEditFormData({...editFormData, clientId: e.target.value || null})}
+              />
+            </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
               <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>

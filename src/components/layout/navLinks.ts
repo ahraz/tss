@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Clock, ClipboardList, Building2,
-  CalendarDays, FileText, Users,
+  CalendarDays, FileText, Users, CheckSquare,
   ClipboardCheck, DollarSign,
   BarChart3, PhoneCall,
   type LucideIcon
@@ -39,9 +39,9 @@ export const allNavLinks: NavLinkDef[] = [
   { to: '/quality', icon: ClipboardCheck, label: 'Quality & Safety', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/money', icon: DollarSign, label: 'Finance', section: 'operations', roles: ['owner', 'partner'] },
   { to: '/analytics', icon: BarChart3, label: 'Analytics', section: 'operations', roles: ['owner', 'partner'] },
-  // Tasks accessed from Dashboard only
 
   { to: '/leads', icon: PhoneCall, label: 'Leads', section: 'sales', roles: ['owner'] },
+  { to: '/tasks', icon: CheckSquare, label: 'Tasks', section: 'main' },
 ];
 
 /** Filter links for a given user role */
