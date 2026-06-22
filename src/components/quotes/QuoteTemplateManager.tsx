@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Bookmark, Trash2, ChevronDown, Check } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Bookmark, Trash2, ChevronDown, Check, Lightbulb } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import type { QuoteTemplate, EstimatorParams } from '../../types';
@@ -12,80 +12,81 @@ interface TemplateManagerProps {
 }
 
 export function QuoteTemplateManager({ templates, onApply, onDelete }: TemplateManagerProps) {
-  const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const sortedTemplates = useMemo(() =>
     [...templates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   [templates]);
 
-  // Close menu on click outside
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) {
-      document.addEventListener('mousedown', handleClick);
-      return () => document.removeEventListener('mousedown', handleClick);
-    }
-  }, [open]);
-
   return (
-    <div ref={menuRef} className="relative">
-      <Button
-        size="sm"
-        variant="secondary"
-        icon={Bookmark}
-        onClick={() => setOpen(!open)}
-        className={open ? 'ring-2 ring-blue-400' : ''}
-      >
-        Templates
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Bookmark size={16} className="text-gray-400" />
+        <span className="text-sm font-semibold text-gray-700">Saved Templates</span>
         {templates.length > 0 && (
-          <span className="ml-1 text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{templates.length}</span>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{templates.length}</span>
         )}
-      </Button>
+      </div>
 
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-          {templates.length === 0 ? (
-            <div className="p-5 text-center">
-              <Bookmark size={24} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-sm text-gray-500">No saved templates</p>
-              <p className="text-xs text-gray-400 mt-1">Open the estimator and click <strong>Save as Template</strong></p>
-            </div>
-          ) : (
-            <div className="max-h-80 overflow-y-auto py-1">
-              {sortedTemplates.map(t => (
-                <div key={t.id} className="px-3 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{t.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{FACILITY_LABELS[t.facilityType]} · {t.params.squareFeet.toLocaleString()} sq ft · {t.params.rooms}r/{t.params.washrooms}w</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => { onApply(t.params); setOpen(false); }}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Apply template"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(t.id)}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete template"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+      {templates.length === 0 ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <Lightbulb size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">No templates saved yet</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Click <strong>Open Estimator</strong> above, configure your facility settings, then click <strong>Save as Template</strong> to create a reusable template.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-1.5 mb-6">
+          {sortedTemplates.map(t => (
+            <div key={t.id} className="border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Bookmark size={15} className="text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{t.name}</p>
+                    <p className="text-xs text-gray-400">{FACILITY_LABELS[t.facilityType]} · {t.params.squareFeet.toLocaleString()} sq ft</p>
                   </div>
                 </div>
-              ))}
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedId === t.id ? 'rotate-180' : ''}`} />
+              </button>
+              {expandedId === t.id && (
+                <div className="px-3 pb-3 pt-0 border-t border-gray-100">
+                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 my-2">
+                    <div>{t.params.rooms} rooms</div>
+                    <div>{t.params.washrooms} washrooms</div>
+                    <div>{t.params.receptionAreas} reception</div>
+                    <div>{t.params.frequency}</div>
+                    <div>{t.params.visitsPerWeek}x/week</div>
+                    <div>{t.params.selectedAddons.length} add-ons</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      icon={Check}
+                      onClick={() => onApply(t.params)}
+                    >
+                      Apply
+                    </Button>
+                    <button
+                      onClick={() => setDeleteId(t.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          ))}
         </div>
       )}
 
