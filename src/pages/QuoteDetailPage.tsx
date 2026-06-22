@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, DollarSign, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download } from 'lucide-react';
+import { ArrowLeft, FileText, DollarSign, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
@@ -13,6 +13,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { CleaningEstimator } from '../components/quotes/CleaningEstimator';
 import toast from 'react-hot-toast';
 import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
@@ -35,6 +36,7 @@ export function QuoteDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddLineItem, setShowAddLineItem] = useState(false);
   const [showEditLineItem, setShowEditLineItem] = useState<string | null>(null);
+  const [showEstimator, setShowEstimator] = useState(false);
 
   const quote = state.quotes.find(q => q.id === id);
   if (!currentUser) return null;
@@ -102,6 +104,20 @@ export function QuoteDetailPage() {
       type: 'UPDATE_QUOTE',
       payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
     });
+  };
+
+  const handleEstimatorApply = (items: QuoteLineItem[], notes: string) => {
+    const lineItems = [...quote.lineItems, ...items];
+    const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    const updatedNotes = quote.notes
+      ? `${quote.notes}\n\n---\n${notes}`
+      : notes;
+    dispatch({
+      type: 'UPDATE_QUOTE',
+      payload: { ...quote, lineItems, totalMonthly, notes: updatedNotes, updatedAt: new Date().toISOString() },
+    });
+    setShowEstimator(false);
+    toast.success(`Added ${items.length} line items from estimator`);
   };
 
   const handlePrint = () => {
@@ -254,10 +270,11 @@ export function QuoteDetailPage() {
             </tfoot>
           </table>
 
-          {/* Add Line Item */}
+          {/* Add Line Item & Estimator */}
           {isOwnerOrPartner && (
-            <div className="no-print mb-6">
+            <div className="no-print mb-6 flex gap-3">
               <Button size="sm" icon={Plus} variant="secondary" onClick={() => setShowAddLineItem(true)}>Add Line Item</Button>
+              <Button size="sm" icon={Calculator} variant="secondary" onClick={() => setShowEstimator(true)}>Open Estimator</Button>
             </div>
           )}
 
@@ -312,6 +329,13 @@ export function QuoteDetailPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Cleaning Estimator */}
+      <CleaningEstimator
+        isOpen={showEstimator}
+        onClose={() => setShowEstimator(false)}
+        onApply={handleEstimatorApply}
+      />
     </AppShell>
   );
 }
