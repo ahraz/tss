@@ -400,17 +400,11 @@ export function QuoteDetailPage() {
             </tfoot>
           </table>
 
-          {/* Add Line Item + Estimator */}
+          {/* Action Buttons */}
           {isOwnerOrPartner && (
-            <div className="no-print mb-4 flex gap-2">
+            <div className="no-print mb-6 flex flex-wrap items-center gap-2">
               <Button size="sm" icon={Plus} variant="secondary" onClick={() => setShowAddLineItem(true)}>Add Line Item</Button>
               <Button size="sm" icon={Calculator} variant="secondary" onClick={() => setShowEstimator(true)}>Open Estimator</Button>
-            </div>
-          )}
-
-          {/* Template Manager */}
-          {isOwnerOrPartner && (
-            <div className="no-print mb-6">
               <QuoteTemplateManager
                 templates={state.quoteTemplates}
                 onApply={handleTemplateApply}
