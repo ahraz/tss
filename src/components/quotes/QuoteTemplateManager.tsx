@@ -20,63 +20,69 @@ export function QuoteTemplateManager({ templates, onApply, onDelete }: TemplateM
     [...templates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   [templates]);
 
-  if (templates.length === 0) return null;
-
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Bookmark size={16} className="text-gray-400" />
         <span className="text-sm font-semibold text-gray-700">Saved Templates</span>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{templates.length}</span>
+        {templates.length > 0 && (
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{templates.length}</span>
+        )}
       </div>
-      <div className="space-y-1.5">
-        {sortedTemplates.map(t => (
-          <div key={t.id} className="border border-gray-200 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Bookmark size={15} className="text-blue-600" />
+      {templates.length === 0 ? (
+        <div className="text-xs text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-4 text-center">
+          No saved templates yet. Open the estimator and use <strong>Save as Template</strong> to create one.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {sortedTemplates.map(t => (
+            <div key={t.id} className="border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Bookmark size={15} className="text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{t.name}</p>
+                    <p className="text-xs text-gray-400">{FACILITY_LABELS[t.facilityType]} · {t.params.squareFeet.toLocaleString()} sq ft</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{t.name}</p>
-                  <p className="text-xs text-gray-400">{FACILITY_LABELS[t.facilityType]} · {t.params.squareFeet.toLocaleString()} sq ft</p>
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedId === t.id ? 'rotate-180' : ''}`} />
+              </button>
+              {expandedId === t.id && (
+                <div className="px-3 pb-3 pt-0 border-t border-gray-100">
+                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 my-2">
+                    <div>{t.params.rooms} rooms</div>
+                    <div>{t.params.washrooms} washrooms</div>
+                    <div>{t.params.receptionAreas} reception</div>
+                    <div>{t.params.frequency}</div>
+                    <div>{t.params.visitsPerWeek}x/week</div>
+                    <div>{t.params.selectedAddons.length} add-ons</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      icon={Check}
+                      onClick={() => onApply(t.params)}
+                    >
+                      Apply
+                    </Button>
+                    <button
+                      onClick={() => setDeleteId(t.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedId === t.id ? 'rotate-180' : ''}`} />
-            </button>
-            {expandedId === t.id && (
-              <div className="px-3 pb-3 pt-0 border-t border-gray-100">
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 my-2">
-                  <div>{t.params.rooms} rooms</div>
-                  <div>{t.params.washrooms} washrooms</div>
-                  <div>{t.params.receptionAreas} reception</div>
-                  <div>{t.params.frequency}</div>
-                  <div>{t.params.visitsPerWeek}x/week</div>
-                  <div>{t.params.selectedAddons.length} add-ons</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    icon={Check}
-                    onClick={() => onApply(t.params)}
-                  >
-                    Apply
-                  </Button>
-                  <button
-                    onClick={() => setDeleteId(t.id)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={!!deleteId}
