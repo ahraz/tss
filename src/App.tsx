@@ -14,6 +14,7 @@ import { SitesPage } from './pages/SitesPage';
 import { SiteDetailPage } from './pages/SiteDetailPage';
 import { QuotesPage } from './pages/QuotesPage';
 import { QuoteDetailPage } from './pages/QuoteDetailPage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { MoneyBookPage } from './pages/MoneyBookPage';
 import { TasksPage } from './pages/TasksPage';
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/inventory" element={<Navigate to="/sites" replace />} />
         
         <Route path="/quotes" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuotesPage /></ProtectedRoute>} />
+        <Route path="/quotes/templates" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TemplatesPage /></ProtectedRoute>} />
         <Route path="/quotes/:id" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuoteDetailPage /></ProtectedRoute>} />
         
         <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />

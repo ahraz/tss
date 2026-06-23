@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2 } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
@@ -13,13 +13,11 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CleaningEstimator } from '../components/quotes/CleaningEstimator';
-import { QuoteTemplateManager } from '../components/quotes/QuoteTemplateManager';
 import toast from 'react-hot-toast';
 import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, EstimatorParams, QuoteTemplate } from '../types';
-import { FACILITY_LABELS } from '../types';
+import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',
@@ -115,81 +113,6 @@ export function QuoteDetailPage() {
       payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
     });
     toast.success(`Added ${items.length} items from estimator`);
-  };
-
-  const handleTemplateSave = (params: EstimatorParams, name: string) => {
-    const now = new Date().toISOString();
-    const template: QuoteTemplate = {
-      id: generateId(),
-      name,
-      description: `${FACILITY_LABELS[params.facilityType]} — ${params.squareFeet.toLocaleString()} sq ft`,
-      facilityType: params.facilityType,
-      params,
-      createdAt: now,
-    };
-    dispatch({ type: 'ADD_QUOTE_TEMPLATE', payload: template });
-    toast.success('Template saved');
-  };
-
-  const handleTemplateApply = (params: EstimatorParams) => {
-    setShowEstimator(false);
-    // Calculate and add items from template params
-    const monthlyMultiplier = params.frequency === 'daily' ? 22
-      : params.frequency === 'weekly' ? 4.33
-      : params.frequency === 'biweekly' ? 2.17
-      : 1;
-    const items: QuoteLineItem[] = [];
-    const baseId = generateId();
-
-    if (params.squareFeet > 0) {
-      const ratePerVisit = Math.round(params.squareFeet * 0.017 * 100) / 100;
-      items.push({
-        id: `${baseId}-base`,
-        description: `Base Cleaning — ${params.squareFeet.toLocaleString()} sq ft`,
-        siteId: null,
-        frequency: params.frequency,
-        amountPerVisit: ratePerVisit,
-        visitsPerWeek: params.visitsPerWeek,
-        monthlyAmount: Math.round(ratePerVisit * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
-      });
-    }
-    if (params.rooms > 0) {
-      const rpv = Math.round(params.rooms * 2.80 * 100) / 100;
-      items.push({
-        id: `${baseId}-rooms`, description: `Room Cleaning (${params.rooms} rooms)`, siteId: null,
-        frequency: params.frequency, amountPerVisit: rpv, visitsPerWeek: params.visitsPerWeek,
-        monthlyAmount: Math.round(rpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
-      });
-    }
-    if (params.washrooms > 0) {
-      const wpv = Math.round(params.washrooms * 2.23 * 100) / 100;
-      items.push({
-        id: `${baseId}-washrooms`, description: `Washroom Cleaning (${params.washrooms} washrooms)`, siteId: null,
-        frequency: params.frequency, amountPerVisit: wpv, visitsPerWeek: params.visitsPerWeek,
-        monthlyAmount: Math.round(wpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
-      });
-    }
-    if (params.receptionAreas > 0) {
-      const rpv = Math.round(params.receptionAreas * 2.46 * 100) / 100;
-      items.push({
-        id: `${baseId}-reception`, description: `Reception Area (${params.receptionAreas} area${params.receptionAreas > 1 ? 's' : ''})`, siteId: null,
-        frequency: params.frequency, amountPerVisit: rpv, visitsPerWeek: params.visitsPerWeek,
-        monthlyAmount: Math.round(rpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
-      });
-    }
-
-    const lineItems = [...quote.lineItems, ...items];
-    const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
-    dispatch({
-      type: 'UPDATE_QUOTE',
-      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
-    });
-    toast.success(`Applied template — added ${items.length} items`);
-  };
-
-  const handleTemplateDelete = (templateId: string) => {
-    dispatch({ type: 'DELETE_QUOTE_TEMPLATE', payload: templateId });
-    toast.success('Template deleted');
   };
 
   const handleConvertToClient = () => {
@@ -405,17 +328,9 @@ export function QuoteDetailPage() {
             <div className="no-print mb-4 flex flex-wrap items-center gap-2">
               <Button size="sm" icon={Plus} variant="secondary" onClick={() => setShowAddLineItem(true)}>Add Line Item</Button>
               <Button size="sm" icon={Calculator} variant="secondary" onClick={() => setShowEstimator(true)}>Open Estimator</Button>
-            </div>
-          )}
-
-          {/* Template Manager Section */}
-          {isOwnerOrPartner && (
-            <div className="no-print mb-6">
-              <QuoteTemplateManager
-                templates={state.quoteTemplates}
-                onApply={handleTemplateApply}
-                onDelete={handleTemplateDelete}
-              />
+              <Button size="sm" icon={Bookmark} variant="secondary" onClick={() => navigate('/quotes/templates')}>
+                Templates
+              </Button>
             </div>
           )}
 
@@ -486,7 +401,7 @@ export function QuoteDetailPage() {
         isOpen={showEstimator}
         onClose={() => setShowEstimator(false)}
         onGenerate={handleEstimatorGenerated}
-        onSaveTemplate={handleTemplateSave}
+        templates={state.quoteTemplates}
       />
 
       {/* Convert to Client Confirm */}
