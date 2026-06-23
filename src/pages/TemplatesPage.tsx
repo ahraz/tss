@@ -9,8 +9,8 @@ import { Select } from '../components/ui/Select';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { generateId } from '../utils/storage';
 import toast from 'react-hot-toast';
-import type { FacilityType, QuoteTemplate, TemplatePricing, TemplateAddon } from '../types';
-import { FACILITY_LABELS } from '../types';
+import type { FacilityType, QuoteTemplate, TemplateLineItem, TemplateAddon } from '../types';
+import { FACILITY_LABELS, createTemplateForFacility } from '../types';
 import { formatCAD } from '../utils/formatters';
 
 const FACILITY_OPTIONS = (Object.keys(FACILITY_LABELS) as FacilityType[]).map(ft => ({
@@ -18,104 +18,114 @@ const FACILITY_OPTIONS = (Object.keys(FACILITY_LABELS) as FacilityType[]).map(ft
   label: FACILITY_LABELS[ft],
 }));
 
-const INITIAL_PRICING: TemplatePricing = {
-  baseRatePerSqft: 0.40,
-  roomRate: 40,
-  washroomRate: 50,
-  receptionRate: 55,
-  frequencyMultipliers: { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 },
-};
+let lineIdCounter = 0;
+function newLineId(): string {
+  lineIdCounter++;
+  return `li-${lineIdCounter}-${Date.now()}`;
+}
 
 export function TemplatesPage() {
   const navigate = useNavigate();
   const { state, dispatch } = useApp();
   const templates = state.quoteTemplates;
 
-  // ── Form state ──────────────────────────────────────────────
+  // Core fields
   const [name, setName] = useState('');
   const [facilityType, setFacilityType] = useState<FacilityType>('medical_clinic');
-
-  // Defaults
+  const [baseRate, setBaseRate] = useState(0.40);
   const [defaultSqft, setDefaultSqft] = useState(1500);
-  const [defaultRooms, setDefaultRooms] = useState(7);
-  const [defaultWashrooms, setDefaultWashrooms] = useState(2);
-  const [defaultReception, setDefaultReception] = useState(1);
   const [defaultDays, setDefaultDays] = useState(6);
+  const [freqMults, setFreqMults] = useState<Record<number, number>>(
+    { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 }
+  );
 
-  // Pricing
-  const [baseRate, setBaseRate] = useState(INITIAL_PRICING.baseRatePerSqft);
-  const [roomRate, setRoomRate] = useState(INITIAL_PRICING.roomRate);
-  const [washroomRate, setWashroomRate] = useState(INITIAL_PRICING.washroomRate);
-  const [receptionRate, setReceptionRate] = useState(INITIAL_PRICING.receptionRate);
-
-  // Frequency multipliers (visits 1-7)
-  const [freqMults, setFreqMults] = useState<Record<number, number>>(INITIAL_PRICING.frequencyMultipliers);
+  // Dynamic line items
+  const [lineItems, setLineItems] = useState<TemplateLineItem[]>([]);
 
   // Add-ons
-  const [addons, setAddons] = useState<TemplateAddon[]>([
-    { id: 'breakroom', label: 'Breakroom / Kitchen', price: 40 },
-    { id: 'windows', label: 'Monthly Window Clean', price: 80 },
-    { id: 'deepclean', label: 'Monthly Deep Clean', price: 120 },
-  ]);
-
-  // Include toggles
-  const [includeBase, setIncludeBase] = useState(true);
-  const [includeRooms, setIncludeRooms] = useState(true);
-  const [includeWashrooms, setIncludeWashrooms] = useState(true);
-  const [includeReception, setIncludeReception] = useState(true);
-  const [roomLabel, setRoomLabel] = useState('Patient / Treatment Rooms');
-
-  // New add-on form
+  const [addons, setAddons] = useState<TemplateAddon[]>([]);
   const [newAddonLabel, setNewAddonLabel] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState(0);
 
+  // New line item form
+  const [newLiLabel, setNewLiLabel] = useState('');
+  const [newLiRate, setNewLiRate] = useState(0);
+  const [newLiQty, setNewLiQty] = useState(0);
+
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Autofill defaults when facility type changes (only for new templates)
+  const handleFacilityChange = (ft: FacilityType) => {
+    setFacilityType(ft);
+    if (!editingId) {
+      const defaults = createTemplateForFacility(ft);
+      setBaseRate(defaults.baseRatePerSqft);
+      setDefaultSqft(defaults.defaultSqft);
+      setDefaultDays(defaults.defaultDays);
+      setLineItems(defaults.lineItems!.map(li => ({ ...li, id: newLineId() })));
+      setAddons(defaults.addons!.map(a => ({ ...a, id: generateId() })));
+    }
+  };
 
   const sortedTemplates = useMemo(() =>
     [...templates].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   [templates]);
 
-  // ── Compute a live preview ─────────────────────────────────
+  // ── Live preview ───────────────────────────────────────────
   const previewMonthly = useMemo(() => {
     const fm = freqMults[defaultDays] ?? 1.0;
     let total = 0;
     const items: { label: string; amount: number }[] = [];
-    if (includeBase) {
-      const amt = defaultSqft * baseRate * fm;
+
+    const baseAmt = defaultSqft * baseRate * fm;
+    total += baseAmt;
+    items.push({ label: `Base (${defaultSqft} sq ft)`, amount: baseAmt });
+
+    for (const li of lineItems) {
+      if (!li.included || li.defaultQty <= 0) continue;
+      const amt = li.defaultQty * li.ratePerUnit * fm;
       total += amt;
-      items.push({ label: `Base (${defaultSqft} sq ft × $${baseRate.toFixed(2)})`, amount: amt });
+      items.push({ label: `${li.label} (${li.defaultQty} × $${li.ratePerUnit.toFixed(2)})`, amount: amt });
     }
-    if (includeRooms && defaultRooms > 0) {
-      const amt = defaultRooms * roomRate * fm;
-      total += amt;
-      items.push({ label: `${roomLabel} (${defaultRooms} × $${roomRate.toFixed(2)})`, amount: amt });
-    }
-    if (includeWashrooms && defaultWashrooms > 0) {
-      const amt = defaultWashrooms * washroomRate * fm;
-      total += amt;
-      items.push({ label: `Washrooms (${defaultWashrooms} × $${washroomRate.toFixed(2)})`, amount: amt });
-    }
-    if (includeReception && defaultReception > 0) {
-      const amt = defaultReception * receptionRate * fm;
-      total += amt;
-      items.push({ label: `Reception (${defaultReception} × $${receptionRate.toFixed(2)})`, amount: amt });
-    }
+
     const addonTotal = addons.reduce((s, a) => s + a.price, 0);
     if (addonTotal > 0) {
       items.push({ label: `Add-ons (${addons.length})`, amount: addonTotal });
     }
-    total = Math.ceil((total + addonTotal) / 5) * 5;
-    return { items, total, visits: defaultDays * 4.33, perVisit: total / (defaultDays * 4.33) };
-  }, [defaultSqft, defaultRooms, defaultWashrooms, defaultReception, defaultDays, baseRate, roomRate, washroomRate, receptionRate, freqMults, includeBase, includeRooms, includeWashrooms, includeReception, roomLabel, addons]);
+    const grandTotal = Math.ceil((total + addonTotal) / 5) * 5;
+    return { items, total, addonTotal, grandTotal, visits: defaultDays * 4.33, perVisit: grandTotal / (defaultDays * 4.33) };
+  }, [defaultSqft, defaultDays, baseRate, freqMults, lineItems, addons]);
 
-  // ── Add / remove add-ons ───────────────────────────────────
+  // ── Line item management ───────────────────────────────────
+  const handleAddLineItem = () => {
+    if (!newLiLabel.trim()) { toast.error('Enter a label'); return; }
+    if (newLiRate <= 0) { toast.error('Rate must be greater than 0'); return; }
+    setLineItems(prev => [...prev, {
+      id: newLineId(), label: newLiLabel.trim(),
+      ratePerUnit: newLiRate, defaultQty: Math.max(1, newLiQty), included: true,
+    }]);
+    setNewLiLabel(''); setNewLiRate(0); setNewLiQty(0);
+  };
+
+  const handleRemoveLineItem = (id: string) => {
+    setLineItems(prev => prev.filter(li => li.id !== id));
+  };
+
+  const handleToggleLineItem = (id: string) => {
+    setLineItems(prev => prev.map(li => li.id === id ? { ...li, included: !li.included } : li));
+  };
+
+  const handleUpdateLineItem = (id: string, updates: Partial<TemplateLineItem>) => {
+    setLineItems(prev => prev.map(li => li.id === id ? { ...li, ...updates } : li));
+  };
+
+  // ── Add-on management ──────────────────────────────────────
   const handleAddAddon = () => {
     if (!newAddonLabel.trim()) { toast.error('Enter a label'); return; }
     if (newAddonPrice <= 0) { toast.error('Enter a price greater than 0'); return; }
     setAddons(prev => [...prev, { id: generateId(), label: newAddonLabel.trim(), price: newAddonPrice }]);
-    setNewAddonLabel('');
-    setNewAddonPrice(0);
+    setNewAddonLabel(''); setNewAddonPrice(0);
   };
 
   const handleRemoveAddon = (id: string) => {
@@ -125,35 +135,20 @@ export function TemplatesPage() {
   // ── Save ───────────────────────────────────────────────────
   const handleSave = () => {
     if (!name.trim()) { toast.error('Enter a template name'); return; }
-
     const template: QuoteTemplate = {
       id: editingId || generateId(),
       name: name.trim(),
-      description: `${name.trim()} — ${defaultSqft.toLocaleString()} sq ft, ${defaultDays}×/week`,
+      description: `${name.trim()} — ${defaultSqft.toLocaleString()} sq ft`,
       facilityType,
+      baseRatePerSqft: baseRate,
       defaultSqft,
-      defaultRooms,
-      defaultWashrooms,
-      defaultReception,
       defaultDays,
-      pricing: {
-        baseRatePerSqft: baseRate,
-        roomRate,
-        washroomRate,
-        receptionRate,
-        frequencyMultipliers: { ...freqMults },
-      },
-      addons: [...addons],
-      includeBase,
-      includeRooms,
-      includeWashrooms,
-      includeReception,
-      roomLabel: roomLabel.trim() || 'Rooms',
+      frequencyMultipliers: { ...freqMults },
+      lineItems: lineItems.map(li => ({ ...li })),
+      addons: addons.map(a => ({ ...a })),
       createdAt: new Date().toISOString(),
     };
-
     if (editingId) {
-      // Replace existing
       dispatch({ type: 'DELETE_QUOTE_TEMPLATE', payload: editingId });
       dispatch({ type: 'ADD_QUOTE_TEMPLATE', payload: template });
       toast.success('Template updated');
@@ -161,7 +156,6 @@ export function TemplatesPage() {
       dispatch({ type: 'ADD_QUOTE_TEMPLATE', payload: template });
       toast.success('Template saved');
     }
-
     resetForm();
   };
 
@@ -172,7 +166,11 @@ export function TemplatesPage() {
   };
 
   const handleDuplicate = (t: QuoteTemplate) => {
-    const copy: QuoteTemplate = { ...t, id: generateId(), name: `${t.name} (copy)`, createdAt: new Date().toISOString() };
+    const copy: QuoteTemplate = {
+      ...t, id: generateId(), name: `${t.name} (copy)`,
+      lineItems: t.lineItems.map(li => ({ ...li, id: newLineId() })),
+      createdAt: new Date().toISOString(),
+    };
     dispatch({ type: 'ADD_QUOTE_TEMPLATE', payload: copy });
     toast.success('Template duplicated');
   };
@@ -181,51 +179,26 @@ export function TemplatesPage() {
     setEditingId(t.id);
     setName(t.name);
     setFacilityType(t.facilityType);
+    setBaseRate(t.baseRatePerSqft);
     setDefaultSqft(t.defaultSqft);
-    setDefaultRooms(t.defaultRooms);
-    setDefaultWashrooms(t.defaultWashrooms);
-    setDefaultReception(t.defaultReception);
     setDefaultDays(t.defaultDays);
-    setBaseRate(t.pricing.baseRatePerSqft);
-    setRoomRate(t.pricing.roomRate);
-    setWashroomRate(t.pricing.washroomRate);
-    setReceptionRate(t.pricing.receptionRate);
-    setFreqMults({ ...t.pricing.frequencyMultipliers });
-    setAddons(t.addons.map(a => ({ ...a })));
-    setIncludeBase(t.includeBase);
-    setIncludeRooms(t.includeRooms);
-    setIncludeWashrooms(t.includeWashrooms);
-    setIncludeReception(t.includeReception);
-    setRoomLabel(t.roomLabel);
+    setFreqMults({ ...t.frequencyMultipliers });
+    setLineItems(t.lineItems.map(li => ({ ...li, id: newLineId() })));
+    setAddons(t.addons.map(a => ({ ...a, id: generateId() })));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
     setEditingId(null);
-    setName('');
-    setFacilityType('medical_clinic');
-    setDefaultSqft(1500);
-    setDefaultRooms(7);
-    setDefaultWashrooms(2);
-    setDefaultReception(1);
-    setDefaultDays(6);
-    setBaseRate(INITIAL_PRICING.baseRatePerSqft);
-    setRoomRate(INITIAL_PRICING.roomRate);
-    setWashroomRate(INITIAL_PRICING.washroomRate);
-    setReceptionRate(INITIAL_PRICING.receptionRate);
-    setFreqMults(INITIAL_PRICING.frequencyMultipliers);
-    setAddons([{ id: 'breakroom', label: 'Breakroom / Kitchen', price: 40 }, { id: 'windows', label: 'Monthly Window Clean', price: 80 }, { id: 'deepclean', label: 'Monthly Deep Clean', price: 120 }]);
-    setIncludeBase(true);
-    setIncludeRooms(true);
-    setIncludeWashrooms(true);
-    setIncludeReception(true);
-    setRoomLabel('Patient / Treatment Rooms');
+    setName(''); setFacilityType('medical_clinic');
+    setBaseRate(0.40); setDefaultSqft(1500); setDefaultDays(6);
+    setFreqMults({ 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 });
+    setLineItems([]); setAddons([]);
   };
 
   return (
     <AppShell pageTitle="Templates">
       <div className="page-container flex flex-col gap-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <button onClick={() => navigate('/quotes')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
             <ArrowLeft size={16} /> Back to Quotes
@@ -235,95 +208,115 @@ export function TemplatesPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* ── LEFT: Form ─────────────────────────────────── */}
+          {/* ── LEFT ──────────────────────────────────────── */}
           <div className="lg:col-span-3 space-y-5">
-            {/* Identity */}
+            {/* Identity + Base */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {editingId ? 'Edit Template' : 'Create New Template'}
               </h2>
               <div className="space-y-4">
                 <Input label="Template Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Medical Clinic" />
-                <Select label="Facility Type" options={FACILITY_OPTIONS} value={facilityType} onChange={e => setFacilityType(e.target.value as FacilityType)} />
-              </div>
-            </div>
-
-            {/* Default Values */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Default Values</h3>
-              <div className="space-y-4">
-                <Input label="Square Footage" type="number" value={defaultSqft.toString()} onChange={e => setDefaultSqft(Math.max(0, parseInt(e.target.value) || 0))} placeholder="1500" />
+                <Select label="Business Type" options={FACILITY_OPTIONS} value={facilityType} onChange={e => handleFacilityChange(e.target.value as FacilityType)} />
                 <div className="grid grid-cols-3 gap-4">
-                  {([
-                    { key: 'rooms' as const, label: 'Rooms', val: defaultRooms, set: setDefaultRooms },
-                    { key: 'washrooms' as const, label: 'Washrooms', val: defaultWashrooms, set: setDefaultWashrooms },
-                    { key: 'reception' as const, label: 'Reception Areas', val: defaultReception, set: setDefaultReception },
-                  ]).map(({ key, label, val, set }) => (
-                    <div key={key}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-                      <div className="flex items-center gap-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <button onClick={() => set(Math.max(0, val - 1))} className="w-9 h-9 flex items-center justify-center text-blue-600 text-xl font-light hover:bg-gray-200">−</button>
-                        <span className="flex-1 text-center font-semibold text-gray-900 text-sm">{val}</span>
-                        <button onClick={() => set(val + 1)} className="w-9 h-9 flex items-center justify-center text-blue-600 text-xl font-light hover:bg-gray-200">+</button>
-                      </div>
+                  <Input label="Base Rate ($/sq ft)" type="number" step="0.01" value={baseRate.toString()} onChange={e => setBaseRate(parseFloat(e.target.value) || 0)} />
+                  <Input label="Default Sq Ft" type="number" value={defaultSqft.toString()} onChange={e => setDefaultSqft(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Default Days/Wk</label>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4, 5, 6, 7].map(v => (
+                        <button key={v} onClick={() => setDefaultDays(v)}
+                          className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${defaultDays === v ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{v}</button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Default Visits per Week</label>
-                  <div className="flex gap-1.5">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Frequency Multipliers</label>
+                  <p className="text-xs text-gray-400 mb-2">6×/week = 1.0× baseline</p>
+                  <div className="grid grid-cols-7 gap-2">
                     {[1, 2, 3, 4, 5, 6, 7].map(v => (
-                      <button key={v} onClick={() => setDefaultDays(v)}
-                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${defaultDays === v ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{v}</button>
+                      <div key={v} className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-gray-500">{v}×</span>
+                        <input type="number" step="0.01" value={freqMults[v] ?? 0}
+                          onChange={e => setFreqMults(prev => ({ ...prev, [v]: parseFloat(e.target.value) || 0 }))}
+                          className="w-full text-center border border-gray-300 rounded-lg px-1 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                      </div>
                     ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Pricing */}
+            {/* Dynamic Line Items */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Pricing Model</h3>
-              <p className="text-xs text-gray-400 mb-4">Monthly = rate × quantity × frequency multiplier. Tune every rate and multiplier.</p>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Base Rate ($/sq ft)" type="number" step="0.01" value={baseRate.toString()} onChange={e => setBaseRate(parseFloat(e.target.value) || 0)} />
-                <Input label="Room Rate ($/room)" type="number" step="0.01" value={roomRate.toString()} onChange={e => setRoomRate(parseFloat(e.target.value) || 0)} />
-                <Input label="Washroom Rate ($/washroom)" type="number" step="0.01" value={washroomRate.toString()} onChange={e => setWashroomRate(parseFloat(e.target.value) || 0)} />
-                <Input label="Reception Rate ($/area)" type="number" step="0.01" value={receptionRate.toString()} onChange={e => setReceptionRate(parseFloat(e.target.value) || 0)} />
-              </div>
-              <div className="mt-4">
-                <label className="text-sm font-medium text-gray-700 block mb-2">Frequency Multipliers (per visits/week)</label>
-                <p className="text-xs text-gray-400 mb-2">Adjusts monthly price based on cleaning frequency. 6×/week = 1.0× baseline.</p>
-                <div className="grid grid-cols-7 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7].map(v => (
-                    <div key={v} className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-gray-500">{v}×</span>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">Line Items</h3>
+              <p className="text-xs text-gray-400 mb-4">
+                These are the things you charge for based on your business type.
+                A clinic has <em>Patient Rooms</em>, a law firm has <em>Offices</em> — define yours here.
+              </p>
+
+              {lineItems.length === 0 && (
+                <p className="text-sm text-gray-400 italic mb-4">No line items yet. Select a business type above or add one below.</p>
+              )}
+
+              <div className="space-y-2 mb-4">
+                {lineItems.map(li => (
+                  <div key={li.id} className={`rounded-xl border-2 px-3 py-2.5 transition-colors ${li.included ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => handleToggleLineItem(li.id)}
+                        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${li.included ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${li.included ? 'translate-x-5' : ''}`} />
+                      </button>
                       <input
-                        type="number"
-                        step="0.01"
-                        value={freqMults[v] ?? 0}
-                        onChange={e => setFreqMults(prev => ({ ...prev, [v]: parseFloat(e.target.value) || 0 }))}
-                        className="w-full text-center border border-gray-300 rounded-lg px-1 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        value={li.label}
+                        onChange={e => handleUpdateLineItem(li.id, { label: e.target.value })}
+                        className="flex-1 text-sm font-medium text-gray-800 bg-transparent border-none outline-none focus:text-blue-700"
                       />
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400">$</span>
+                        <input type="number" step="0.01" value={li.ratePerUnit}
+                          onChange={e => handleUpdateLineItem(li.id, { ratePerUnit: parseFloat(e.target.value) || 0 })}
+                          className="w-16 text-right border border-gray-200 rounded-md px-1.5 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        <span className="text-gray-400">×</span>
+                        <input type="number" value={li.defaultQty}
+                          onChange={e => handleUpdateLineItem(li.id, { defaultQty: Math.max(0, parseInt(e.target.value) || 0) })}
+                          className="w-12 text-center border border-gray-200 rounded-md px-1.5 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        <button onClick={() => handleRemoveLineItem(li.id)} className="text-red-300 hover:text-red-500 p-1">
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add line item form */}
+              <div className="flex items-end gap-3 pt-2 border-t border-gray-100">
+                <div className="flex-1">
+                  <Input label="Item Name" value={newLiLabel} onChange={e => setNewLiLabel(e.target.value)} placeholder="e.g. Patient Rooms" />
                 </div>
+                <div className="w-20">
+                  <Input label="$/unit" type="number" value={newLiRate || ''} onChange={e => setNewLiRate(parseFloat(e.target.value) || 0)} placeholder="40" />
+                </div>
+                <div className="w-16">
+                  <Input label="Qty" type="number" value={newLiQty || ''} onChange={e => setNewLiQty(parseInt(e.target.value) || 0)} placeholder="7" />
+                </div>
+                <Button size="sm" icon={Plus} onClick={handleAddLineItem}>Add</Button>
               </div>
             </div>
 
             {/* Add-ons */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Add-On Services</h3>
-              <p className="text-xs text-gray-400 mb-3">These appear as toggle switches in the estimator. Monthly flat-price add-ons.</p>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">Add-On Services</h3>
+              <p className="text-xs text-gray-400 mb-3">Flat-rate monthly add-ons that can be toggled in the estimator.</p>
               <div className="space-y-2 mb-4">
-                {addons.length === 0 && <p className="text-sm text-gray-400 italic">No add-ons yet. Add one below.</p>}
+                {addons.length === 0 && <p className="text-sm text-gray-400 italic">No add-ons yet.</p>}
                 {addons.map(addon => (
                   <div key={addon.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
                     <span className="flex-1 text-sm font-medium text-gray-800">{addon.label}</span>
                     <span className="text-sm font-semibold text-gray-700">{formatCAD(addon.price)}<span className="text-xs text-gray-400 font-normal">/mo</span></span>
-                    <button onClick={() => handleRemoveAddon(addon.id)} className="text-red-400 hover:text-red-600 p-1">
-                      <X size={14} />
-                    </button>
+                    <button onClick={() => handleRemoveAddon(addon.id)} className="text-red-400 hover:text-red-600 p-1"><X size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -338,54 +331,21 @@ export function TemplatesPage() {
               </div>
             </div>
 
-            {/* Line item settings */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Line Items & Labels</h3>
-              <div className="space-y-3">
-                {([
-                  { key: 'includeBase' as const, label: 'Base Cleaning (sq ft)' },
-                  { key: 'includeRooms' as const, label: 'Room Cleaning' },
-                  { key: 'includeWashrooms' as const, label: 'Washroom Cleaning' },
-                  { key: 'includeReception' as const, label: 'Reception Area Cleaning' },
-                ]).map(({ key, label }) => {
-                  const val = key === 'includeBase' ? includeBase : key === 'includeRooms' ? includeRooms : key === 'includeWashrooms' ? includeWashrooms : includeReception;
-                  const set = key === 'includeBase' ? setIncludeBase : key === 'includeRooms' ? setIncludeRooms : key === 'includeWashrooms' ? setIncludeWashrooms : setIncludeReception;
-                  return (
-                    <div key={key} className="flex items-center justify-between py-1">
-                      <span className="text-sm text-gray-700">{label}</span>
-                      <button
-                        type="button"
-                        onClick={() => set(!val)}
-                        className={`relative w-11 h-6 rounded-full transition-colors ${val ? 'bg-blue-500' : 'bg-gray-300'}`}
-                      >
-                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${val ? 'translate-x-5' : ''}`} />
-                      </button>
-                    </div>
-                  );
-                })}
-                <div className="pt-2">
-                  <Input label="Custom Room Label" value={roomLabel} onChange={e => setRoomLabel(e.target.value)} placeholder="e.g. Patient / Treatment Rooms" />
-                </div>
-              </div>
-            </div>
-
             {/* Save */}
             <div className="flex justify-end gap-3">
-              {editingId && (
-                <Button variant="secondary" onClick={resetForm}>Cancel Editing</Button>
-              )}
+              {editingId && <Button variant="secondary" onClick={resetForm}>Cancel</Button>}
               <Button icon={Save} onClick={handleSave} disabled={!name.trim()}>
                 {editingId ? 'Update Template' : 'Save Template'}
               </Button>
             </div>
           </div>
 
-          {/* ── RIGHT: Preview + Saved List ────────────────── */}
+          {/* ── RIGHT ─────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
             {/* Preview */}
             <div className="bg-blue-600 rounded-2xl p-5 text-white">
               <h3 className="text-sm font-semibold opacity-80 mb-1">Live Preview</h3>
-              <p className="text-3xl font-bold">{formatCAD(previewMonthly.total)}</p>
+              <p className="text-3xl font-bold">{formatCAD(previewMonthly.grandTotal)}</p>
               <p className="text-xs opacity-70 mb-3">/month · {defaultDays}×/week · ~{Math.round(previewMonthly.visits)} visits</p>
               <div className="border-t border-white/20 pt-3 space-y-1.5">
                 {previewMonthly.items.map((item, i) => (
@@ -401,13 +361,12 @@ export function TemplatesPage() {
               </div>
             </div>
 
-            {/* Saved Templates */}
+            {/* Saved */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-700">Saved Templates</h3>
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{templates.length}</span>
               </div>
-
               {templates.length === 0 ? (
                 <div className="text-center py-6">
                   <Bookmark size={28} className="mx-auto text-gray-300 mb-2" />
@@ -420,16 +379,12 @@ export function TemplatesPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate">{t.name}</p>
-                          <p className="text-xs text-gray-400">{t.defaultSqft.toLocaleString()} sq ft · {t.defaultDays}×/wk · {t.addons.length} add-ons</p>
+                          <p className="text-xs text-gray-400">{t.facilityType && FACILITY_LABELS[t.facilityType]} · {t.lineItems.length} items · {t.addons.length} add-ons</p>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => handleDuplicate(t)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Duplicate">
-                            <Copy size={13} />
-                          </button>
-                          <button onClick={() => handleEdit(t)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium">Edit</button>
-                          <button onClick={() => setDeleteId(t.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 size={13} />
-                          </button>
+                          <button onClick={() => handleDuplicate(t)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" title="Duplicate"><Copy size={13} /></button>
+                          <button onClick={() => handleEdit(t)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-medium">Edit</button>
+                          <button onClick={() => setDeleteId(t.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={13} /></button>
                         </div>
                       </div>
                     </div>
@@ -440,15 +395,9 @@ export function TemplatesPage() {
           </div>
         </div>
 
-        <ConfirmModal
-          isOpen={!!deleteId}
-          onClose={() => setDeleteId(null)}
+        <ConfirmModal isOpen={!!deleteId} onClose={() => setDeleteId(null)}
           onConfirm={() => { if (deleteId) handleDelete(deleteId); }}
-          title="Delete Template?"
-          message="This cannot be undone."
-          confirmLabel="Delete"
-          variant="danger"
-        />
+          title="Delete Template?" message="This cannot be undone." confirmLabel="Delete" variant="danger" />
       </div>
     </AppShell>
   );

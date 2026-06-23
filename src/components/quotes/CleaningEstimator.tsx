@@ -15,12 +15,8 @@ interface EstimatorProps {
   templates: QuoteTemplate[];
 }
 
-type TemplateSelector = { label: string; value: string };
-const FREQUENCY_OPTIONS = [
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Bi-weekly' },
-  { value: 'monthly', label: 'Monthly' },
-];
+/** Dynamic qty state for one line item */
+type ItemState = { id: string; qty: number; included: boolean };
 
 export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: EstimatorProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -31,19 +27,15 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
   }, [templates, selectedTemplateId]);
 
   const [sqft, setSqft] = useState(template?.defaultSqft ?? 1500);
-  const [rooms, setRooms] = useState(template?.defaultRooms ?? 0);
-  const [washrooms, setWashrooms] = useState(template?.defaultWashrooms ?? 0);
-  const [reception, setReception] = useState(template?.defaultReception ?? 0);
   const [days, setDays] = useState(template?.defaultDays ?? 6);
+  const [itemStates, setItemStates] = useState<ItemState[]>([]);
   const [activeAddons, setActiveAddons] = useState<string[]>([]);
 
   // Reset form when template changes
   const initFromTemplate = (t: QuoteTemplate) => {
     setSqft(t.defaultSqft);
-    setRooms(t.defaultRooms);
-    setWashrooms(t.defaultWashrooms);
-    setReception(t.defaultReception);
     setDays(t.defaultDays);
+    setItemStates(t.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included })));
     setActiveAddons([]);
   };
 
@@ -53,100 +45,81 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
     if (t) initFromTemplate(t);
   };
 
-  const pricing = template?.pricing ?? null;
-  const fm = pricing ? (pricing.frequencyMultipliers[days] ?? 1.0) : 1.0;
+  // Init on first render if template is available
+  const initRef = React.useRef(false);
+  if (!initRef.current && template) {
+    initRef.current = true;
+    if (itemStates.length === 0) {
+      setItemStates(template.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included })));
+    }
+  }
+
+  const fm = template ? (template.frequencyMultipliers[days] ?? 1.0) : 1.0;
 
   const breakdown = useMemo(() => {
-    if (!pricing) return null;
+    if (!template) return null;
     let total = 0;
     const items: { label: string; amount: number }[] = [];
 
-    if (template?.includeBase !== false && sqft > 0) {
-      const amt = sqft * pricing.baseRatePerSqft * fm;
+    const baseAmt = sqft * template.baseRatePerSqft * fm;
+    total += baseAmt;
+    items.push({ label: `Base (${sqft.toLocaleString()} sq ft)`, amount: baseAmt });
+
+    for (const st of itemStates) {
+      const li = template.lineItems.find(l => l.id === st.id);
+      if (!li || !st.included || st.qty <= 0) continue;
+      const amt = st.qty * li.ratePerUnit * fm;
       total += amt;
-      items.push({ label: `Base (${sqft.toLocaleString()} sq ft)`, amount: amt });
-    }
-    if (template?.includeRooms !== false && rooms > 0) {
-      const amt = rooms * pricing.roomRate * fm;
-      total += amt;
-      items.push({ label: `${template?.roomLabel || 'Rooms'} (${rooms})`, amount: amt });
-    }
-    if (template?.includeWashrooms !== false && washrooms > 0) {
-      const amt = washrooms * pricing.washroomRate * fm;
-      total += amt;
-      items.push({ label: `Washrooms (${washrooms})`, amount: amt });
-    }
-    if (template?.includeReception !== false && reception > 0) {
-      const amt = reception * pricing.receptionRate * fm;
-      total += amt;
-      items.push({ label: `Reception (${reception})`, amount: amt });
+      items.push({ label: `${li.label} (${st.qty} × $${li.ratePerUnit.toFixed(2)})`, amount: amt });
     }
 
     let addonTotal = 0;
-    const activeAddonObjs = (template?.addons || []).filter(a => activeAddons.includes(a.id));
-    for (const addon of activeAddonObjs) {
-      addonTotal += addon.price;
-    }
-    if (addonTotal > 0) {
-      items.push({ label: `Add-ons (${activeAddonObjs.length})`, amount: addonTotal });
-    }
+    const activeAddonObjs = (template.addons || []).filter(a => activeAddons.includes(a.id));
+    for (const addon of activeAddonObjs) addonTotal += addon.price;
+    if (addonTotal > 0) items.push({ label: `Add-ons (${activeAddonObjs.length})`, amount: addonTotal });
 
     const grandTotal = Math.ceil((total + addonTotal) / 5) * 5;
     const visitsPerMonth = days * 4.33;
     return { items, total, addonTotal, grandTotal, visitsPerMonth, perVisit: grandTotal / visitsPerMonth };
-  }, [pricing, fm, sqft, rooms, washrooms, reception, days, template, activeAddons]);
+  }, [template, sqft, days, fm, itemStates, activeAddons]);
+
+  const updateItem = (id: string, patch: Partial<ItemState>) => {
+    setItemStates(prev => prev.map(st => st.id === id ? { ...st, ...patch } : st));
+  };
 
   const toggleAddon = (id: string) => {
     setActiveAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
   };
 
   const handleApply = () => {
-    if (!pricing || !template) return;
+    if (!template || !breakdown) return;
     const items: QuoteLineItem[] = [];
     const baseId = generateId();
-    const monthlyM = 4.33; // standard weeks/month
-    const visitsM = days * monthlyM; // visits per month
+    const visitsM = days * 4.33;
 
-    if (template.includeBase !== false && sqft > 0) {
-      const monthly = sqft * pricing.baseRatePerSqft * fm;
-      const perVisit = monthly / visitsM;
+    // Base
+    const baseMonthly = sqft * template.baseRatePerSqft * fm;
+    items.push({
+      id: `${baseId}-base`,
+      description: `Base Cleaning — ${sqft.toLocaleString()} sq ft`,
+      siteId: null, frequency: 'weekly', amountPerVisit: Math.round((baseMonthly / visitsM) * 100) / 100,
+      visitsPerWeek: days, monthlyAmount: Math.round(baseMonthly * 100) / 100,
+    });
+
+    // Dynamic line items
+    for (const st of itemStates) {
+      const li = template.lineItems.find(l => l.id === st.id);
+      if (!li || !st.included || st.qty <= 0) continue;
+      const monthly = st.qty * li.ratePerUnit * fm;
       items.push({
-        id: `${baseId}-base`,
-        description: `Base Cleaning — ${sqft.toLocaleString()} sq ft`,
-        siteId: null, frequency: 'weekly', amountPerVisit: Math.round(perVisit * 100) / 100,
+        id: `${baseId}-${li.id}`,
+        description: `${li.label} (${st.qty})`,
+        siteId: null, frequency: 'weekly', amountPerVisit: Math.round((monthly / visitsM) * 100) / 100,
         visitsPerWeek: days, monthlyAmount: Math.round(monthly * 100) / 100,
       });
     }
-    if (template.includeRooms !== false && rooms > 0) {
-      const monthly = rooms * pricing.roomRate * fm;
-      const perVisit = monthly / visitsM;
-      items.push({
-        id: `${baseId}-rooms`,
-        description: `${template.roomLabel || 'Room'} Cleaning (${rooms})`,
-        siteId: null, frequency: 'weekly', amountPerVisit: Math.round(perVisit * 100) / 100,
-        visitsPerWeek: days, monthlyAmount: Math.round(monthly * 100) / 100,
-      });
-    }
-    if (template.includeWashrooms !== false && washrooms > 0) {
-      const monthly = washrooms * pricing.washroomRate * fm;
-      const perVisit = monthly / visitsM;
-      items.push({
-        id: `${baseId}-wash`,
-        description: `Washroom Cleaning (${washrooms})`,
-        siteId: null, frequency: 'weekly', amountPerVisit: Math.round(perVisit * 100) / 100,
-        visitsPerWeek: days, monthlyAmount: Math.round(monthly * 100) / 100,
-      });
-    }
-    if (template.includeReception !== false && reception > 0) {
-      const monthly = reception * pricing.receptionRate * fm;
-      const perVisit = monthly / visitsM;
-      items.push({
-        id: `${baseId}-recept`,
-        description: `Reception Area Cleaning (${reception})`,
-        siteId: null, frequency: 'weekly', amountPerVisit: Math.round(perVisit * 100) / 100,
-        visitsPerWeek: days, monthlyAmount: Math.round(monthly * 100) / 100,
-      });
-    }
+
+    // Add-ons
     for (const addon of (template.addons || [])) {
       if (!activeAddons.includes(addon.id)) continue;
       items.push({
@@ -171,54 +144,55 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
     );
   }
 
-  const visibleAddons = template.addons || [];
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cleaning Estimator" size="lg">
       <div className="space-y-5">
         <p className="text-sm text-gray-500">
-          Using <strong>{template.name}</strong> pricing model. Adjust values below.
+          Using <strong>{template.name}</strong>. Adjust values below.
         </p>
 
-        {/* Template selector */}
         {templates.length > 1 && (
           <Select
             label="Template"
-            options={templates.map(t => ({ value: t.id, label: t.name })) as TemplateSelector[]}
+            options={templates.map(t => ({ value: t.id, label: t.name }))}
             value={selectedTemplateId || templates[0]?.id || ''}
             onChange={e => handleTemplateChange(e.target.value)}
           />
         )}
 
-        <Input
-          label="Square Feet"
-          type="number"
-          value={sqft.toString()}
-          onChange={e => setSqft(Math.max(0, parseFloat(e.target.value) || 0))}
-          placeholder="1500"
-        />
+        <Input label="Square Feet" type="number" value={sqft.toString()}
+          onChange={e => setSqft(Math.max(0, parseFloat(e.target.value) || 0))} placeholder="1500" />
 
-        <div className="grid grid-cols-3 gap-4">
-          {([
-            { key: 'rooms' as const, label: template.roomLabel || 'Rooms', val: rooms, set: setRooms },
-            { key: 'washrooms' as const, label: 'Washrooms', val: washrooms, set: setWashrooms },
-            { key: 'reception' as const, label: 'Reception Areas', val: reception, set: setReception },
-          ]).map(({ key, label, val, set }) => {
-            const include = key === 'rooms' ? template.includeRooms : key === 'washrooms' ? template.includeWashrooms : template.includeReception;
-            if (include === false) return null;
-            return (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-                <div className="flex items-center gap-0 bg-gray-100 rounded-lg overflow-hidden">
-                  <button onClick={() => set(Math.max(0, val - 1))} className="w-9 h-9 flex items-center justify-center text-blue-600 text-xl font-light hover:bg-gray-200">−</button>
-                  <span className="flex-1 text-center font-semibold text-gray-900 text-sm">{val}</span>
-                  <button onClick={() => set(val + 1)} className="w-9 h-9 flex items-center justify-center text-blue-600 text-xl font-light hover:bg-gray-200">+</button>
+        {/* Dynamic line items */}
+        {itemStates.map(st => {
+          const li = template.lineItems.find(l => l.id === st.id);
+          if (!li) return null;
+          return (
+            <div key={st.id} className="bg-white border border-gray-200 rounded-xl p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <button onClick={() => updateItem(st.id, { included: !st.included })}
+                    className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${st.included ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${st.included ? 'translate-x-5' : ''}`} />
+                  </button>
+                  <label className="text-sm font-medium text-gray-700 truncate">{li.label}</label>
                 </div>
+                <div className="flex items-center gap-0 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                  <button onClick={() => updateItem(st.id, { qty: Math.max(0, st.qty - 1) })}
+                    className="w-8 h-8 flex items-center justify-center text-blue-600 text-lg font-light hover:bg-gray-200">−</button>
+                  <span className="w-8 text-center font-semibold text-gray-900 text-sm">{st.qty}</span>
+                  <button onClick={() => updateItem(st.id, { qty: st.qty + 1 })}
+                    className="w-8 h-8 flex items-center justify-center text-blue-600 text-lg font-light hover:bg-gray-200">+</button>
+                </div>
+                <span className="text-sm font-semibold text-gray-700 w-16 text-right flex-shrink-0">
+                  {formatCAD(st.qty * li.ratePerUnit * fm)}
+                </span>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
 
+        {/* Visits per week */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Visits per Week</label>
           <div className="flex flex-wrap gap-2">
@@ -229,17 +203,15 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
               </button>
             ))}
           </div>
-          {pricing && (
-            <p className="text-xs text-gray-400 mt-1">Freq multiplier: <strong>{fm.toFixed(2)}×</strong></p>
-          )}
+          <p className="text-xs text-gray-400 mt-1">Freq multiplier: <strong>{fm.toFixed(2)}×</strong></p>
         </div>
 
         {/* Add-ons */}
-        {visibleAddons.length > 0 && (
+        {(template.addons || []).length > 0 && (
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Add-On Services</label>
             <div className="space-y-1.5">
-              {visibleAddons.map(addon => (
+              {template.addons.map(addon => (
                 <button key={addon.id} type="button" onClick={() => toggleAddon(addon.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
                     activeAddons.includes(addon.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
@@ -254,7 +226,7 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
 
         <div className="border-t border-gray-200" />
 
-        {/* Price breakdown */}
+        {/* Breakdown */}
         {breakdown ? (
           <div className="bg-gray-50 rounded-xl p-4 space-y-2">
             {breakdown.items.map((item, i) => (
@@ -274,7 +246,7 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
           </div>
         ) : (
           <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-400 text-center">
-            No pricing model configured for this template.
+            No pricing model configured.
           </div>
         )}
 

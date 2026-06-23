@@ -354,94 +354,138 @@ export const FACILITY_LABELS: Record<FacilityType, string> = {
 
 // --- Template-driven pricing ---
 
-/** A single add-on that can be toggled in the estimator */
+/** A line item specific to a business type (e.g. "Patient Rooms", "Offices", "Dining Area") */
+export interface TemplateLineItem {
+  id: string;
+  label: string;
+  ratePerUnit: number;
+  defaultQty: number;
+  included: boolean;
+}
+
+/** A flat-rate add-on service */
 export interface TemplateAddon {
   id: string;
   label: string;
-  price: number; // flat monthly price when toggled on
+  price: number;
 }
 
 /**
- * The complete pricing model for a template.
- * All amounts are in the business's currency (CAD).
- *
- * Monthly = rate × qty × freqMultiplier[visitsPerWeek]
- * freqMultiplier adjusts for how many days/week the cleaner visits.
- * Example: { 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 }
- */
-export interface TemplatePricing {
-  baseRatePerSqft: number;
-  roomRate: number;
-  washroomRate: number;
-  receptionRate: number;
-  frequencyMultipliers: Record<number, number>;
-}
-
-/**
- * A fully customizable estimation template.
- * Each template carries its own pricing model, add-ons, defaults, and labels.
+ * Estimation template tied to a business type.
+ * Each business type defines its own set of line items.
  */
 export interface QuoteTemplate {
   id: string;
   name: string;
   description: string;
   facilityType: FacilityType;
-  /** Default values pre-filled when this template is selected */
+  /** Base rate charged per square foot (multiplied by frequency multiplier) */
+  baseRatePerSqft: number;
+  /** Default sq ft pre-filled in the estimator */
   defaultSqft: number;
-  defaultRooms: number;
-  defaultWashrooms: number;
-  defaultReception: number;
+  /** Default visits per week */
   defaultDays: number;
-  /** The pricing model */
-  pricing: TemplatePricing;
-  /** Add-ons specific to this template */
+  /** Frequency multipliers keyed by visits/week. 6×/week = 1.0 baseline */
+  frequencyMultipliers: Record<number, number>;
+  /** Line items specific to this business type */
+  lineItems: TemplateLineItem[];
+  /** Flat-rate add-on services */
   addons: TemplateAddon[];
-  /** Which line item types to generate */
-  includeBase: boolean;
-  includeRooms: boolean;
-  includeWashrooms: boolean;
-  includeReception: boolean;
-  /** Custom display labels */
-  roomLabel: string;
   createdAt: string;
 }
 
-/**
- * The built-in Medical Clinic default template,
- * matching the attached `clinic-cleaning-estimator(1).html`.
- * This is seeded automatically when no templates exist.
- */
-export function createDefaultTemplate(): Omit<QuoteTemplate, 'id'> & { id?: string } {
-  const now = new Date().toISOString();
+/** Default line items for each business type */
+const DEFAULT_LINE_ITEMS: Record<FacilityType, Omit<TemplateLineItem, 'id'>[]> = {
+  medical_clinic: [
+    { label: 'Patient / Treatment Rooms', ratePerUnit: 40, defaultQty: 7, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Reception Area', ratePerUnit: 55, defaultQty: 1, included: true },
+  ],
+  dental_clinic: [
+    { label: 'Treatment Rooms', ratePerUnit: 40, defaultQty: 5, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Reception / Waiting', ratePerUnit: 55, defaultQty: 1, included: true },
+    { label: 'X-Ray / Lab', ratePerUnit: 25, defaultQty: 1, included: false },
+  ],
+  office: [
+    { label: 'Private Offices', ratePerUnit: 35, defaultQty: 6, included: true },
+    { label: 'Conference Rooms', ratePerUnit: 45, defaultQty: 2, included: true },
+    { label: 'Breakroom', ratePerUnit: 30, defaultQty: 1, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Reception', ratePerUnit: 55, defaultQty: 1, included: true },
+  ],
+  retail: [
+    { label: 'Sales Floor', ratePerUnit: 40, defaultQty: 1, included: true },
+    { label: 'Fitting Rooms', ratePerUnit: 20, defaultQty: 4, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 1, included: true },
+    { label: 'Stock / Backroom', ratePerUnit: 30, defaultQty: 1, included: false },
+  ],
+  pharmacy: [
+    { label: 'Retail Floor', ratePerUnit: 35, defaultQty: 1, included: true },
+    { label: 'Consult Rooms', ratePerUnit: 30, defaultQty: 2, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 1, included: true },
+    { label: 'Back Office', ratePerUnit: 25, defaultQty: 1, included: false },
+  ],
+  warehouse: [
+    { label: 'Warehouse Floor', ratePerUnit: 50, defaultQty: 1, included: true },
+    { label: 'Offices', ratePerUnit: 35, defaultQty: 2, included: true },
+    { label: 'Breakroom', ratePerUnit: 30, defaultQty: 1, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Loading Bay', ratePerUnit: 40, defaultQty: 1, included: false },
+  ],
+  restaurant: [
+    { label: 'Dining Area', ratePerUnit: 45, defaultQty: 1, included: true },
+    { label: 'Kitchen', ratePerUnit: 65, defaultQty: 1, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Bar Area', ratePerUnit: 35, defaultQty: 1, included: false },
+    { label: 'Storage / Walk-in', ratePerUnit: 25, defaultQty: 1, included: false },
+  ],
+  other: [
+    { label: 'Rooms', ratePerUnit: 35, defaultQty: 3, included: true },
+    { label: 'Washrooms', ratePerUnit: 50, defaultQty: 2, included: true },
+    { label: 'Breakroom', ratePerUnit: 30, defaultQty: 1, included: false },
+  ],
+};
+
+/** Default add-ons available for all templates */
+const DEFAULT_TEMPLATE_ADDONS: TemplateAddon[] = [
+  { id: 'breakroom', label: 'Breakroom / Kitchen', price: 40 },
+  { id: 'windows', label: 'Monthly Window Clean', price: 80 },
+  { id: 'deepclean', label: 'Monthly Deep Clean', price: 120 },
+];
+
+let _itemIdCounter = 0;
+function itemId(): string {
+  _itemIdCounter++;
+  return `li-${_itemIdCounter}-${Date.now()}`;
+}
+
+/** Generate a default template for a given facility type */
+export function createTemplateForFacility(ft: FacilityType, name?: string): Omit<QuoteTemplate, 'id'> & { id?: string } {
+  const baseRate: Record<FacilityType, number> = {
+    medical_clinic: 0.40, dental_clinic: 0.42, office: 0.30, retail: 0.28,
+    pharmacy: 0.35, warehouse: 0.20, restaurant: 0.45, other: 0.30,
+  };
   return {
     id: '',
-    name: 'Medical Clinic',
-    description: 'Medical Clinic — 1,500 sq ft, 6×/week',
-    facilityType: 'medical_clinic',
+    name: name || FACILITY_LABELS[ft],
+    description: `${name || FACILITY_LABELS[ft]} — cleaning estimate`,
+    facilityType: ft,
+    baseRatePerSqft: baseRate[ft],
     defaultSqft: 1500,
-    defaultRooms: 7,
-    defaultWashrooms: 2,
-    defaultReception: 1,
     defaultDays: 6,
-    pricing: {
-      baseRatePerSqft: 0.40,
-      roomRate: 40,
-      washroomRate: 50,
-      receptionRate: 55,
-      frequencyMultipliers: { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 },
-    },
-    addons: [
-      { id: 'breakroom', label: 'Breakroom / Kitchen', price: 40 },
-      { id: 'windows', label: 'Monthly Window Clean', price: 80 },
-      { id: 'deepclean', label: 'Monthly Deep Clean', price: 120 },
-    ],
-    includeBase: true,
-    includeRooms: true,
-    includeWashrooms: true,
-    includeReception: true,
-    roomLabel: 'Patient / Treatment Rooms',
-    createdAt: now,
+    frequencyMultipliers: { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 },
+    lineItems: DEFAULT_LINE_ITEMS[ft].map(d => ({ ...d, id: itemId() })),
+    addons: DEFAULT_TEMPLATE_ADDONS.map(a => ({ ...a })),
+    createdAt: new Date().toISOString(),
   };
+}
+
+/** Seed data: one default template per business type (used on first load) */
+export function getDefaultTemplates(): Omit<QuoteTemplate, 'id'>[] {
+  return (Object.keys(FACILITY_LABELS) as FacilityType[]).map(ft =>
+    createTemplateForFacility(ft)
+  );
 }
 
 export interface AppSettings {
