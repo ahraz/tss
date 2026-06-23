@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { AppState, AppAction, User } from '../types';
+import type { AppState, AppAction, User, QuoteTemplate } from '../types';
+import { createDefaultTemplate } from '../types';
+import { generateId } from '../utils/storage';
 import { toast } from 'react-hot-toast';
 import { setSession, getSession } from '../utils/storage';
 import { getAuth, signInAnonymously } from 'firebase/auth';
@@ -315,7 +317,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
         if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
-        if (remote.quoteTemplates) originalDispatch({ type: 'SET_QUOTE_TEMPLATES', payload: remote.quoteTemplates });
+        // Seed default template if none exist
+        const templates: QuoteTemplate[] = remote.quoteTemplates?.length
+          ? remote.quoteTemplates
+          : [{ ...createDefaultTemplate(), id: generateId() } as QuoteTemplate];
+        originalDispatch({ type: 'SET_QUOTE_TEMPLATES', payload: templates });
+
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }

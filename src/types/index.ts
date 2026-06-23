@@ -352,58 +352,96 @@ export const FACILITY_LABELS: Record<FacilityType, string> = {
   other: 'Other',
 };
 
-// Base rate per sq ft per visit by facility type
-export const FACILITY_BASE_RATES: Record<FacilityType, number> = {
-  medical_clinic: 0.017,
-  dental_clinic: 0.018,
-  office: 0.014,
-  retail: 0.015,
-  pharmacy: 0.017,
-  warehouse: 0.010,
-  restaurant: 0.019,
-  other: 0.016,
-};
+// --- Template-driven pricing ---
 
-// --- Add-ons ---
-export interface EstimatorAddon {
+/** A single add-on that can be toggled in the estimator */
+export interface TemplateAddon {
   id: string;
   label: string;
-  description: string;
-  monthlyPrice: number;
-  /** Facility types this add-on is relevant for */
-  relevantFor: FacilityType[];
+  price: number; // flat monthly price when toggled on
 }
 
-export const DEFAULT_ADDONS: EstimatorAddon[] = [
-  { id: 'floor-care', label: 'Floor Stripping & Waxing', description: 'Restore and protect hard floors', monthlyPrice: 199, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'other'] },
-  { id: 'carpet-shampoo', label: 'Carpet Shampooing', description: 'Deep clean all carpeted areas', monthlyPrice: 149, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'other'] },
-  { id: 'window-cleaning', label: 'Window Cleaning', description: 'Interior & exterior window cleaning', monthlyPrice: 99, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'restaurant', 'other'] },
-  { id: 'deep-clean', label: 'Quarterly Deep Clean', description: 'Intensive deep cleaning every 3 months', monthlyPrice: 79, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'restaurant', 'warehouse', 'other'] },
-  { id: 'sanitization', label: 'Sanitization Fogging', description: 'Medical-grade sanitization treatment', monthlyPrice: 89, relevantFor: ['medical_clinic', 'dental_clinic', 'pharmacy', 'restaurant'] },
-  { id: 'bio-waste', label: 'Bio-Waste Disposal', description: 'Proper disposal of medical waste', monthlyPrice: 129, relevantFor: ['medical_clinic', 'dental_clinic'] },
-  { id: 'trash-removal', label: 'Enhanced Trash Removal', description: 'Extra trash pickup & bin cleaning', monthlyPrice: 49, relevantFor: ['restaurant', 'retail', 'office', 'other'] },
-];
-
-// --- Estimator params ---
-export interface EstimatorParams {
-  facilityType: FacilityType;
-  squareFeet: number;
-  rooms: number;
-  washrooms: number;
-  receptionAreas: number;
-  frequency: CleaningFrequency;
-  visitsPerWeek: number;
-  selectedAddons: string[];
+/**
+ * The complete pricing model for a template.
+ * All amounts are in the business's currency (CAD).
+ *
+ * Monthly = rate × qty × freqMultiplier[visitsPerWeek]
+ * freqMultiplier adjusts for how many days/week the cleaner visits.
+ * Example: { 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 }
+ */
+export interface TemplatePricing {
+  baseRatePerSqft: number;
+  roomRate: number;
+  washroomRate: number;
+  receptionRate: number;
+  frequencyMultipliers: Record<number, number>;
 }
 
-// --- Quote Template ---
+/**
+ * A fully customizable estimation template.
+ * Each template carries its own pricing model, add-ons, defaults, and labels.
+ */
 export interface QuoteTemplate {
   id: string;
   name: string;
   description: string;
   facilityType: FacilityType;
-  params: EstimatorParams;
+  /** Default values pre-filled when this template is selected */
+  defaultSqft: number;
+  defaultRooms: number;
+  defaultWashrooms: number;
+  defaultReception: number;
+  defaultDays: number;
+  /** The pricing model */
+  pricing: TemplatePricing;
+  /** Add-ons specific to this template */
+  addons: TemplateAddon[];
+  /** Which line item types to generate */
+  includeBase: boolean;
+  includeRooms: boolean;
+  includeWashrooms: boolean;
+  includeReception: boolean;
+  /** Custom display labels */
+  roomLabel: string;
   createdAt: string;
+}
+
+/**
+ * The built-in Medical Clinic default template,
+ * matching the attached `clinic-cleaning-estimator(1).html`.
+ * This is seeded automatically when no templates exist.
+ */
+export function createDefaultTemplate(): Omit<QuoteTemplate, 'id'> & { id?: string } {
+  const now = new Date().toISOString();
+  return {
+    id: '',
+    name: 'Medical Clinic',
+    description: 'Medical Clinic — 1,500 sq ft, 6×/week',
+    facilityType: 'medical_clinic',
+    defaultSqft: 1500,
+    defaultRooms: 7,
+    defaultWashrooms: 2,
+    defaultReception: 1,
+    defaultDays: 6,
+    pricing: {
+      baseRatePerSqft: 0.40,
+      roomRate: 40,
+      washroomRate: 50,
+      receptionRate: 55,
+      frequencyMultipliers: { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 },
+    },
+    addons: [
+      { id: 'breakroom', label: 'Breakroom / Kitchen', price: 40 },
+      { id: 'windows', label: 'Monthly Window Clean', price: 80 },
+      { id: 'deepclean', label: 'Monthly Deep Clean', price: 120 },
+    ],
+    includeBase: true,
+    includeRooms: true,
+    includeWashrooms: true,
+    includeReception: true,
+    roomLabel: 'Patient / Treatment Rooms',
+    createdAt: now,
+  };
 }
 
 export interface AppSettings {
