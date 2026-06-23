@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2, Star, MapPin, Search, Phone,
   CheckCircle2, Clock, XCircle, RotateCcw,
   ChevronDown, ExternalLink, User,
-  RefreshCw, AlertCircle, Database
+  RefreshCw, AlertCircle, Database,
+  FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -13,7 +15,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
-import type { Lead, CallLogEntry, CallOutcome } from '../types';
+import type { Lead, CallLogEntry, CallOutcome, Quote } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
@@ -57,6 +59,7 @@ function ReviewCount({ raw }: { raw: string }) {
 
 export function LeadsPage() {
   const { state, dispatch, currentUser } = useApp();
+  const navigate = useNavigate();
   const isOwner = currentUser?.role === 'owner';
   if (!isOwner) return null;
 
@@ -455,39 +458,80 @@ export function LeadsPage() {
                       </div>
                     </div>
 
-                    {/* Expanded: Call history */}
-                    {isExpanded && leadCallLogs.length > 0 && (
+                    {/* Expanded: Create Quote + Call history */}
+                    {isExpanded && (
                       <div className="border-t border-gray-100 pt-3 mt-1">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
-                        <div className="space-y-2">
-                          {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
-                            <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
-                              <div className={`p-1.5 rounded-full flex-shrink-0 ${
-                                log.outcome === 'completed' ? 'bg-green-100 text-green-600'
-                                : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600'
-                                : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600'
-                                : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {log.outcome === 'completed' ? <CheckCircle2 size={14} />
-                                  : log.outcome === 'no_answer' ? <XCircle size={14} />
-                                  : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
-                                  : <RotateCcw size={14} />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-700">
-                                  {log.calledByName} — {log.outcome.replace('_', ' ')}
-                                </p>
-                                <p className="text-gray-400 mt-0.5">
-                                  {new Date(log.calledAt).toLocaleDateString('en-CA', {
-                                    month: 'short', day: 'numeric', year: 'numeric',
-                                    hour: 'numeric', minute: '2-digit'
-                                  })}
-                                </p>
-                                {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
-                              </div>
+                        {/* Create Quote action */}
+                        <button
+                          onClick={() => {
+                            // Create a quote pre-populated with lead info
+                            const now = new Date().toISOString();
+                            const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                            // Parse address into components
+                            const addrParts = (lead.address || '').split(',').map(s => s.trim());
+                            const q: Quote = {
+                              id: generateId(),
+                              clientId: null,
+                              prospectName: lead.businessName,
+                              prospectAddress: addrParts[0] || lead.address,
+                              prospectCity: addrParts[1] || '',
+                              prospectProvince: addrParts[2]?.slice(0, 2).toUpperCase() || 'ON',
+                              prospectPostalCode: addrParts[2]?.match(/[A-Z0-9]{3}\s?[A-Z0-9]{3}/i)?.[0] || '',
+                              prospectPhone: lead.phone,
+                              lineItems: [],
+                              totalMonthly: 0,
+                              status: 'draft',
+                              validUntil,
+                              notes: `Lead: ${lead.businessName} · ${lead.type || ''} · Rating: ${lead.rating || 'N/A'}`.trim(),
+                              createdBy: currentUser.id,
+                              createdAt: now,
+                              updatedAt: now,
+                            };
+                            dispatch({ type: 'ADD_QUOTE', payload: q });
+                            toast.success('Quote created from lead');
+                            navigate(`/quotes/${q.id}`);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all"
+                        >
+                          <FileText size={15} />
+                          Create Quote from Lead
+                        </button>
+
+                        {/* Call history */}
+                        {leadCallLogs.length > 0 && (
+                          <>
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
+                            <div className="space-y-2">
+                              {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
+                                <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
+                                  <div className={`p-1.5 rounded-full flex-shrink-0 ${
+                                    log.outcome === 'completed' ? 'bg-green-100 text-green-600'
+                                    : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600'
+                                    : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600'
+                                    : 'bg-blue-100 text-blue-600'
+                                  }`}>
+                                    {log.outcome === 'completed' ? <CheckCircle2 size={14} />
+                                      : log.outcome === 'no_answer' ? <XCircle size={14} />
+                                      : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
+                                      : <RotateCcw size={14} />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-700">
+                                      {log.calledByName} — {log.outcome.replace('_', ' ')}
+                                    </p>
+                                    <p className="text-gray-400 mt-0.5">
+                                      {new Date(log.calledAt).toLocaleDateString('en-CA', {
+                                        month: 'short', day: 'numeric', year: 'numeric',
+                                        hour: 'numeric', minute: '2-digit'
+                                      })}
+                                    </p>
+                                    {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

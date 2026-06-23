@@ -330,6 +330,82 @@ export interface Task {
   createdAt: string;
 }
 
+// --- Facility Type ---
+export type FacilityType =
+  | 'medical_clinic'
+  | 'dental_clinic'
+  | 'office'
+  | 'retail'
+  | 'pharmacy'
+  | 'warehouse'
+  | 'restaurant'
+  | 'other';
+
+export const FACILITY_LABELS: Record<FacilityType, string> = {
+  medical_clinic: 'Medical Clinic',
+  dental_clinic: 'Dental Clinic',
+  office: 'Office',
+  retail: 'Retail',
+  pharmacy: 'Pharmacy',
+  warehouse: 'Warehouse',
+  restaurant: 'Restaurant',
+  other: 'Other',
+};
+
+// Base rate per sq ft per visit by facility type
+export const FACILITY_BASE_RATES: Record<FacilityType, number> = {
+  medical_clinic: 0.017,
+  dental_clinic: 0.018,
+  office: 0.014,
+  retail: 0.015,
+  pharmacy: 0.017,
+  warehouse: 0.010,
+  restaurant: 0.019,
+  other: 0.016,
+};
+
+// --- Add-ons ---
+export interface EstimatorAddon {
+  id: string;
+  label: string;
+  description: string;
+  monthlyPrice: number;
+  /** Facility types this add-on is relevant for */
+  relevantFor: FacilityType[];
+}
+
+export const DEFAULT_ADDONS: EstimatorAddon[] = [
+  { id: 'floor-care', label: 'Floor Stripping & Waxing', description: 'Restore and protect hard floors', monthlyPrice: 199, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'other'] },
+  { id: 'carpet-shampoo', label: 'Carpet Shampooing', description: 'Deep clean all carpeted areas', monthlyPrice: 149, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'other'] },
+  { id: 'window-cleaning', label: 'Window Cleaning', description: 'Interior & exterior window cleaning', monthlyPrice: 99, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'restaurant', 'other'] },
+  { id: 'deep-clean', label: 'Quarterly Deep Clean', description: 'Intensive deep cleaning every 3 months', monthlyPrice: 79, relevantFor: ['medical_clinic', 'dental_clinic', 'office', 'retail', 'pharmacy', 'restaurant', 'warehouse', 'other'] },
+  { id: 'sanitization', label: 'Sanitization Fogging', description: 'Medical-grade sanitization treatment', monthlyPrice: 89, relevantFor: ['medical_clinic', 'dental_clinic', 'pharmacy', 'restaurant'] },
+  { id: 'bio-waste', label: 'Bio-Waste Disposal', description: 'Proper disposal of medical waste', monthlyPrice: 129, relevantFor: ['medical_clinic', 'dental_clinic'] },
+  { id: 'trash-removal', label: 'Enhanced Trash Removal', description: 'Extra trash pickup & bin cleaning', monthlyPrice: 49, relevantFor: ['restaurant', 'retail', 'office', 'other'] },
+];
+
+// --- Estimator params ---
+export interface EstimatorParams {
+  facilityType: FacilityType;
+  squareFeet: number;
+  rooms: number;
+  washrooms: number;
+  receptionAreas: number;
+  frequency: CleaningFrequency;
+  visitsPerWeek: number;
+  selectedAddons: string[];
+}
+
+// --- Quote Template ---
+export interface QuoteTemplate {
+  id: string;
+  name: string;
+  description: string;
+  facilityType: FacilityType;
+  params: EstimatorParams;
+  createdAt: string;
+}
+
 export interface AppSettings {
   businessName: string;
   ownerName: string;
@@ -392,6 +468,7 @@ export interface AppState {
   tasks: Task[];
   clients: Client[];
   quotes: Quote[];
+  quoteTemplates: QuoteTemplate[];
   settings: AppSettings;
   session: Session | null;
   isInitialized: boolean;
@@ -490,6 +567,10 @@ export type AppAction =
   | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
   // Leads (from Google Sheets, synced to Firestore)
   | { type: 'SET_LEADS'; payload: Lead[] }
+  // Quote Templates
+  | { type: 'SET_QUOTE_TEMPLATES'; payload: QuoteTemplate[] }
+  | { type: 'ADD_QUOTE_TEMPLATE'; payload: QuoteTemplate }
+  | { type: 'DELETE_QUOTE_TEMPLATE'; payload: string }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };

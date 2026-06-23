@@ -1,11 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, DollarSign, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
@@ -14,11 +13,13 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CleaningEstimator } from '../components/quotes/CleaningEstimator';
+import { QuoteTemplateManager } from '../components/quotes/QuoteTemplateManager';
 import toast from 'react-hot-toast';
 import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
+import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, EstimatorParams, QuoteTemplate } from '../types';
+import { FACILITY_LABELS } from '../types';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',
@@ -35,8 +36,8 @@ export function QuoteDetailPage() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddLineItem, setShowAddLineItem] = useState(false);
-  const [showEditLineItem, setShowEditLineItem] = useState<string | null>(null);
   const [showEstimator, setShowEstimator] = useState(false);
+  const [showConvertConfirm, setShowConvertConfirm] = useState(false);
 
   const quote = state.quotes.find(q => q.id === id);
   if (!currentUser) return null;
@@ -48,7 +49,7 @@ export function QuoteDetailPage() {
   });
 
   const getMonthlyAmount = (visits: number, perVisit: number, freq: CleaningFrequency) => {
-    const multiplier = freq === 'weekly' ? 4.33 : freq === 'biweekly' ? 2.17 : 1;
+    const multiplier = freq === 'daily' ? 22 : freq === 'weekly' ? 4.33 : freq === 'biweekly' ? 2.17 : 1;
     return visits * perVisit * multiplier;
   };
 
@@ -106,18 +107,147 @@ export function QuoteDetailPage() {
     });
   };
 
-  const handleEstimatorApply = (items: QuoteLineItem[], notes: string) => {
+  const handleEstimatorGenerated = (items: QuoteLineItem[]) => {
     const lineItems = [...quote.lineItems, ...items];
     const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
-    const updatedNotes = quote.notes
-      ? `${quote.notes}\n\n---\n${notes}`
-      : notes;
     dispatch({
       type: 'UPDATE_QUOTE',
-      payload: { ...quote, lineItems, totalMonthly, notes: updatedNotes, updatedAt: new Date().toISOString() },
+      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
     });
+    toast.success(`Added ${items.length} items from estimator`);
+  };
+
+  const handleTemplateSave = (params: EstimatorParams, name: string) => {
+    const now = new Date().toISOString();
+    const template: QuoteTemplate = {
+      id: generateId(),
+      name,
+      description: `${FACILITY_LABELS[params.facilityType]} — ${params.squareFeet.toLocaleString()} sq ft`,
+      facilityType: params.facilityType,
+      params,
+      createdAt: now,
+    };
+    dispatch({ type: 'ADD_QUOTE_TEMPLATE', payload: template });
+    toast.success('Template saved');
+  };
+
+  const handleTemplateApply = (params: EstimatorParams) => {
     setShowEstimator(false);
-    toast.success(`Added ${items.length} line items from estimator`);
+    // Calculate and add items from template params
+    const monthlyMultiplier = params.frequency === 'daily' ? 22
+      : params.frequency === 'weekly' ? 4.33
+      : params.frequency === 'biweekly' ? 2.17
+      : 1;
+    const items: QuoteLineItem[] = [];
+    const baseId = generateId();
+
+    if (params.squareFeet > 0) {
+      const ratePerVisit = Math.round(params.squareFeet * 0.017 * 100) / 100;
+      items.push({
+        id: `${baseId}-base`,
+        description: `Base Cleaning — ${params.squareFeet.toLocaleString()} sq ft`,
+        siteId: null,
+        frequency: params.frequency,
+        amountPerVisit: ratePerVisit,
+        visitsPerWeek: params.visitsPerWeek,
+        monthlyAmount: Math.round(ratePerVisit * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
+      });
+    }
+    if (params.rooms > 0) {
+      const rpv = Math.round(params.rooms * 2.80 * 100) / 100;
+      items.push({
+        id: `${baseId}-rooms`, description: `Room Cleaning (${params.rooms} rooms)`, siteId: null,
+        frequency: params.frequency, amountPerVisit: rpv, visitsPerWeek: params.visitsPerWeek,
+        monthlyAmount: Math.round(rpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
+      });
+    }
+    if (params.washrooms > 0) {
+      const wpv = Math.round(params.washrooms * 2.23 * 100) / 100;
+      items.push({
+        id: `${baseId}-washrooms`, description: `Washroom Cleaning (${params.washrooms} washrooms)`, siteId: null,
+        frequency: params.frequency, amountPerVisit: wpv, visitsPerWeek: params.visitsPerWeek,
+        monthlyAmount: Math.round(wpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
+      });
+    }
+    if (params.receptionAreas > 0) {
+      const rpv = Math.round(params.receptionAreas * 2.46 * 100) / 100;
+      items.push({
+        id: `${baseId}-reception`, description: `Reception Area (${params.receptionAreas} area${params.receptionAreas > 1 ? 's' : ''})`, siteId: null,
+        frequency: params.frequency, amountPerVisit: rpv, visitsPerWeek: params.visitsPerWeek,
+        monthlyAmount: Math.round(rpv * params.visitsPerWeek * monthlyMultiplier * 100) / 100,
+      });
+    }
+
+    const lineItems = [...quote.lineItems, ...items];
+    const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    dispatch({
+      type: 'UPDATE_QUOTE',
+      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
+    });
+    toast.success(`Applied template — added ${items.length} items`);
+  };
+
+  const handleTemplateDelete = (templateId: string) => {
+    dispatch({ type: 'DELETE_QUOTE_TEMPLATE', payload: templateId });
+    toast.success('Template deleted');
+  };
+
+  const handleConvertToClient = () => {
+    // Create a new client from the quote prospect data
+    const now = new Date().toISOString();
+    const clientId = generateId();
+    const newClient = {
+      id: clientId,
+      name: quote.prospectName,
+      address: quote.prospectAddress,
+      city: quote.prospectCity,
+      province: quote.prospectProvince,
+      postalCode: quote.prospectPostalCode,
+      contactName: quote.prospectName,
+      contactPhone: quote.prospectPhone,
+      contractRate: quote.totalMonthly,
+      frequency: 'weekly' as CleaningFrequency,
+      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+      status: 'active' as const,
+      notes: `Converted from Quote #${quote.id.slice(-6).toUpperCase()}`,
+      createdAt: now,
+    };
+    dispatch({ type: 'ADD_CLIENT', payload: newClient });
+    // Also create a site for them
+    const siteId = generateId();
+    const newSite = {
+      id: siteId,
+      name: quote.prospectName,
+      address: quote.prospectAddress,
+      city: quote.prospectCity,
+      province: quote.prospectProvince,
+      postalCode: quote.prospectPostalCode,
+      areaTags: [],
+      type: 'other' as const,
+      contactName: quote.prospectName,
+      contactPhone: quote.prospectPhone,
+      contractRate: quote.totalMonthly,
+      frequency: 'weekly' as CleaningFrequency,
+      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+      scheduleStart: '17:00',
+      scheduleEnd: '19:00',
+      assignedUserIds: [],
+      accessNotes: '',
+      status: 'active' as const,
+      checklist: [],
+      clientId,
+      isSubSite: false,
+      createdAt: now,
+    };
+    dispatch({ type: 'ADD_SITE', payload: newSite });
+    // Mark quote as accepted
+    dispatch({
+      type: 'UPDATE_QUOTE',
+      payload: { ...quote, status: 'accepted', updatedAt: now },
+    });
+    setShowConvertConfirm(false);
+    toast.success(`Converted "${quote.prospectName}" to client + site`);
+    navigate(`/sites/${siteId}`);
   };
 
   const handlePrint = () => {
@@ -270,11 +400,22 @@ export function QuoteDetailPage() {
             </tfoot>
           </table>
 
-          {/* Add Line Item & Estimator */}
+          {/* Action Buttons */}
           {isOwnerOrPartner && (
-            <div className="no-print mb-6 flex gap-3">
+            <div className="no-print mb-4 flex flex-wrap items-center gap-2">
               <Button size="sm" icon={Plus} variant="secondary" onClick={() => setShowAddLineItem(true)}>Add Line Item</Button>
               <Button size="sm" icon={Calculator} variant="secondary" onClick={() => setShowEstimator(true)}>Open Estimator</Button>
+            </div>
+          )}
+
+          {/* Template Manager Section */}
+          {isOwnerOrPartner && (
+            <div className="no-print mb-6">
+              <QuoteTemplateManager
+                templates={state.quoteTemplates}
+                onApply={handleTemplateApply}
+                onDelete={handleTemplateDelete}
+              />
             </div>
           )}
 
@@ -283,6 +424,16 @@ export function QuoteDetailPage() {
             <div className="border-t border-gray-200 pt-4 mt-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Notes</h3>
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{quote.notes}</p>
+            </div>
+          )}
+
+          {/* Convert to Client */}
+          {isOwnerOrPartner && (quote.status === 'accepted') && (
+            <div className="no-print border-t border-gray-200 pt-4 mt-6">
+              <Button icon={Building2} onClick={() => setShowConvertConfirm(true)}>
+                Convert to Client & Site
+              </Button>
+              <p className="text-xs text-gray-400 mt-1">Creates a client record and site from this accepted quote</p>
             </div>
           )}
 
@@ -310,7 +461,7 @@ export function QuoteDetailPage() {
             onChange={e => setLineItemForm({...lineItemForm, description: e.target.value})}
             placeholder="e.g. Full Office Cleaning - KMC Pharmacy" />
           <Select label="Frequency"
-            options={[{ value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }, { value: 'monthly', label: 'Monthly' }]}
+            options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Bi-weekly' }, { value: 'monthly', label: 'Monthly' }]}
             value={lineItemForm.frequency} onChange={e => setLineItemForm({...lineItemForm, frequency: e.target.value as CleaningFrequency})} />
           <div className="grid grid-cols-2 gap-4">
             <Input label="Visits per Week" type="number" value={lineItemForm.visitsPerWeek.toString()}
@@ -330,11 +481,23 @@ export function QuoteDetailPage() {
         </div>
       </Modal>
 
-      {/* Cleaning Estimator */}
+      {/* Estimator Modal */}
       <CleaningEstimator
         isOpen={showEstimator}
         onClose={() => setShowEstimator(false)}
-        onApply={handleEstimatorApply}
+        onGenerate={handleEstimatorGenerated}
+        onSaveTemplate={handleTemplateSave}
+      />
+
+      {/* Convert to Client Confirm */}
+      <ConfirmModal
+        isOpen={showConvertConfirm}
+        onClose={() => setShowConvertConfirm(false)}
+        onConfirm={handleConvertToClient}
+        title={`Convert "${quote.prospectName}" to Client?`}
+        message="This will create a new client record and site, and mark this quote as accepted."
+        confirmLabel="Convert to Client"
+        variant="warning"
       />
     </AppShell>
   );

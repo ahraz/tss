@@ -29,6 +29,7 @@ const initialState: AppState = {
   incidentReports: [],
   callLogs: [],
   leads: [],
+  quoteTemplates: [],
   settings: {
     businessName: 'GTA Scrub',
     ownerName: 'Ahraz Malik',
@@ -207,6 +208,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_LEADS':
       return { ...state, leads: action.payload };
 
+    // Quote Templates
+    case 'SET_QUOTE_TEMPLATES':
+      return { ...state, quoteTemplates: action.payload };
+    case 'ADD_QUOTE_TEMPLATE':
+      return { ...state, quoteTemplates: [...state.quoteTemplates, action.payload] };
+    case 'DELETE_QUOTE_TEMPLATE':
+      return { ...state, quoteTemplates: state.quoteTemplates.filter(t => t.id !== action.payload) };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -306,6 +315,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
         if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
+        if (remote.quoteTemplates) originalDispatch({ type: 'SET_QUOTE_TEMPLATES', payload: remote.quoteTemplates });
         if (remote.settings) {
           originalDispatch({ type: 'SET_SETTINGS', payload: remote.settings });
         }
