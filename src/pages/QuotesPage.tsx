@@ -141,7 +141,12 @@ export function QuotesPage() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-gray-900">{quote.prospectName}</h4>
-                      <Badge label={quote.status} variant={statusColors[quote.status]} className="text-xs" />
+                      <div className="flex items-center gap-2">
+                        <Badge label={quote.status} variant={statusColors[quote.status]} className="text-xs" />
+                        {quote.currentVersion && quote.currentVersion > 1 && (
+                          <Badge label={`v${quote.currentVersion}`} variant="default" className="text-xs" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
