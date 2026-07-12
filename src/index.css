@@ -75,6 +75,18 @@
   }
 }
 
+/* Hide from print */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Hide from PDF capture */
+.pdf-capture .no-print {
+  display: none !important;
+}
+
 /* PIN pad shake animation */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

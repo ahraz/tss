@@ -13,8 +13,6 @@ interface Props {
   contentRef: React.RefObject<HTMLDivElement | null>;
 }
 
-const HIDDEN_SELECTOR = '.no-print';
-
 export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
   const [generating, setGenerating] = useState(false);
   const fileName = `Quote-${quote.prospectName.replace(/\s+/g, '_')}.pdf`;
@@ -24,14 +22,23 @@ export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
     setGenerating(true);
 
     const element = contentRef.current;
-    const hiddenEls = element.querySelectorAll(HIDDEN_SELECTOR);
-    const prevStyles: string[] = [];
+    let badgeDisplay = '';
+    const tfootDisplays: string[] = [];
 
     try {
-      // Temporarily hide interactive elements
-      hiddenEls.forEach((el, i) => {
-        prevStyles[i] = (el as HTMLElement).style.display;
-        (el as HTMLElement).style.display = 'none';
+      // Add pdf-capture class to activate CSS hiding, plus hide status badge inline
+      element.classList.add('pdf-capture');
+
+      // Also hide the status badge (e.g. "draft") in the header
+      const badge = element.querySelector('.mt-2') as HTMLElement | null;
+      badgeDisplay = badge?.style.display ?? '';
+      if (badge) badge.style.display = 'none';
+
+      // Hide empty tfoot cells for the delete column
+      const tfootCells = element.querySelectorAll('tfoot td:empty');
+      tfootCells.forEach((cell, i) => {
+        tfootDisplays[i] = (cell as HTMLElement).style.display;
+        (cell as HTMLElement).style.display = 'none';
       });
 
       const canvas = await html2canvas(element, {
@@ -65,9 +72,13 @@ export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
-      // Restore hidden elements
-      hiddenEls.forEach((el, i) => {
-        (el as HTMLElement).style.display = prevStyles[i] ?? '';
+      // Restore everything
+      element.classList.remove('pdf-capture');
+      const badge = element.querySelector('.mt-2') as HTMLElement | null;
+      if (badge) badge.style.display = badgeDisplay ?? '';
+      const tfootCells = element.querySelectorAll('tfoot td:empty');
+      tfootCells.forEach((cell, i) => {
+        (cell as HTMLElement).style.display = (tfootDisplays[i] as string) ?? '';
       });
       setGenerating(false);
     }
