@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark, Clock } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -21,6 +19,7 @@ import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion
 import { createVersion, addVersionToQuote } from '../types';
 import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
 import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
+import { QuotePdfPreview } from '../components/quotes/QuotePdfPreview';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',
@@ -44,6 +43,7 @@ export function QuoteDetailPage() {
     v1: QuoteVersion;
     v2: QuoteVersion;
   } | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   const quote = state.quotes.find(q => q.id === id);
   if (!currentUser) return null;
@@ -205,41 +205,6 @@ export function QuoteDetailPage() {
     window.print();
   };
 
-  const handleDownloadPdf = async () => {
-    const el = printRef.current;
-    if (!el) return;
-    toast.loading('Generating PDF...');
-    try {
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      let heightLeft = pdfHeight;
-      let position = 0;
-      const pageHeight = 297;
-
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Quote-${quote.prospectName.replace(/\s+/g, '_')}.pdf`);
-    } catch (err) {
-      toast.error('Failed to generate PDF. Try Print instead.');
-    }
-  };
-
   const totalAnnual = quote.totalMonthly * 12;
 
   return (
@@ -262,7 +227,7 @@ export function QuoteDetailPage() {
                     <Button size="sm" icon={XCircle} variant="danger" onClick={() => handleStatusChange('rejected')}>Reject</Button>
                   </>
                 )}
-                <Button size="sm" icon={Download} variant="secondary" onClick={handleDownloadPdf}>Download PDF</Button>
+                <Button size="sm" icon={Download} variant="secondary" onClick={() => setShowPdfPreview(true)}>Download PDF</Button>
                 <Button size="sm" icon={Printer} variant="secondary" onClick={handlePrint}>Print</Button>
                 <Button size="sm" icon={Clock} variant="secondary" onClick={() => setShowVersionHistory(true)}>
                   History (v{quote.currentVersion || 1})
@@ -479,6 +444,14 @@ export function QuoteDetailPage() {
         message="This will create a new client record and site, and mark this quote as accepted."
         confirmLabel="Convert to Client"
         variant="warning"
+      />
+
+      {/* PDF Preview Modal */}
+      <QuotePdfPreview
+        isOpen={showPdfPreview}
+        onClose={() => setShowPdfPreview(false)}
+        quote={quote}
+        businessName={state.settings.businessName}
       />
     </AppShell>
   );
