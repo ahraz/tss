@@ -14,6 +14,7 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
+import { validateQuoteForm } from '../utils/quote-validation';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
@@ -35,6 +36,7 @@ export function QuotesPage() {
     prospectProvince: 'ON', prospectPostalCode: '', prospectPhone: '',
     clientId: '', notes: '', validUntil: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   if (!currentUser) return null;
   const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
@@ -53,6 +55,17 @@ export function QuotesPage() {
   }, [state.quotes, statusFilter, searchQuery]);
 
   const handleCreateQuote = () => {
+    const result = validateQuoteForm(formData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path.join('.');
+        errors[path] = issue.message;
+      });
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
     const now = new Date().toISOString();
     const validUntil = formData.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const newQuote: Quote = {
@@ -156,14 +169,42 @@ export function QuotesPage() {
       {/* New Quote Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="New Quote" size="lg">
         <div className="space-y-4">
-          <Input label="Prospect / Business Name" value={formData.prospectName} onChange={e => setFormData({...formData, prospectName: e.target.value})} placeholder="e.g. Kennedy Medical Clinic" required />
+          {Object.keys(formErrors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <p className="text-sm font-medium text-red-800 mb-1">Please fix the following errors:</p>
+              <ul className="text-sm text-red-700 list-disc list-inside">
+                {Object.values(formErrors).filter(Boolean).map((error, i) => (
+                  <li key={i}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Input label="Prospect / Business Name" value={formData.prospectName} onChange={e => {
+            setFormData({...formData, prospectName: e.target.value});
+            if (formErrors.prospectName) setFormErrors(prev => ({ ...prev, prospectName: '' }));
+          }} placeholder="e.g. Kennedy Medical Clinic" required error={formErrors.prospectName} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Address" value={formData.prospectAddress} onChange={e => setFormData({...formData, prospectAddress: e.target.value})} placeholder="7990 Kennedy Rd S" />
-            <Input label="City" value={formData.prospectCity} onChange={e => setFormData({...formData, prospectCity: e.target.value})} />
-            <Input label="Province" value={formData.prospectProvince} onChange={e => setFormData({...formData, prospectProvince: e.target.value})} />
-            <Input label="Postal Code" value={formData.prospectPostalCode} onChange={e => setFormData({...formData, prospectPostalCode: e.target.value})} />
+            <Input label="Address" value={formData.prospectAddress} onChange={e => {
+              setFormData({...formData, prospectAddress: e.target.value});
+              if (formErrors.prospectAddress) setFormErrors(prev => ({ ...prev, prospectAddress: '' }));
+            }} placeholder="7990 Kennedy Rd S" error={formErrors.prospectAddress} />
+            <Input label="City" value={formData.prospectCity} onChange={e => {
+              setFormData({...formData, prospectCity: e.target.value});
+              if (formErrors.prospectCity) setFormErrors(prev => ({ ...prev, prospectCity: '' }));
+            }} error={formErrors.prospectCity} />
+            <Input label="Province" value={formData.prospectProvince} onChange={e => {
+              setFormData({...formData, prospectProvince: e.target.value});
+              if (formErrors.prospectProvince) setFormErrors(prev => ({ ...prev, prospectProvince: '' }));
+            }} error={formErrors.prospectProvince} />
+            <Input label="Postal Code" value={formData.prospectPostalCode} onChange={e => {
+              setFormData({...formData, prospectPostalCode: e.target.value});
+              if (formErrors.prospectPostalCode) setFormErrors(prev => ({ ...prev, prospectPostalCode: '' }));
+            }} error={formErrors.prospectPostalCode} />
           </div>
-          <Input label="Phone" value={formData.prospectPhone} onChange={e => setFormData({...formData, prospectPhone: e.target.value})} placeholder="905-555-0404" />
+          <Input label="Phone" value={formData.prospectPhone} onChange={e => {
+            setFormData({...formData, prospectPhone: e.target.value});
+            if (formErrors.prospectPhone) setFormErrors(prev => ({ ...prev, prospectPhone: '' }));
+          }} placeholder="905-555-0404" error={formErrors.prospectPhone} />
           <Select label="Link to Existing Client (optional)"
             options={[
               { value: '', label: '— None —' },
@@ -172,7 +213,10 @@ export function QuotesPage() {
             value={formData.clientId}
             onChange={e => setFormData({...formData, clientId: e.target.value})}
           />
-          <Input label="Valid Until" type="date" value={formData.validUntil} onChange={e => setFormData({...formData, validUntil: e.target.value})} />
+          <Input label="Valid Until" type="date" value={formData.validUntil} onChange={e => {
+            setFormData({...formData, validUntil: e.target.value});
+            if (formErrors.validUntil) setFormErrors(prev => ({ ...prev, validUntil: '' }));
+          }} error={formErrors.validUntil} />
           <Textarea label="Notes" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows={3} />
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
