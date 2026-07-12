@@ -2,13 +2,16 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Download } from 'lucide-react';
+import { Download, Link2, Copy, Check } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { formatCAD } from '../../utils/formatters';
 import { CONTRACT_TERMS, CONTRACT_FOOTER } from '../../utils/contract-terms';
 import logoImage from '../../assets/gtascrub.png';
 import type { Quote } from '../../types';
+import { generateShareToken } from '../../types/sharedContract';
+import { db } from '../../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface Props {
   isOpen: boolean;
@@ -24,6 +27,9 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
   const [hasSignature, setHasSignature] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const contractNumber = `CONTRACT-${quote.id.slice(-6).toUpperCase()}`;
   const today = new Date().toLocaleDateString('en-CA', {
@@ -98,6 +104,59 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
       clearCanvas();
     }
   }, [isOpen, clearCanvas]);
+
+  const handleGenerateLink = async () => {
+    if (!quote) return;
+    setGeneratingLink(true);
+    try {
+      const token = generateShareToken();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const sharedContract = {
+        id: token,
+        quoteId: quote.id,
+        quoteData: {
+          prospectName: quote.prospectName,
+          prospectAddress: quote.prospectAddress,
+          prospectCity: quote.prospectCity,
+          prospectProvince: quote.prospectProvince,
+          prospectPostalCode: quote.prospectPostalCode,
+          prospectPhone: quote.prospectPhone,
+          lineItems: quote.lineItems,
+          totalMonthly: quote.totalMonthly,
+        },
+        contractNumber: `CONTRACT-${quote.id.slice(-6).toUpperCase()}`,
+        status: 'pending' as const,
+        createdAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        createdBy: '',
+      };
+
+      await setDoc(doc(db, 'sharedContracts', token), sharedContract);
+
+      const url = `${window.location.origin}/#/share/${token}`;
+      setShareLink(url);
+      toast.success('Contract link generated');
+    } catch (err) {
+      console.error('Failed to generate link:', err);
+      toast.error('Failed to generate link. Please try again.');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      toast.success('Link copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
 
   const handleDownloadAndConvert = async () => {
     if (!contractRef.current || !hasSignature || !signatureDataUrl) return;
@@ -262,6 +321,37 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
               Clear
             </Button>
           </div>
+        </div>
+
+        {/* Share with Client */}
+        <div className="border rounded-lg p-4 bg-blue-50">
+          <div className="flex items-center gap-2 mb-2">
+            <Link2 size={16} className="text-blue-600" />
+            <span className="text-sm font-semibold text-blue-800">Share with Client</span>
+          </div>
+          {shareLink ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={shareLink}
+                readOnly
+                className="flex-1 text-sm bg-white border border-blue-200 rounded px-3 py-2 text-gray-700"
+              />
+              <Button size="sm" onClick={handleCopyLink} variant="secondary">
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleGenerateLink}
+              disabled={generatingLink}
+              variant="secondary"
+            >
+              {generatingLink ? 'Generating...' : 'Generate Link'}
+            </Button>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
