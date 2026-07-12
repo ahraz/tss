@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Search, DollarSign, Calendar, Users } from 'lucide-react';
+import { Plus, FileText, DollarSign, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -15,7 +15,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
 import { validateQuoteForm } from '../utils/quote-validation';
-import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
+import type { Quote, QuoteStatus } from '../types';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',

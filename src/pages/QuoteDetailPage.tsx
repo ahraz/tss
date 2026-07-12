@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -8,7 +8,6 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CleaningEstimator } from '../components/quotes/CleaningEstimator';
 import toast from 'react-hot-toast';
@@ -19,7 +18,8 @@ import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion
 import { createVersion, addVersionToQuote } from '../types';
 import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
 import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
-import { QuotePdfPreview } from '../components/quotes/QuotePdfPreview';
+
+const QuotePdfPreview = lazy(() => import('../components/quotes/QuotePdfPreview').then(m => ({ default: m.QuotePdfPreview })));
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',
@@ -44,15 +44,14 @@ export function QuoteDetailPage() {
     v2: QuoteVersion;
   } | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
-
-  const quote = state.quotes.find(q => q.id === id);
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
   const [lineItemForm, setLineItemForm] = useState({
     description: '', siteId: '', frequency: 'weekly' as CleaningFrequency,
     amountPerVisit: 0, visitsPerWeek: 1,
   });
+
+  const quote = state.quotes.find(q => q.id === id);
+  if (!currentUser) return null;
+  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
   const getMonthlyAmount = (visits: number, perVisit: number, freq: CleaningFrequency) => {
     const multiplier = freq === 'daily' ? 22 : freq === 'weekly' ? 4.33 : freq === 'biweekly' ? 2.17 : 1;
@@ -136,9 +135,11 @@ export function QuoteDetailPage() {
   const handleEstimatorGenerated = (items: QuoteLineItem[]) => {
     const lineItems = [...quote.lineItems, ...items];
     const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    const version = createVersion(quote, currentUser.id, `Added ${items.length} items from estimator`);
+    const updatedQuote = addVersionToQuote(quote, version);
     dispatch({
       type: 'UPDATE_QUOTE',
-      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
+      payload: { ...updatedQuote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
     });
     toast.success(`Added ${items.length} items from estimator`);
   };
@@ -191,10 +192,12 @@ export function QuoteDetailPage() {
       createdAt: now,
     };
     dispatch({ type: 'ADD_SITE', payload: newSite });
-    // Mark quote as accepted
+    // Mark quote as accepted with version
+    const version = createVersion(quote, currentUser.id, 'Converted to client');
+    const updatedQuote = addVersionToQuote(quote, version);
     dispatch({
       type: 'UPDATE_QUOTE',
-      payload: { ...quote, status: 'accepted', updatedAt: now },
+      payload: { ...updatedQuote, status: 'accepted', updatedAt: now },
     });
     setShowConvertConfirm(false);
     toast.success(`Converted "${quote.prospectName}" to client + site`);
@@ -413,7 +416,13 @@ export function QuoteDetailPage() {
                 versions={quote.versions || []}
                 currentVersion={quote.currentVersion || 1}
                 onRestore={(v) => {
-                  const restoredQuote = { ...v.snapshot, id: quote.id } as Quote;
+                  const restoredQuote = { 
+                    ...v.snapshot, 
+                    id: quote.id, 
+                    versions: quote.versions || [], 
+                    currentVersion: v.version,
+                    updatedAt: new Date().toISOString()
+                  } as Quote;
                   dispatch({ type: 'UPDATE_QUOTE', payload: restoredQuote });
                   setShowVersionHistory(false);
                   toast.success(`Restored to v${v.version}`);
@@ -447,12 +456,14 @@ export function QuoteDetailPage() {
       />
 
       {/* PDF Preview Modal */}
-      <QuotePdfPreview
-        isOpen={showPdfPreview}
-        onClose={() => setShowPdfPreview(false)}
-        quote={quote}
-        businessName={state.settings.businessName}
-      />
+      <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><div className="text-white">Loading PDF...</div></div>}>
+        <QuotePdfPreview
+          isOpen={showPdfPreview}
+          onClose={() => setShowPdfPreview(false)}
+          quote={quote}
+          businessName={state.settings.businessName}
+        />
+      </Suspense>
     </AppShell>
   );
 }
