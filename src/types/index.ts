@@ -665,3 +665,5 @@ export type AppAction =
 
 export type { QuoteVersion } from './quote-version';
 export { createVersion, addVersionToQuote } from './quote-version';
+export type { SharedContract } from './sharedContract';
+export { generateShareToken } from './sharedContract';
