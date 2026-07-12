@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark, Clock } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useApp } from '../context/AppContext';
@@ -17,7 +17,10 @@ import toast from 'react-hot-toast';
 import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency } from '../types';
+import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion } from '../types';
+import { createVersion, addVersionToQuote } from '../types';
+import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
+import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
 
 const statusColors: Record<QuoteStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   draft: 'warning',
@@ -36,6 +39,11 @@ export function QuoteDetailPage() {
   const [showAddLineItem, setShowAddLineItem] = useState(false);
   const [showEstimator, setShowEstimator] = useState(false);
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [compareVersions, setCompareVersions] = useState<{
+    v1: QuoteVersion;
+    v2: QuoteVersion;
+  } | null>(null);
 
   const quote = state.quotes.find(q => q.id === id);
   if (!currentUser) return null;
@@ -64,7 +72,12 @@ export function QuoteDetailPage() {
   }
 
   const handleStatusChange = (status: QuoteStatus) => {
-    dispatch({ type: 'UPDATE_QUOTE', payload: { ...quote, status, updatedAt: new Date().toISOString() } });
+    const version = createVersion(quote, currentUser.id, `Status changed to ${status}`);
+    const updatedQuote = addVersionToQuote(quote, version);
+    dispatch({
+      type: 'UPDATE_QUOTE',
+      payload: { ...updatedQuote, status, updatedAt: new Date().toISOString() },
+    });
   };
 
   const handleDelete = () => {
@@ -88,20 +101,35 @@ export function QuoteDetailPage() {
     };
     const lineItems = [...quote.lineItems, newItem];
     const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    const version = createVersion(quote, currentUser.id, `Added line item: ${newItem.description}`);
+    const updatedQuote = addVersionToQuote(quote, version);
     dispatch({
       type: 'UPDATE_QUOTE',
-      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
+      payload: {
+        ...updatedQuote,
+        lineItems,
+        totalMonthly,
+        updatedAt: new Date().toISOString(),
+      },
     });
     setShowAddLineItem(false);
     setLineItemForm({ description: '', siteId: '', frequency: 'weekly', amountPerVisit: 0, visitsPerWeek: 1 });
   };
 
   const handleRemoveLineItem = (itemId: string) => {
+    const item = quote.lineItems.find(li => li.id === itemId);
     const lineItems = quote.lineItems.filter(li => li.id !== itemId);
     const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    const version = createVersion(quote, currentUser.id, `Removed line item: ${item?.description}`);
+    const updatedQuote = addVersionToQuote(quote, version);
     dispatch({
       type: 'UPDATE_QUOTE',
-      payload: { ...quote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
+      payload: {
+        ...updatedQuote,
+        lineItems,
+        totalMonthly,
+        updatedAt: new Date().toISOString(),
+      },
     });
   };
 
@@ -236,6 +264,9 @@ export function QuoteDetailPage() {
                 )}
                 <Button size="sm" icon={Download} variant="secondary" onClick={handleDownloadPdf}>Download PDF</Button>
                 <Button size="sm" icon={Printer} variant="secondary" onClick={handlePrint}>Print</Button>
+                <Button size="sm" icon={Clock} variant="secondary" onClick={() => setShowVersionHistory(true)}>
+                  History (v{quote.currentVersion || 1})
+                </Button>
                 <Button size="sm" icon={Trash2} variant="danger" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
               </>
             )}
@@ -403,6 +434,41 @@ export function QuoteDetailPage() {
         onGenerate={handleEstimatorGenerated}
         templates={state.quoteTemplates}
       />
+
+      {/* Version History Panel */}
+      {showVersionHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-semibold">Version History</h3>
+              <button onClick={() => setShowVersionHistory(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <QuoteVersionHistory
+                versions={quote.versions || []}
+                currentVersion={quote.currentVersion || 1}
+                onRestore={(v) => {
+                  const restoredQuote = { ...v.snapshot, id: quote.id } as Quote;
+                  dispatch({ type: 'UPDATE_QUOTE', payload: restoredQuote });
+                  setShowVersionHistory(false);
+                  toast.success(`Restored to v${v.version}`);
+                }}
+                onCompare={(v1, v2) => setCompareVersions({ v1, v2 })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Version Compare Modal */}
+      {compareVersions && (
+        <QuoteVersionCompare
+          isOpen={true}
+          onClose={() => setCompareVersions(null)}
+          versionA={compareVersions.v1}
+          versionB={compareVersions.v2}
+        />
+      )}
 
       {/* Convert to Client Confirm */}
       <ConfirmModal
