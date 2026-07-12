@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Download } from 'lucide-react';
@@ -13,6 +13,8 @@ interface Props {
   contentRef: React.RefObject<HTMLDivElement | null>;
 }
 
+const HIDDEN_SELECTOR = '.no-print';
+
 export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
   const [generating, setGenerating] = useState(false);
   const fileName = `Quote-${quote.prospectName.replace(/\s+/g, '_')}.pdf`;
@@ -20,8 +22,18 @@ export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
   const handleDownload = async () => {
     if (!contentRef.current) return;
     setGenerating(true);
+
+    const element = contentRef.current;
+    const hiddenEls = element.querySelectorAll(HIDDEN_SELECTOR);
+    const prevStyles: string[] = [];
+
     try {
-      const element = contentRef.current;
+      // Temporarily hide interactive elements
+      hiddenEls.forEach((el, i) => {
+        prevStyles[i] = (el as HTMLElement).style.display;
+        (el as HTMLElement).style.display = 'none';
+      });
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
@@ -29,9 +41,9 @@ export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
         backgroundColor: '#ffffff',
       });
 
-      const imgWidth = 210; // A4 width in mm
+      const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = 297; // A4 height in mm
+      const pageHeight = 297;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgData = canvas.toDataURL('image/png');
@@ -53,6 +65,10 @@ export function QuotePdfPreview({ isOpen, onClose, quote, contentRef }: Props) {
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
+      // Restore hidden elements
+      hiddenEls.forEach((el, i) => {
+        (el as HTMLElement).style.display = prevStyles[i] ?? '';
+      });
       setGenerating(false);
     }
   };
