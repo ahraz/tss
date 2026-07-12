@@ -461,7 +461,7 @@ export function QuoteDetailPage() {
           isOpen={showPdfPreview}
           onClose={() => setShowPdfPreview(false)}
           quote={quote}
-          businessName={state.settings.businessName}
+          contentRef={printRef}
         />
       </Suspense>
     </AppShell>
