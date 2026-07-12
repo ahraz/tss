@@ -18,11 +18,7 @@ const FACILITY_OPTIONS = (Object.keys(FACILITY_LABELS) as FacilityType[]).map(ft
   label: FACILITY_LABELS[ft],
 }));
 
-let lineIdCounter = 0;
-function newLineId(): string {
-  lineIdCounter++;
-  return `li-${lineIdCounter}-${Date.now()}`;
-}
+const newLineId = generateId;
 
 export function TemplatesPage() {
   const navigate = useNavigate();
