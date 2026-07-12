@@ -18,6 +18,7 @@ import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion
 import { createVersion, addVersionToQuote } from '../types';
 import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
 import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
+import { ContractGenerator } from '../components/quotes/ContractGenerator';
 
 const QuotePdfPreview = lazy(() => import('../components/quotes/QuotePdfPreview').then(m => ({ default: m.QuotePdfPreview })));
 
@@ -44,6 +45,7 @@ export function QuoteDetailPage() {
     v2: QuoteVersion;
   } | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [showContractGenerator, setShowContractGenerator] = useState(false);
   const [lineItemForm, setLineItemForm] = useState({
     description: '', siteId: '', frequency: 'weekly' as CleaningFrequency,
     amountPerVisit: 0, visitsPerWeek: 1,
@@ -204,6 +206,68 @@ export function QuoteDetailPage() {
     navigate(`/sites/${siteId}`);
   };
 
+  const handleContractConvert = (contractPdf: string, contractSignature: string) => {
+    const now = new Date().toISOString();
+    const clientId = generateId();
+    const newClient = {
+      id: clientId,
+      name: quote.prospectName,
+      address: quote.prospectAddress,
+      city: quote.prospectCity,
+      province: quote.prospectProvince,
+      postalCode: quote.prospectPostalCode,
+      contactName: quote.prospectName,
+      contactPhone: quote.prospectPhone,
+      contractRate: quote.totalMonthly,
+      frequency: 'weekly' as CleaningFrequency,
+      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+      status: 'active' as const,
+      notes: `Converted from Quote #${quote.id.slice(-6).toUpperCase()}`,
+      contractPdf,
+      contractSignature,
+      createdAt: now,
+    };
+    dispatch({ type: 'ADD_CLIENT', payload: newClient });
+
+    const siteId = generateId();
+    const newSite = {
+      id: siteId,
+      name: quote.prospectName,
+      address: quote.prospectAddress,
+      city: quote.prospectCity,
+      province: quote.prospectProvince,
+      postalCode: quote.prospectPostalCode,
+      areaTags: [],
+      type: 'other' as const,
+      contactName: quote.prospectName,
+      contactPhone: quote.prospectPhone,
+      contractRate: quote.totalMonthly,
+      frequency: 'weekly' as CleaningFrequency,
+      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+      scheduleStart: '17:00',
+      scheduleEnd: '19:00',
+      assignedUserIds: [],
+      accessNotes: '',
+      status: 'active' as const,
+      checklist: [],
+      clientId,
+      isSubSite: false,
+      createdAt: now,
+    };
+    dispatch({ type: 'ADD_SITE', payload: newSite });
+
+    const version = createVersion(quote, currentUser.id, 'Converted to client with contract');
+    const updatedQuote = addVersionToQuote(quote, version);
+    dispatch({
+      type: 'UPDATE_QUOTE',
+      payload: { ...updatedQuote, status: 'accepted', updatedAt: now },
+    });
+
+    setShowContractGenerator(false);
+    toast.success(`Contract signed and "${quote.prospectName}" converted to client + site`);
+    navigate(`/sites/${siteId}`);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -341,13 +405,13 @@ export function QuoteDetailPage() {
             </div>
           )}
 
-          {/* Convert to Client */}
+          {/* Generate Contract */}
           {isOwnerOrPartner && (quote.status === 'accepted') && (
             <div className="no-print border-t border-gray-200 pt-4 mt-6">
-              <Button icon={Building2} onClick={() => setShowConvertConfirm(true)}>
-                Convert to Client & Site
+              <Button icon={FileText} onClick={() => setShowContractGenerator(true)}>
+                Generate Contract
               </Button>
-              <p className="text-xs text-gray-400 mt-1">Creates a client record and site from this accepted quote</p>
+              <p className="text-xs text-gray-400 mt-1">Generate a service agreement, capture signature, and convert to client</p>
             </div>
           )}
 
@@ -453,6 +517,14 @@ export function QuoteDetailPage() {
         message="This will create a new client record and site, and mark this quote as accepted."
         confirmLabel="Convert to Client"
         variant="warning"
+      />
+
+      {/* Contract Generator */}
+      <ContractGenerator
+        isOpen={showContractGenerator}
+        onClose={() => setShowContractGenerator(false)}
+        quote={quote}
+        onConvert={handleContractConvert}
       />
 
       {/* PDF Preview Modal */}
