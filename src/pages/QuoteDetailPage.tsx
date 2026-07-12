@@ -1,6 +1,6 @@
 import React, { useState, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Building2, Bookmark, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Bookmark, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -38,7 +38,6 @@ export function QuoteDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddLineItem, setShowAddLineItem] = useState(false);
   const [showEstimator, setShowEstimator] = useState(false);
-  const [showConvertConfirm, setShowConvertConfirm] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [compareVersions, setCompareVersions] = useState<{
     v1: QuoteVersion;
@@ -144,66 +143,6 @@ export function QuoteDetailPage() {
       payload: { ...updatedQuote, lineItems, totalMonthly, updatedAt: new Date().toISOString() },
     });
     toast.success(`Added ${items.length} items from estimator`);
-  };
-
-  const handleConvertToClient = () => {
-    // Create a new client from the quote prospect data
-    const now = new Date().toISOString();
-    const clientId = generateId();
-    const newClient = {
-      id: clientId,
-      name: quote.prospectName,
-      address: quote.prospectAddress,
-      city: quote.prospectCity,
-      province: quote.prospectProvince,
-      postalCode: quote.prospectPostalCode,
-      contactName: quote.prospectName,
-      contactPhone: quote.prospectPhone,
-      contractRate: quote.totalMonthly,
-      frequency: 'weekly' as CleaningFrequency,
-      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
-      status: 'active' as const,
-      notes: `Converted from Quote #${quote.id.slice(-6).toUpperCase()}`,
-      createdAt: now,
-    };
-    dispatch({ type: 'ADD_CLIENT', payload: newClient });
-    // Also create a site for them
-    const siteId = generateId();
-    const newSite = {
-      id: siteId,
-      name: quote.prospectName,
-      address: quote.prospectAddress,
-      city: quote.prospectCity,
-      province: quote.prospectProvince,
-      postalCode: quote.prospectPostalCode,
-      areaTags: [],
-      type: 'other' as const,
-      contactName: quote.prospectName,
-      contactPhone: quote.prospectPhone,
-      contractRate: quote.totalMonthly,
-      frequency: 'weekly' as CleaningFrequency,
-      cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
-      scheduleStart: '17:00',
-      scheduleEnd: '19:00',
-      assignedUserIds: [],
-      accessNotes: '',
-      status: 'active' as const,
-      checklist: [],
-      clientId,
-      isSubSite: false,
-      createdAt: now,
-    };
-    dispatch({ type: 'ADD_SITE', payload: newSite });
-    // Mark quote as accepted with version
-    const version = createVersion(quote, currentUser.id, 'Converted to client');
-    const updatedQuote = addVersionToQuote(quote, version);
-    dispatch({
-      type: 'UPDATE_QUOTE',
-      payload: { ...updatedQuote, status: 'accepted', updatedAt: now },
-    });
-    setShowConvertConfirm(false);
-    toast.success(`Converted "${quote.prospectName}" to client + site`);
-    navigate(`/sites/${siteId}`);
   };
 
   const handleContractConvert = (contractPdf: string, contractSignature: string) => {
@@ -507,17 +446,6 @@ export function QuoteDetailPage() {
           versionB={compareVersions.v2}
         />
       )}
-
-      {/* Convert to Client Confirm */}
-      <ConfirmModal
-        isOpen={showConvertConfirm}
-        onClose={() => setShowConvertConfirm(false)}
-        onConfirm={handleConvertToClient}
-        title={`Convert "${quote.prospectName}" to Client?`}
-        message="This will create a new client record and site, and mark this quote as accepted."
-        confirmLabel="Convert to Client"
-        variant="warning"
-      />
 
       {/* Contract Generator */}
       <ContractGenerator
