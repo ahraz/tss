@@ -2,6 +2,8 @@
 // GTA Scrub — Type Definitions
 // ============================================================
 
+import type { QuoteVersion } from './quote-version';
+
 // --- Enums & Literal Types ---
 
 export type UserRole = 'owner' | 'partner' | 'employee';

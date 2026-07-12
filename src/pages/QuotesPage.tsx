@@ -144,7 +144,7 @@ export function QuotesPage() {
                       <div className="flex items-center gap-2">
                         <Badge label={quote.status} variant={statusColors[quote.status]} className="text-xs" />
                         {quote.currentVersion && quote.currentVersion > 1 && (
-                          <Badge label={`v${quote.currentVersion}`} variant="default" className="text-xs" />
+                          <Badge label={`v${quote.currentVersion}`} variant="neutral" className="text-xs" />
                         )}
                       </div>
                     </div>
