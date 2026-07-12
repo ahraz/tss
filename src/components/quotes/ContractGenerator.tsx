@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Download } from 'lucide-react';
@@ -140,6 +141,7 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
       onConvert(`data:application/pdf;base64,${pdfBase64}`, signatureDataUrl);
     } catch (err) {
       console.error('PDF generation failed:', err);
+      toast.error('Failed to generate contract PDF. Please try again.');
     } finally {
       setGenerating(false);
     }
