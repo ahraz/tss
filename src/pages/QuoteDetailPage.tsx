@@ -355,7 +355,7 @@ export function QuoteDetailPage() {
           <div className="border-t border-gray-200 pt-4 mt-6 text-center text-xs text-gray-400 print:mt-4">
             <div className="flex justify-center items-center gap-3 mb-2">
               <Logo size={24} variant="icon" />
-              <span className="font-medium text-gray-500">{state.settings.businessName}</span>
+              <span className="font-medium text-gray-500">GTA Scrub</span>
             </div>
             <p>Commercial Cleaning Services</p>
             <p>This proposal is valid until {formatDate(quote.validUntil)}. Prices subject to change.</p>
