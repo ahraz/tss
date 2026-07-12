@@ -2,6 +2,8 @@
 // GTA Scrub — Type Definitions
 // ============================================================
 
+import type { QuoteVersion } from './quote-version';
+
 // --- Enums & Literal Types ---
 
 export type UserRole = 'owner' | 'partner' | 'employee';
@@ -312,6 +314,8 @@ export interface Quote {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  currentVersion?: number;
+  versions?: QuoteVersion[];
 }
 
 export interface Task {
@@ -656,3 +660,6 @@ export type AppAction =
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };
+
+export type { QuoteVersion } from './quote-version';
+export { createVersion, addVersionToQuote } from './quote-version';
