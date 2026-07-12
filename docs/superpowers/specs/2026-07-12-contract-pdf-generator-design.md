@@ -83,7 +83,7 @@ Table of line items from `quote.lineItems`:
 
 ### Signature Block
 - **Client Signature:** [drawn signature image] — **Date:** {date}
-- **GTA Scrub Representative:** [drawn or pre-filled] — **Date:** {date}
+- **GTA Scrub Representative:** Pre-filled "GTA Scrub" text with date line — no second signature required
 
 ### Footer
 - "This agreement is governed by the laws of Ontario, Canada."
@@ -105,6 +105,7 @@ HTML5 Canvas element with touch/mouse event support.
 - Signature is required — "Download & Convert" button disabled until signature is drawn
 - Supports both mouse and touch events (mobile/tablet compatible)
 - Clear button resets canvas and re-disables download
+- **Reactive rendering:** As user draws, signature image is rendered into the contract HTML preview at the signature line (via React state → conditional `<img>` tag)
 
 ### Storage
 - Signature captured as PNG data URL from canvas
@@ -147,18 +148,19 @@ On `QuoteDetailPage`, when `quote.status === 'accepted'`:
 
 ### "Download & Convert" Action
 1. Validate signature is drawn (button should be disabled otherwise)
-2. Capture contract HTML via `html2canvas` (scale 2x, white background)
-3. Capture signature canvas as PNG data URL
-4. Build PDF with `jsPDF`:
-   - Add contract image as full-page background
-   - Embed signature PNG at the signature line position
-5. Download PDF: `Contract-{quote.prospectName}.pdf`
-6. Create client record (same fields as current `handleConvertToClient`)
-7. Create site record (same fields as current `handleConvertToClient`)
-8. Store `contractPdf` (base64 of PDF) and `contractSignature` (base64 of signature PNG) on client record
-9. Mark quote as `accepted` with version history
-10. Show success toast
-11. Navigate to new site page
+2. Render signature image into the contract HTML at the signature line (reactive — updates contract preview as user draws)
+3. Capture contract HTML via `html2canvas` (scale 2x, white background) — signature is now part of the captured image
+4. Capture signature canvas as PNG data URL (separate copy for storage)
+5. Build PDF with `jsPDF`:
+   - Add contract image as full-page background (signature included)
+   - Paginate if taller than one A4 page
+6. Download PDF: `Contract-{quote.prospectName}.pdf`
+7. Create client record (same fields as current `handleConvertToClient`)
+8. Create site record (same fields as current `handleConvertToClient`)
+9. Store `contractPdf` (base64 of PDF) and `contractSignature` (base64 of signature PNG) on client record
+10. Mark quote as `accepted` with version history
+11. Show success toast
+12. Navigate to new site page
 
 ## Technical Details
 
