@@ -32,6 +32,7 @@ const initialState: AppState = {
   callLogs: [],
   leads: [],
   quoteTemplates: [],
+  sharedContracts: [],
   settings: {
     businessName: 'GTA Scrub',
     ownerName: 'Ahraz Malik',
@@ -218,6 +219,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'DELETE_QUOTE_TEMPLATE':
       return { ...state, quoteTemplates: state.quoteTemplates.filter(t => t.id !== action.payload) };
 
+    // Shared Contracts
+    case 'SET_SHARED_CONTRACTS':
+      return { ...state, sharedContracts: action.payload };
+    case 'ADD_SHARED_CONTRACT':
+      return { ...state, sharedContracts: [...state.sharedContracts, action.payload] };
+    case 'UPDATE_SHARED_CONTRACT':
+      return { ...state, sharedContracts: state.sharedContracts.map(c => c.id === action.payload.id ? { ...c, ...action.payload } : c) };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -317,6 +326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
         if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
+        if (remote.sharedContracts) originalDispatch({ type: 'SET_SHARED_CONTRACTS', payload: remote.sharedContracts });
         // Seed default templates if none exist (one per business type)
         const templates: QuoteTemplate[] = remote.quoteTemplates?.length
           ? remote.quoteTemplates

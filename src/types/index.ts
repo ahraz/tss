@@ -568,6 +568,7 @@ export interface AppState {
   incidentReports: IncidentReport[];
   callLogs: CallLogEntry[];
   leads: Lead[];
+  sharedContracts: SharedContract[];
 }
 
 // --- Action Types ---
@@ -659,11 +660,16 @@ export type AppAction =
   | { type: 'SET_QUOTE_TEMPLATES'; payload: QuoteTemplate[] }
   | { type: 'ADD_QUOTE_TEMPLATE'; payload: QuoteTemplate }
   | { type: 'DELETE_QUOTE_TEMPLATE'; payload: string }
+  // Shared Contracts
+  | { type: 'SET_SHARED_CONTRACTS'; payload: SharedContract[] }
+  | { type: 'ADD_SHARED_CONTRACT'; payload: SharedContract }
+  | { type: 'UPDATE_SHARED_CONTRACT'; payload: Partial<SharedContract> & { id: string } }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };
 
 export type { QuoteVersion } from './quote-version';
 export { createVersion, addVersionToQuote } from './quote-version';
+import type { SharedContract } from './sharedContract';
 export type { SharedContract } from './sharedContract';
 export { generateShareToken } from './sharedContract';
