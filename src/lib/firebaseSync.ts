@@ -510,6 +510,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         break;
 
       case 'UPDATE_LEAD_EMAIL':
+        if (!action.payload.leadId) return;
         await setDoc(doc(db, 'leads', action.payload.leadId), { email: action.payload.email }, { merge: true });
         break;
 

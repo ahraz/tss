@@ -346,7 +346,7 @@ export function LeadsPage() {
 
   // ── Email helpers ──
   const handleStartEditEmail = (lead: Lead) => {
-    setEditingEmailFor(lead.placeId);
+    setEditingEmailFor(leadKey(lead));
     setEmailValue(lead.email || '');
   };
 
@@ -369,7 +369,7 @@ export function LeadsPage() {
     const category = getTemplateCategory(lead.type);
     const template = emailTemplates[category];
     if (!template || !lead.email) return;
-    setCopyingLeadId(lead.placeId);
+    setCopyingLeadId(leadKey(lead));
 
     const city = (lead.address || '').split(',')[1]?.trim() || 'the GTA';
     const rating = lead.rating || 'N/A';
@@ -537,7 +537,7 @@ export function LeadsPage() {
             {mergedLeads.map(lead => {
               const latestCall = lead.latestCall;
               const calledToday = latestCall && todayLeadIds.has(leadKey(lead));
-              const isExpanded = expandedId === lead.placeId;
+              const isExpanded = expandedId === leadKey(lead);
               const leadCallLogs = callLogs.filter(l => l.leadId === leadKey(lead));
 
               const statusBadge = !latestCall
@@ -551,7 +551,7 @@ export function LeadsPage() {
                       : <Badge label="Callback" variant="info" className="text-[10px]" />;
 
               return (
-                <Card key={lead.placeId} className="hover:shadow-md transition-shadow">
+                <Card key={leadKey(lead)} className="hover:shadow-md transition-shadow">
                   <div className="flex flex-col gap-3">
                     {/* Main row */}
                     <div className="flex items-start justify-between gap-4">
@@ -569,19 +569,19 @@ export function LeadsPage() {
                               {lead.phone}
                             </a>
                           )}
-                          {editingEmailFor === lead.placeId ? (
+                          {editingEmailFor === leadKey(lead) ? (
                             <span className="flex items-center gap-1">
                               <Mail size={12} />
                               <input
                                 type="email"
                                 value={emailValue}
                                 onChange={e => setEmailValue(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') handleSaveEmail(lead.placeId); if (e.key === 'Escape') handleCancelEditEmail(); }}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveEmail(leadKey(lead)); if (e.key === 'Escape') handleCancelEditEmail(); }}
                                 placeholder="email@example.com"
                                 className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                                 autoFocus
                               />
-                              <button onClick={() => handleSaveEmail(lead.placeId)} className="text-green-600 hover:text-green-700 ml-0.5">
+                              <button onClick={() => handleSaveEmail(leadKey(lead))} className="text-green-600 hover:text-green-700 ml-0.5">
                                 <CheckCircle2 size={12} />
                               </button>
                               <button onClick={handleCancelEditEmail} className="text-gray-400 hover:text-gray-600">
@@ -648,7 +648,7 @@ export function LeadsPage() {
                           Call
                         </a>
                         <button
-                          onClick={() => setExpandedId(isExpanded ? null : lead.placeId)}
+                          onClick={() => setExpandedId(isExpanded ? null : leadKey(lead))}
                           className="p-2 text-gray-400 hover:text-gray-600"
                         >
                           <ChevronDown size={16} className={isExpanded ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -663,10 +663,10 @@ export function LeadsPage() {
                         {lead.email && (
                           <button
                             onClick={() => handleCopyEmail(lead)}
-                            disabled={copyingLeadId === lead.placeId}
+                            disabled={copyingLeadId === leadKey(lead)}
                             className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50"
                           >
-                            {copyingLeadId === lead.placeId ? (
+                            {copyingLeadId === leadKey(lead) ? (
                               <>Copying...</>
                             ) : (
                               <>
