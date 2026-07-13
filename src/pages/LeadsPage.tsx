@@ -304,7 +304,6 @@ export function LeadsPage() {
 
     const rendered = emailTemplate
       .replace(/\{\{business_name\}\}/g, lead.businessName)
-      .replace(/\{\{first_name\|'there'\}\}/g, lead.businessName.split(' ')[0] || 'there')
       .replace(/\{\{rating\}\}/g, rating)
       .replace(/\{\{reviews_count\}\}/g, reviewsCount)
       .replace(/\{\{city\}\}/g, city)
