@@ -76,7 +76,7 @@ export function QuoteDetailPage() {
   const handleShareQuote = () => {
     if (!quote) return;
     const token = quote.shareToken || generateShareToken();
-    const shareUrl = `${window.location.origin}/quote/${token}`;
+    const shareUrl = `${window.location.origin}/#/quote/${token}`;
 
     if (!quote.shareToken) {
       dispatch({ type: 'UPDATE_QUOTE', payload: {
