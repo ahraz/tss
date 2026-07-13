@@ -16,8 +16,9 @@ import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
 import { NOTIFICATION_CONTENT } from '../types/notification';
 import { showNotification } from '../services/notificationService';
-import { db } from '../lib/firebase';
+import app, { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion } from '../types';
 import { createVersion, addVersionToQuote } from '../types';
 import { generateShareToken } from '../types/sharedContract';
@@ -108,7 +109,7 @@ export function QuoteDetailPage() {
     );
   }
 
-  const handleStatusChange = (status: QuoteStatus) => {
+  const handleStatusChange = async (status: QuoteStatus) => {
     const version = createVersion(quote, currentUser.id, `Status changed to ${status}`);
     const updatedQuote = addVersionToQuote(quote, version);
     dispatch({
@@ -123,7 +124,7 @@ export function QuoteDetailPage() {
         prospectName: quote.prospectName,
         quoteId: quote.id,
       });
-      setDoc(doc(db, 'notifications', notificationId), {
+      await setDoc(doc(db, 'notifications', notificationId), {
         id: notificationId,
         type,
         title: content.title,
@@ -131,7 +132,7 @@ export function QuoteDetailPage() {
         link: content.link,
         read: false,
         createdAt: new Date().toISOString(),
-        userId: '',
+        userId: getAuth(app).currentUser?.uid || '',
       });
       showNotification(content.title, content.body, content.link);
     }

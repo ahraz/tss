@@ -4,8 +4,9 @@ import { getPayPeriodDates, calculateEmployeeHours, calculateEmployeePay } from 
 import { generateId } from '../utils/storage';
 import { NOTIFICATION_CONTENT } from '../types/notification';
 import { showNotification } from '../services/notificationService';
-import { db } from '../lib/firebase';
+import app, { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import type { PayrollRecord, PayPeriod } from '../types';
 
 export type PayrollTab = 'current' | 'history';
@@ -109,7 +110,8 @@ export function usePayroll() {
   }, [state.payroll]);
 
   // Calculate & create payroll records
-  const handleCalculatePayroll = () => {
+  const handleCalculatePayroll = async () => {
+    let createdCount = 0;
     for (const summary of employeeSummaries) {
       if (summary.hours <= 0) continue;
       if (existingRecords.find(r => r.userId === summary.user.id)) continue;
@@ -133,13 +135,14 @@ export function usePayroll() {
         createdAt: new Date().toISOString(),
       };
       dispatch({ type: 'ADD_PAYROLL', payload: record });
+      createdCount++;
     }
 
-    const pendingCount = state.payroll.filter(r => r.status === 'calculated' && !r.isPaid).length;
+    const pendingCount = state.payroll.filter(r => r.status === 'calculated' && !r.isPaid).length + createdCount;
     if (pendingCount > 0) {
       const notificationId = generateId();
       const content = NOTIFICATION_CONTENT.payroll_pending({ count: pendingCount });
-      setDoc(doc(db, 'notifications', notificationId), {
+      await setDoc(doc(db, 'notifications', notificationId), {
         id: notificationId,
         type: 'payroll_pending',
         title: content.title,
@@ -147,7 +150,7 @@ export function usePayroll() {
         link: content.link,
         read: false,
         createdAt: new Date().toISOString(),
-        userId: '',
+        userId: getAuth(app).currentUser?.uid || '',
       });
       showNotification(content.title, content.body, content.link);
     }
