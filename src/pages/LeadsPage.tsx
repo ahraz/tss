@@ -213,6 +213,9 @@ export function LeadsPage() {
     return map;
   }, [callLogs]);
 
+  // Resolve a lead's key for looking up call logs
+  const leadKey = (lead: Lead) => lead.id || lead.placeId || String(lead.rowIndex);
+
   // ── Derive daily called lead IDs ──
   const todayLeadIds = useMemo(() => {
     const today = new Date();
@@ -228,7 +231,7 @@ export function LeadsPage() {
   const mergedLeads = useMemo(() => {
     let result = leads.map(lead => ({
       ...lead,
-      latestCall: latestCallsMap.get(lead.placeId) || null,
+      latestCall: latestCallsMap.get(leadKey(lead)) || null,
     }));
 
     // Filter
@@ -237,7 +240,7 @@ export function LeadsPage() {
         result = result.filter(l => !l.latestCall);
         break;
       case 'today':
-        result = result.filter(l => l.latestCall && todayLeadIds.has(l.placeId));
+        result = result.filter(l => l.latestCall && todayLeadIds.has(leadKey(l)));
         break;
       case 'callback':
         result = result.filter(l => l.latestCall?.outcome === 'callback');
@@ -271,7 +274,7 @@ export function LeadsPage() {
   // ── Stats ──
   const stats = useMemo(() => {
     const total = leads.length;
-    const notCalled = leads.filter(l => !latestCallsMap.has(l.placeId)).length;
+    const notCalled = leads.filter(l => !latestCallsMap.has(leadKey(l))).length;
     const calledToday = callLogs.filter(l => todayLeadIds.has(l.leadId)).length;
     const callbacks = callLogs.filter(l => l.outcome === 'callback' && !todayLeadIds.has(l.leadId)).length;
     const completed = callLogs.filter(l => l.outcome === 'completed').length;
@@ -311,7 +314,7 @@ export function LeadsPage() {
     try {
       const entry: CallLogEntry = {
         id: generateId(),
-        leadId: outcomeLead.placeId,
+        leadId: outcomeLead.id || outcomeLead.placeId || String(outcomeLead.rowIndex),
         businessName: outcomeLead.businessName,
         phone: outcomeLead.phone,
         sheetRowIndex: outcomeLead.rowIndex,
@@ -533,9 +536,9 @@ export function LeadsPage() {
           <div className="space-y-3">
             {mergedLeads.map(lead => {
               const latestCall = lead.latestCall;
-              const calledToday = latestCall && todayLeadIds.has(lead.placeId);
+              const calledToday = latestCall && todayLeadIds.has(leadKey(lead));
               const isExpanded = expandedId === lead.placeId;
-              const leadCallLogs = callLogs.filter(l => l.leadId === lead.placeId);
+              const leadCallLogs = callLogs.filter(l => l.leadId === leadKey(lead));
 
               const statusBadge = !latestCall
                 ? <Badge label="Not Called" variant="danger" className="text-[10px]" />
