@@ -479,7 +479,7 @@ export async function scrapeLeadsFromMaps(
             place.formatted_address || '',           // F: address
             details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
-            place.place_id,                          // I: placeId
+            '',                                      // I: email (not available from Places API)
             gps,                                     // J: gpsCoordinates
             '', '', '', ''                           // K-N: tracking columns
           ]);
