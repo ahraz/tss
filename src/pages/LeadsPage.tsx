@@ -138,7 +138,18 @@ export function LeadsPage() {
       toast.success(`Imported ${sheetLeads.length} leads`);
     } catch (err: any) {
       if (err.message === 'NEEDS_AUTH') {
-        toast.error('Please connect Google Sheets first');
+        try {
+          await waitForGis();
+          initTokenClient();
+          await signIn();
+          await ensureHeaderColumns();
+          const sheetLeads = await fetchLeadsFromSheet();
+          dispatch({ type: 'SET_LEADS', payload: sheetLeads });
+          toast.success(`Imported ${sheetLeads.length} leads`);
+          return;
+        } catch {
+          toast.error('Failed to connect. Please try again.');
+        }
       } else {
         toast.error('Failed to load leads from sheet');
         console.error(err);
