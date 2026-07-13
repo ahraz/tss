@@ -41,7 +41,7 @@ export function ContractNotificationBadge() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+          <div className="absolute right-0 md:left-0 md:right-auto top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
             <div className="p-3 border-b flex justify-between items-center">
               <h3 className="font-semibold text-gray-900">Signed Contracts</h3>
               <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
