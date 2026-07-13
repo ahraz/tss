@@ -515,25 +515,22 @@ export async function scrapeLeadsFromMaps(
 
   // Write zip statuses back to AZ Zips sheet
   if (zipUpdates.length > 0) {
-    try {
-      await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            valueInputOption: 'RAW',
-            data: zipUpdates.map(u => ({
-              range: `'AZ Zips'!B${u.row}`,
-              values: [[u.status]],
-            })),
-          }),
-        }
-      );
-      onProgress(`Updated ${zipUpdates.length} zip statuses`);
-    } catch (e) {
-      console.warn('Failed to update zip statuses:', e);
+    for (const u of zipUpdates) {
+      try {
+        const range = `'AZ Zips'!B${u.row}`;
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+          {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ range, majorDimension: 'ROWS', values: [[u.status]] }),
+          }
+        );
+      } catch (e) {
+        console.warn(`Failed to update status for row ${u.row}:`, e);
+      }
     }
+    onProgress(`Updated ${zipUpdates.length} zip statuses`);
   }
 
   // Write to Results tab
