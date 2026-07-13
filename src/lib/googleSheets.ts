@@ -297,7 +297,6 @@ const CATEGORIES = [
   'Funeral Home',
   'Auto Dealership',
   'Private School / Tutoring',
-  'Hotel / Motel',
 ];
 
 export async function syncCategoriesToSheet(): Promise<void> {
