@@ -87,6 +87,7 @@ export function LeadsPage() {
 
   // ── UI state ──
   const [filter, setFilter] = useState<FilterMode>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [outcomeLead, setOutcomeLead] = useState<Lead | null>(null);
   const [outcome, setOutcome] = useState<CallOutcome>('completed');
   const [outcomeNotes, setOutcomeNotes] = useState('');
@@ -201,7 +202,7 @@ export function LeadsPage() {
     }
   }, [dispatch]);
 
-  // ── Build map of leadId → latest call ──
+  // ── Build map of leadId → latest call (also by rowIndex for robustness) ──
   const latestCallsMap = useMemo(() => {
     const map = new Map<string, CallLogEntry>();
     for (const log of callLogs) {
@@ -209,11 +210,21 @@ export function LeadsPage() {
       if (!existing || new Date(log.calledAt) > new Date(existing.calledAt)) {
         map.set(log.leadId, log);
       }
+      if (log.sheetRowIndex) {
+        const rowKey = `row_${log.sheetRowIndex}`;
+        const existingRow = map.get(rowKey);
+        if (!existingRow || new Date(log.calledAt) > new Date(existingRow.calledAt)) {
+          map.set(rowKey, log);
+        }
+      }
     }
     return map;
   }, [callLogs]);
 
-  // Resolve a lead's key for looking up call logs
+  // Resolve a lead's key for looking up call logs (tries primary key, then row fallback)
+  const leadCallFor = (lead: Lead) =>
+    latestCallsMap.get(leadKey(lead)) || latestCallsMap.get(`row_${lead.rowIndex}`) || null;
+
   const leadKey = (lead: Lead) => lead.id || lead.placeId || String(lead.rowIndex);
 
   // ── Derive daily called lead IDs ──
@@ -231,8 +242,13 @@ export function LeadsPage() {
   const mergedLeads = useMemo(() => {
     let result = leads.map(lead => ({
       ...lead,
-      latestCall: latestCallsMap.get(leadKey(lead)) || null,
+      latestCall: leadCallFor(lead),
     }));
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      result = result.filter(l => l.type === typeFilter);
+    }
 
     // Filter
     switch (filter) {
@@ -256,7 +272,9 @@ export function LeadsPage() {
       result = result.filter(l =>
         l.businessName.toLowerCase().includes(q) ||
         l.phone.includes(q) ||
-        l.address.toLowerCase().includes(q)
+        l.address.toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
+        l.type.toLowerCase().includes(q)
       );
     }
 
@@ -269,17 +287,23 @@ export function LeadsPage() {
     });
 
     return result;
-  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds]);
+  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter]);
 
   // ── Stats ──
   const stats = useMemo(() => {
     const total = leads.length;
-    const notCalled = leads.filter(l => !latestCallsMap.has(leadKey(l))).length;
+    const notCalled = leads.filter(l => !leadCallFor(l)).length;
     const calledToday = callLogs.filter(l => todayLeadIds.has(l.leadId)).length;
     const callbacks = callLogs.filter(l => l.outcome === 'callback' && !todayLeadIds.has(l.leadId)).length;
     const completed = callLogs.filter(l => l.outcome === 'completed').length;
     return { total, notCalled, calledToday, callbacks, completed };
   }, [leads, latestCallsMap, callLogs, todayLeadIds]);
+
+  // ── Unique business types for filter ──
+  const businessTypes = useMemo(() => {
+    const types = new Set(leads.map(l => l.type).filter(Boolean));
+    return Array.from(types).sort();
+  }, [leads]);
 
   // ── Connect to Google & import ──
   // ── Connect to Google & import ──
@@ -469,7 +493,7 @@ export function LeadsPage() {
 
         {/* Filters + Search */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex gap-1 overflow-x-auto pb-1">
+          <div className="flex gap-1 overflow-x-auto pb-1 items-center">
             {FILTER_TABS.map(tab => (
               <button
                 key={tab.key}
@@ -483,6 +507,16 @@ export function LeadsPage() {
                 {tab.label}
               </button>
             ))}
+            <select
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+              className="ml-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="all">All Types</option>
+              {businessTypes.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
           <div className="relative w-full sm:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
