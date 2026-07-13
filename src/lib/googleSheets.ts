@@ -376,11 +376,13 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
   } catch { return { phone: '', website: '', reviews: '[]' }; }
 }
 
-async function searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceResult[]> {
+async function searchPlaces(query: string, lat?: number, lng?: number, zip?: string): Promise<PlaceResult[]> {
   const body: any = { textQuery: query, maxResultCount: 20 };
   if (lat !== undefined && lng !== undefined) {
+    const isFSA = zip && zip.trim().length <= 3;
+    const radius = isFSA ? 15000.0 : 5000.0; // wider for 3-char FSA, tighter for full postal code
     body.locationBias = {
-      circle: { center: { latitude: lat, longitude: lng }, radius: 5000.0 },
+      circle: { center: { latitude: lat, longitude: lng }, radius },
     };
   }
   const res = await fetch(
@@ -485,7 +487,8 @@ export async function scrapeLeadsFromMaps(
         const places = await searchPlaces(
           `${category}`,
           coords.lat,
-          coords.lng
+          coords.lng,
+          zip
         );
         for (const place of places) {
           const nameKey = place.name.toLowerCase().trim();
