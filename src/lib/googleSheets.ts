@@ -375,15 +375,8 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
   } catch { return { phone: '', website: '', reviews: '[]' }; }
 }
 
-async function searchPlaces(query: string, lat?: number, lng?: number, zip?: string): Promise<{ places: PlaceResult[]; total: number }> {
+async function searchPlaces(query: string): Promise<{ places: PlaceResult[]; total: number }> {
   const body: any = { textQuery: query, maxResultCount: 20 };
-  if (lat !== undefined && lng !== undefined) {
-    const isFSA = zip && zip.trim().length <= 3;
-    const radius = isFSA ? 15000.0 : 5000.0;
-    body.locationBias = {
-      circle: { center: { latitude: lat, longitude: lng }, radius },
-    };
-  }
   const res = await fetch(
     `${PLACES_API_BASE}:searchText`,
     {
@@ -412,20 +405,6 @@ async function searchPlaces(query: string, lat?: number, lng?: number, zip?: str
     })),
     total: data.places.length,
   };
-}
-
-async function geocodePostalCode(zip: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(zip + ' Ontario Canada')}&key=${PLACES_API_KEY}`
-    );
-    const data = await res.json();
-    if (data.status === 'OK' && data.results[0]) {
-      const loc = data.results[0].geometry.location;
-      return { lat: loc.lat, lng: loc.lng };
-    }
-    return null;
-  } catch { return null; }
 }
 
 export interface ScrapeResult {
@@ -485,24 +464,13 @@ export async function scrapeLeadsFromMaps(
       continue;
     }
 
-    const coords = await geocodePostalCode(zip.code);
-    if (!coords) {
-      onProgress(`Skipping ${zip.code} — could not geocode`);
-      continue;
-    }
-
     let maxThisZip = 0;
 
     for (const category of categories) {
       searched++;
       onProgress(`Searching: ${category} in ${zip.code} (${searched}/${zips.length * categories.length})`);
       try {
-        const { places, total } = await searchPlaces(
-          `${category} ${zip.code}`,
-          coords.lat,
-          coords.lng,
-          zip.code
-        );
+        const { places, total } = await searchPlaces(`${category} ${zip.code}`);
         if (total > maxThisZip) maxThisZip = total;
         for (const place of places) {
           const nameKey = place.name.toLowerCase().trim();
