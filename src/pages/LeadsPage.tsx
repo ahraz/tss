@@ -29,14 +29,16 @@ import {
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed';
+type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
 
-const FILTER_TABS: { key: FilterMode; label: string }[] = [
-  { key: 'all', label: 'All' },
+const FILTER_OPTIONS: { key: FilterMode; label: string }[] = [
+  { key: 'all', label: 'All Leads' },
   { key: 'not_called', label: 'Not Called' },
   { key: 'today', label: 'Called Today' },
   { key: 'callback', label: 'Needs Callback' },
   { key: 'completed', label: 'Completed' },
+  { key: 'no_answer', label: 'No Answer' },
+  { key: 'wrong_number', label: 'Wrong Number' },
 ];
 
 /** Maps lead business types to the right email template category. */
@@ -277,6 +279,12 @@ export function LeadsPage() {
       case 'completed':
         result = result.filter(l => l.latestCall?.outcome === 'completed');
         break;
+      case 'no_answer':
+        result = result.filter(l => l.latestCall?.outcome === 'no_answer');
+        break;
+      case 'wrong_number':
+        result = result.filter(l => l.latestCall?.outcome === 'wrong_number');
+        break;
     }
 
     // Search
@@ -317,6 +325,18 @@ export function LeadsPage() {
     const types = new Set(leads.map(l => l.type).filter(Boolean));
     return Array.from(types).sort();
   }, [leads]);
+
+  // ── Counts per call-status filter ──
+  const callStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: leads.length };
+    for (const lead of leads) {
+      const call = leadCallFor(lead);
+      if (!call) { counts.not_called = (counts.not_called || 0) + 1; continue; }
+      if (todayLeadIds.has(leadKey(lead))) counts.today = (counts.today || 0) + 1;
+      counts[call.outcome] = (counts[call.outcome] || 0) + 1;
+    }
+    return counts;
+  }, [leads, callLogs, todayLeadIds]);
 
   // ── Connect to Google & import ──
   // ── Connect to Google & import ──
@@ -529,28 +549,29 @@ export function LeadsPage() {
 
         {/* Filters + Search */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex gap-1 overflow-x-auto pb-1 items-center">
-            {FILTER_TABS.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  filter === tab.key
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex gap-2 items-center">
+            {/* Call Status Dropdown */}
+            <select
+              value={filter}
+              onChange={e => setFilter(e.target.value as FilterMode)}
+              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]"
+            >
+              {FILTER_OPTIONS.map(opt => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label} {callStatusCounts[opt.key] ? `(${callStatusCounts[opt.key]})` : ''}
+                </option>
+              ))}
+            </select>
+
+            {/* Business Type Dropdown */}
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
-              className="ml-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none"
+              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]"
             >
-              <option value="all">All Types</option>
+              <option value="all">All Types ({leads.length})</option>
               {businessTypes.map(t => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>{t} ({leads.filter(l => l.type === t).length})</option>
               ))}
             </select>
           </div>
@@ -560,7 +581,7 @@ export function LeadsPage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search leads..."
+              placeholder="Search name, phone, email..."
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
