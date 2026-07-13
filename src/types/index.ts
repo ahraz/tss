@@ -671,6 +671,7 @@ export type AppAction =
   // Email Logs
   | { type: 'SET_EMAIL_LOGS'; payload: EmailLog[] }
   | { type: 'ADD_EMAIL_LOG'; payload: EmailLog }
+  | { type: 'DELETE_EMAIL_LOG'; payload: string }
   // Leads (from Google Sheets, synced to Firestore)
   | { type: 'SET_LEADS'; payload: Lead[] }
   | { type: 'UPDATE_LEAD_EMAIL'; payload: { leadId: string; email: string } }

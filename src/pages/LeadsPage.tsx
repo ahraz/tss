@@ -98,6 +98,7 @@ export function LeadsPage() {
   const [emailValue, setEmailValue] = useState('');
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
+  const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
@@ -416,6 +417,12 @@ export function LeadsPage() {
     };
     dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
     toast.success('Email marked as sent');
+  };
+
+  const handleChangeOutcome = (log: CallLogEntry, newOutcome: CallOutcome) => {
+    dispatch({ type: 'UPDATE_CALL_LOG', payload: { ...log, outcome: newOutcome } });
+    toast.success(`Outcome changed to ${newOutcome.replace('_', ' ')}`);
+    setEditingCallLogId(null);
   };
 
   const handleCopyEmail = async (lead: Lead) => {
@@ -760,7 +767,7 @@ export function LeadsPage() {
                                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email History</h4>
                                   <div className="space-y-2">
                                     {logs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()).map(log => (
-                                      <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
+                                      <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 relative group">
                                         <div className="p-1.5 rounded-full flex-shrink-0 bg-blue-100 text-blue-600">
                                           <Mail size={14} />
                                         </div>
@@ -775,6 +782,12 @@ export function LeadsPage() {
                                             })}
                                           </p>
                                         </div>
+                                        <button
+                                          onClick={() => dispatch({ type: 'DELETE_EMAIL_LOG', payload: log.id })}
+                                          className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <XCircle size={14} />
+                                        </button>
                                       </div>
                                     ))}
                                   </div>
@@ -827,21 +840,38 @@ export function LeadsPage() {
                             <div className="space-y-2">
                               {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
                                 <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
-                                  <div className={`p-1.5 rounded-full flex-shrink-0 ${
-                                    log.outcome === 'completed' ? 'bg-green-100 text-green-600'
-                                    : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600'
-                                    : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600'
-                                    : 'bg-blue-100 text-blue-600'
-                                  }`}>
+                                  <button
+                                    onClick={() => setEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
+                                    className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
+                                      log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                                      : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                                      : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                    }`}
+                                    title="Click to change outcome"
+                                  >
                                     {log.outcome === 'completed' ? <CheckCircle2 size={14} />
                                       : log.outcome === 'no_answer' ? <XCircle size={14} />
                                       : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
                                       : <RotateCcw size={14} />}
-                                  </div>
+                                  </button>
                                   <div className="flex-1 min-w-0">
                                     <p className="font-medium text-gray-700">
                                       {log.calledByName} — {log.outcome.replace('_', ' ')}
                                     </p>
+                                    {editingCallLogId === log.id && (
+                                      <div className="flex gap-1 mt-1 flex-wrap">
+                                        {OUTCOME_OPTIONS.filter(o => o.value !== log.outcome).map(opt => (
+                                          <button
+                                            key={opt.value}
+                                            onClick={() => handleChangeOutcome(log, opt.value)}
+                                            className={`px-2 py-0.5 rounded text-[10px] font-medium ${opt.color}`}
+                                          >
+                                            {opt.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                     <p className="text-gray-400 mt-0.5">
                                       {new Date(log.calledAt).toLocaleDateString('en-CA', {
                                         month: 'short', day: 'numeric', year: 'numeric',

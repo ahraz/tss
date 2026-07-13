@@ -213,6 +213,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, emailLogs: action.payload };
     case 'ADD_EMAIL_LOG':
       return { ...state, emailLogs: [...state.emailLogs, action.payload] };
+    case 'DELETE_EMAIL_LOG':
+      return { ...state, emailLogs: state.emailLogs.filter(e => e.id !== action.payload) };
 
     // Leads
     case 'SET_LEADS':

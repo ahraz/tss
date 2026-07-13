@@ -494,6 +494,9 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       case 'ADD_EMAIL_LOG':
         await setDoc(doc(db, 'emailLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
+      case 'DELETE_EMAIL_LOG':
+        await deleteDoc(doc(db, 'emailLogs', action.payload));
+        break;
 
       // Quote Templates
       case 'ADD_QUOTE_TEMPLATE':
