@@ -316,3 +316,144 @@ export async function syncCategoriesToSheet(): Promise<void> {
     }
   );
 }
+
+const PLACES_API_KEY = 'AIzaSyD1pPF75uPs0zG9ys4cY5Y9mdZfIwJoAxY';
+
+interface PlaceResult {
+  name: string;
+  place_id: string;
+  formatted_address?: string;
+  vicinity?: string;
+  rating?: number;
+  types?: string[];
+  business_status?: string;
+}
+
+async function fetchSheetValues(token: string, range: string): Promise<string[][]> {
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Sheets API error: ${res.status}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; website: string }> {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website&key=${PLACES_API_KEY}`
+    );
+    const data = await res.json();
+    return {
+      phone: data.result?.formatted_phone_number || '',
+      website: data.result?.website || '',
+    };
+  } catch { return { phone: '', website: '' }; }
+}
+
+async function searchPlaces(query: string): Promise<PlaceResult[]> {
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${PLACES_API_KEY}`
+  );
+  const data = await res.json();
+  if (data.status === 'ZERO_RESULTS') return [];
+  if (data.status !== 'OK') throw new Error(data.error_message || data.status);
+  return data.results || [];
+}
+
+export interface ScrapeResult {
+  searched: number;
+  added: number;
+  existing: number;
+}
+
+export async function scrapeLeadsFromMaps(
+  onProgress: (msg: string) => void
+): Promise<ScrapeResult> {
+  const token = await getAccessToken();
+
+  // Read categories
+  onProgress('Reading categories...');
+  const catRows = await fetchSheetValues(token, 'Google+Maps+Categories!A:B');
+  const categories: string[] = [];
+  for (let i = 1; i < catRows.length; i++) {
+    const name = catRows[i][0];
+    const status = String(catRows[i][1] || '').toLowerCase();
+    if (name && status === 'active') categories.push(name);
+  }
+
+  // Read zips
+  onProgress('Reading postal codes...');
+  const zipRows = await fetchSheetValues(token, 'AZ+Zips!A:B');
+  const zips: string[] = [];
+  for (let i = 1; i < zipRows.length; i++) {
+    const z = String(zipRows[i][0] || '').trim();
+    if (z) zips.push(z);
+  }
+
+  // Read existing placeIds for dedup
+  onProgress('Checking existing leads...');
+  const resultsRows = await fetchSheetValues(token, 'Results!A:N');
+  const existingPlaceIds = new Set<string>();
+  for (let i = 1; i < resultsRows.length; i++) {
+    const pid = resultsRows[i][8]; // Column I = placeId
+    if (pid) existingPlaceIds.add(String(pid).trim());
+  }
+
+  // Scrape
+  let newRows: string[][] = [];
+  let searched = 0;
+
+  for (const category of categories) {
+    for (const zip of zips) {
+      searched++;
+      onProgress(`Searching: ${category} in ${zip} (${searched}/${categories.length * zips.length})`);
+      try {
+        const places = await searchPlaces(`${category} ${zip} Ontario Canada`);
+        for (const place of places) {
+          if (existingPlaceIds.has(place.place_id)) continue;
+          existingPlaceIds.add(place.place_id);
+
+          const details = await fetchPlaceDetails(place.place_id);
+          await new Promise(r => setTimeout(r, 200)); // rate limit
+
+          newRows.push([
+            category,                                // A: type
+            details.phone,                           // B: phone
+            place.name,                              // C: title
+            JSON.stringify(place.types || []),       // D: types
+            String(place.rating || ''),              // E: rating
+            place.formatted_address || place.vicinity || '', // F: address
+            String(place.rating ? '1' : '0'),        // G: reviews (rough)
+            details.website,                         // H: website
+            place.place_id,                          // I: placeId (also used as email column for now)
+            '',                                      // J-N: tracking columns
+            '', '', '', ''
+          ]);
+        }
+      } catch (e) {
+        console.warn(`Failed: ${category} in ${zip}`, e);
+      }
+    }
+  }
+
+  // Write to Results tab
+  if (newRows.length > 0) {
+    onProgress(`Writing ${newRows.length} new leads...`);
+    const lastRow = resultsRows.length; // already has header at row 0
+    const range = `Results!A${lastRow + 1}:N${lastRow + newRows.length}`;
+
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+      {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ range, majorDimension: 'ROWS', values: newRows }),
+      }
+    );
+  }
+
+  onProgress(`Done. ${newRows.length} new leads added.`);
+  return { searched, added: newRows.length, existing: existingPlaceIds.size };
+}

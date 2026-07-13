@@ -14,7 +14,7 @@
  */
 
 const SPREADSHEET_ID = '1-0wOhrEFX5EkiajX0gtNFsVSDCaPObt8rD94kQoK6XA';
-const GMAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+const GMAPS_API_KEY = 'AIzaSyD1pPF75uPs0zG9ys4cY5Y9mdZfIwJoAxY';
 
 const CATEGORIES_SHEET = 'Google Maps Categories';
 const ZIPS_SHEET = 'AZ Zips';
