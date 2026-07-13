@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Star, MapPin, Search, Phone,
@@ -26,6 +26,8 @@ import {
   initTokenClient,
   ensureHeaderColumns,
 } from '../lib/googleSheets';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed';
 
@@ -94,6 +96,7 @@ export function LeadsPage() {
   const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
   const [emailValue, setEmailValue] = useState('');
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
+  const hasRepaired = useRef(false);
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
@@ -127,6 +130,38 @@ export function LeadsPage() {
       setEmailTemplates(map);
     }).catch(() => {});
   }, []);
+
+  // ── Auto-repair orphaned call logs when leads load (once per mount) ──
+  useEffect(() => {
+    if (hasRepaired.current || leadsFromFirestore.length === 0) return;
+    hasRepaired.current = true;
+
+    const repair = async () => {
+      const callLogsSnap = await getDocs(collection(db, 'callLogs'));
+      const callLogs = callLogsSnap.docs.map(d => ({ _id: d.id, ...d.data() })) as (CallLogEntry & { _id: string })[];
+
+      const rowToDocId = new Map<number, string>();
+      for (const lead of leadsFromFirestore) {
+        if (lead.rowIndex && lead.id) rowToDocId.set(lead.rowIndex, lead.id);
+      }
+
+      const orphaned = callLogs.filter(log => {
+        const docId = rowToDocId.get(log.sheetRowIndex);
+        return docId && log.leadId !== docId;
+      });
+
+      if (orphaned.length === 0) return;
+
+      const batch = writeBatch(db);
+      for (const log of orphaned) {
+        const correctDocId = rowToDocId.get(log.sheetRowIndex)!;
+        batch.update(doc(db, 'callLogs', log._id), { leadId: correctDocId });
+      }
+      await batch.commit();
+    };
+
+    repair().catch(() => {});
+  }, [leadsFromFirestore]);
 
   // ── Import leads from Google Sheets ──
   const importLeadsFromSheets = useCallback(async () => {
