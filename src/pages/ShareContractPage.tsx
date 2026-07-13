@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import app, { db } from '../lib/firebase';
 import { Button } from '../components/ui/Button';
 import { formatCAD } from '../utils/formatters';
 import { CONTRACT_TERMS, CONTRACT_FOOTER } from '../utils/contract-terms';
@@ -10,6 +11,9 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import logoImage from '../assets/gtascrub.png';
 import type { SharedContract } from '../types/sharedContract';
+import { generateId } from '../utils/storage';
+import { sanitizeForFirestore } from '../lib/firebaseSync';
+import type { CleaningFrequency, SiteType } from '../types';
 
 type PageState = 'loading' | 'expired' | 'signed' | 'ready' | 'thankyou' | 'notfound';
 
@@ -133,11 +137,71 @@ export function ShareContractPage() {
     if (!contract || !signatureDataUrl || !token) return;
     setSubmitting(true);
     try {
+      const now = new Date().toISOString();
+
       const docRef = doc(db, 'sharedContracts', token);
       await updateDoc(docRef, {
         status: 'signed',
         clientSignature: signatureDataUrl,
-        signedAt: new Date().toISOString(),
+        signedAt: now,
+      });
+
+      const auth = getAuth(app);
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
+      const clientId = generateId();
+      const newClient = {
+        id: clientId,
+        name: contract.quoteData.prospectName,
+        address: contract.quoteData.prospectAddress,
+        city: contract.quoteData.prospectCity,
+        province: contract.quoteData.prospectProvince,
+        postalCode: contract.quoteData.prospectPostalCode,
+        contactName: contract.quoteData.prospectName,
+        contactPhone: contract.quoteData.prospectPhone,
+        contractRate: contract.quoteData.totalMonthly,
+        frequency: 'weekly' as CleaningFrequency,
+        cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+        status: 'active' as const,
+        notes: `Converted from Contract #${contract.contractNumber}`,
+        contractPdf: '',
+        contractSignature: signatureDataUrl,
+        createdAt: now,
+      };
+      await setDoc(doc(db, 'clients', clientId), sanitizeForFirestore(newClient), { merge: true });
+
+      const siteId = generateId();
+      const newSite = {
+        id: siteId,
+        name: contract.quoteData.prospectName,
+        address: contract.quoteData.prospectAddress,
+        city: contract.quoteData.prospectCity,
+        province: contract.quoteData.prospectProvince,
+        postalCode: contract.quoteData.prospectPostalCode,
+        areaTags: [],
+        type: 'other' as SiteType,
+        contactName: contract.quoteData.prospectName,
+        contactPhone: contract.quoteData.prospectPhone,
+        contractRate: contract.quoteData.totalMonthly,
+        frequency: 'weekly' as CleaningFrequency,
+        cleaningDays: ['monday' as const, 'tuesday' as const, 'wednesday' as const, 'thursday' as const, 'friday' as const],
+        scheduleStart: '17:00',
+        scheduleEnd: '19:00',
+        assignedUserIds: [],
+        accessNotes: '',
+        status: 'active' as const,
+        checklist: [],
+        clientId,
+        isSubSite: false,
+        createdAt: now,
+      };
+      await setDoc(doc(db, 'sites', siteId), sanitizeForFirestore(newSite), { merge: true });
+
+      await updateDoc(doc(db, 'quotes', contract.quoteId), {
+        status: 'accepted',
+        updatedAt: now,
       });
 
       setPageState('thankyou');
@@ -338,7 +402,7 @@ export function ShareContractPage() {
         <div className="hidden">{renderContractHtml()}</div>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank you, {contract?.quoteData.prospectName}!</h1>
             <p className="text-gray-500 mb-4">Your contract has been signed successfully.</p>
             <Button onClick={handleDownloadPdf}>Download a Copy</Button>
           </div>

@@ -10,7 +10,8 @@ import { CONTRACT_TERMS, CONTRACT_FOOTER } from '../../utils/contract-terms';
 import logoImage from '../../assets/gtascrub.png';
 import type { Quote } from '../../types';
 import { generateShareToken } from '../../types/sharedContract';
-import { db } from '../../lib/firebase';
+import { getAuth } from 'firebase/auth';
+import app, { db } from '../../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { sanitizeForFirestore } from '../../lib/firebaseSync';
 
@@ -131,7 +132,7 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
         status: 'pending' as const,
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
-        createdBy: '',
+        createdBy: getAuth(app).currentUser?.uid || '',
       };
 
       await setDoc(doc(db, 'sharedContracts', token), sanitizeForFirestore(sharedContract), { merge: true });
