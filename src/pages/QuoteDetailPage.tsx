@@ -390,6 +390,7 @@ export function QuoteDetailPage() {
                 <Button size="sm" icon={Share2} variant="secondary" onClick={handleShareQuote}>
                   Share{quote.shareToken ? 'd' : ''}
                 </Button>
+                <Button size="sm" icon={Download} variant="secondary" onClick={() => setShowPdfPreview(true)}>Download PDF</Button>
                 <Button size="sm" icon={Printer} variant="secondary" onClick={handlePrint}>Print</Button>
                 <Button size="sm" icon={Clock} variant="secondary" onClick={() => setShowVersionHistory(true)}>
                   History (v{quote.currentVersion || 1})
