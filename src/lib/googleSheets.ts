@@ -326,6 +326,7 @@ interface PlaceResult {
   formatted_address?: string;
   vicinity?: string;
   rating?: number;
+  userRatingCount?: number;
   types?: string[];
   business_status?: string;
   /** New Places API field names */
@@ -335,6 +336,7 @@ interface PlaceResult {
   websiteUri?: string;
   internationalPhoneNumber?: string;
   primaryTypeDisplayName?: { text: string };
+  location?: { latitude: number; longitude: number };
 }
 
 async function fetchSheetValues(token: string, range: string): Promise<string[][]> {
@@ -374,7 +376,7 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': PLACES_API_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.types',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.location',
       },
       body: JSON.stringify({ textQuery: query, maxResultCount: 20 }),
     }
@@ -388,7 +390,9 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
     place_id: p.id || '',
     formatted_address: p.formattedAddress || '',
     rating: p.rating,
+    userRatingCount: p.userRatingCount || 0,
     types: p.types || [],
+    location: p.location,
   }));
 }
 
@@ -454,18 +458,22 @@ export async function scrapeLeadsFromMaps(
           const details = await fetchPlaceDetails(place.place_id);
           await new Promise(r => setTimeout(r, 200)); // rate limit
 
+          const gps = place.location
+            ? `${place.location.latitude},${place.location.longitude}`
+            : '';
+
           newRows.push([
             category,                                // A: type
             details.phone,                           // B: phone
             place.name,                              // C: title
             JSON.stringify(place.types || []),       // D: types
             String(place.rating || ''),              // E: rating
-            place.formatted_address || place.vicinity || '', // F: address
-            String(place.rating ? '1' : '0'),        // G: reviews (rough)
+            place.formatted_address || '',           // F: address
+            String(place.userRatingCount || place.rating || ''), // G: reviews
             details.website,                         // H: website
-            place.place_id,                          // I: placeId (also used as email column for now)
-            '',                                      // J-N: tracking columns
-            '', '', '', ''
+            place.place_id,                          // I: placeId
+            gps,                                     // J: gpsCoordinates
+            '', '', '', ''                           // K-N: tracking columns
           ]);
         }
       } catch (e) {
