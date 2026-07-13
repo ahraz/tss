@@ -139,18 +139,13 @@ export function ShareContractPage() {
     try {
       const now = new Date().toISOString();
 
-      const docRef = doc(db, 'sharedContracts', token);
-      await updateDoc(docRef, {
-        status: 'signed',
-        clientSignature: signatureDataUrl,
-        signedAt: now,
-      });
-
+      // Ensure anonymous auth so Firestore writes succeed
       const auth = getAuth(app);
       if (!auth.currentUser) {
         await signInAnonymously(auth);
       }
 
+      // Create client record
       const clientId = generateId();
       const newClient = {
         id: clientId,
@@ -172,6 +167,7 @@ export function ShareContractPage() {
       };
       await setDoc(doc(db, 'clients', clientId), sanitizeForFirestore(newClient), { merge: true });
 
+      // Create site record linked to client
       const siteId = generateId();
       const newSite = {
         id: siteId,
@@ -199,9 +195,18 @@ export function ShareContractPage() {
       };
       await setDoc(doc(db, 'sites', siteId), sanitizeForFirestore(newSite), { merge: true });
 
+      // Update quote status to accepted
       await updateDoc(doc(db, 'quotes', contract.quoteId), {
         status: 'accepted',
         updatedAt: now,
+      });
+
+      // Mark contract as signed (last — atomic commit; if anything above failed, contract stays pending)
+      const docRef = doc(db, 'sharedContracts', token);
+      await updateDoc(docRef, {
+        status: 'signed',
+        clientSignature: signatureDataUrl,
+        signedAt: now,
       });
 
       setPageState('thankyou');
@@ -384,7 +389,7 @@ export function ShareContractPage() {
   if (pageState === 'signed') {
     return (
       <>
-        <div className="hidden">{renderContractHtml()}</div>
+        <div className="fixed -left-[9999px] top-0">{renderContractHtml()}</div>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Contract Already Signed</h1>
@@ -399,7 +404,7 @@ export function ShareContractPage() {
   if (pageState === 'thankyou') {
     return (
       <>
-        <div className="hidden">{renderContractHtml()}</div>
+        <div className="fixed -left-[9999px] top-0">{renderContractHtml()}</div>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank you, {contract?.quoteData.prospectName}!</h1>
