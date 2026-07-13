@@ -219,7 +219,7 @@ export function LeadsPage() {
       result = result.filter(l => {
         const city = (l.address || '').split(',')[1]?.trim() || '';
         const pcMatch = (l.address || '').match(/[A-Z]\d[A-Z]\s?\d[A-Z]\d/i);
-        const postal = pcMatch ? pcMatch[0].toUpperCase() : '';
+        const postal = pcMatch ? pcMatch[0].replace(/\s/g, '').slice(0, 3) : '';
         return city === areaFilter || postal === areaFilter;
       });
     }
@@ -285,7 +285,7 @@ export function LeadsPage() {
     for (const lead of leads) {
       const city = (lead.address || '').split(',')[1]?.trim();
       const pcMatch = (lead.address || '').match(/[A-Z]\d[A-Z]\s?\d[A-Z]\d/i);
-      const postal = pcMatch ? pcMatch[0].toUpperCase() : null;
+      const postal = pcMatch ? pcMatch[0].replace(/\s/g, '').slice(0, 3) : null;
       if (city) areas.set(city, (areas.get(city) || 0) + 1);
       if (postal) areas.set(postal, (areas.get(postal) || 0) + 1);
     }
