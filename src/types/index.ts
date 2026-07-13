@@ -706,3 +706,5 @@ export { createVersion, addVersionToQuote } from './quote-version';
 import type { SharedContract } from './sharedContract';
 export type { SharedContract } from './sharedContract';
 export { generateShareToken } from './sharedContract';
+export type { AppNotification, NotificationType } from './notification';
+export { NOTIFICATION_CONTENT } from './notification';
