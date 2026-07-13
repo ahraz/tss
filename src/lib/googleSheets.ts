@@ -376,7 +376,13 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
   } catch { return { phone: '', website: '', reviews: '[]' }; }
 }
 
-async function searchPlaces(query: string): Promise<PlaceResult[]> {
+async function searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceResult[]> {
+  const body: any = { textQuery: query, maxResultCount: 20 };
+  if (lat !== undefined && lng !== undefined) {
+    body.locationBias = {
+      circle: { center: { latitude: lat, longitude: lng }, radius: 5000.0 },
+    };
+  }
   const res = await fetch(
     `${PLACES_API_BASE}:searchText`,
     {
@@ -386,7 +392,7 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
         'X-Goog-Api-Key': PLACES_API_KEY,
         'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.location',
       },
-      body: JSON.stringify({ textQuery: query, maxResultCount: 20 }),
+      body: JSON.stringify(body),
     }
   );
   const data = await res.json();
@@ -402,6 +408,20 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
     types: p.types || [],
     location: p.location,
   }));
+}
+
+async function geocodePostalCode(zip: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(zip + ' Ontario Canada')}&key=${PLACES_API_KEY}`
+    );
+    const data = await res.json();
+    if (data.status === 'OK' && data.results[0]) {
+      const loc = data.results[0].geometry.location;
+      return { lat: loc.lat, lng: loc.lng };
+    }
+    return null;
+  } catch { return null; }
 }
 
 export interface ScrapeResult {
@@ -450,12 +470,23 @@ export async function scrapeLeadsFromMaps(
   let newRows: string[][] = [];
   let searched = 0;
 
-  for (const category of categories) {
-    for (const zip of zips) {
+  for (const zip of zips) {
+    onProgress(`Geocoding ${zip}...`);
+    const coords = await geocodePostalCode(zip);
+    if (!coords) {
+      onProgress(`Skipping ${zip} — could not geocode`);
+      continue;
+    }
+
+    for (const category of categories) {
       searched++;
-      onProgress(`Searching: ${category} in ${zip} (${searched}/${categories.length * zips.length})`);
+      onProgress(`Searching: ${category} in ${zip} (${searched}/${zips.length * categories.length})`);
       try {
-        const places = await searchPlaces(`${category} ${zip} Ontario Canada`);
+        const places = await searchPlaces(
+          `${category}`,
+          coords.lat,
+          coords.lng
+        );
         for (const place of places) {
           const nameKey = place.name.toLowerCase().trim();
           if (existingPlaceIds.has(place.place_id)) continue;
