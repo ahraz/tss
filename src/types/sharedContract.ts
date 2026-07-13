@@ -17,6 +17,7 @@ export interface SharedContract {
   status: 'pending' | 'signed';
   clientSignature?: string;
   signedAt?: string;
+  notificationDismissedAt?: string;
   createdAt: string;
   expiresAt: string;
   createdBy: string;
