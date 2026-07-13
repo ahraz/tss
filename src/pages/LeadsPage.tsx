@@ -593,8 +593,8 @@ export function LeadsPage() {
                     {/* Expanded: Email, Create Quote + Call history */}
                     {isExpanded && (
                       <div className="border-t border-gray-100 pt-3 mt-1">
-                        {/* Email action — only shown if lead has been called and has an email */}
-                        {lead.email && lead.latestCall && (
+                        {/* Email action — shown if lead has an email, regardless of call status */}
+                        {lead.email && (
                           <button
                             onClick={() => handleCopyEmail(lead)}
                             disabled={copyingLeadId === lead.placeId}
