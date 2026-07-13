@@ -15,7 +15,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
-import type { Lead, CallLogEntry, CallOutcome, Quote } from '../types';
+import type { Lead, CallLogEntry, CallOutcome, Quote, EmailLog } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
@@ -101,6 +101,7 @@ export function LeadsPage() {
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
+  const emailLogs = state.emailLogs;
 
   // ── Sync leads from Firestore into local state ──
   useEffect(() => {
@@ -237,6 +238,17 @@ export function LeadsPage() {
         .map(log => log.leadId)
     );
   }, [callLogs]);
+
+  // ── Build map of leadId → email logs ──
+  const emailLogsByLead = useMemo(() => {
+    const map = new Map<string, EmailLog[]>();
+    for (const log of emailLogs) {
+      const list = map.get(log.leadId) || [];
+      list.push(log);
+      map.set(log.leadId, list);
+    }
+    return map;
+  }, [emailLogs]);
 
   // ── Merge leads with call data and apply filters ──
   const mergedLeads = useMemo(() => {
@@ -387,6 +399,23 @@ export function LeadsPage() {
   const handleCancelEditEmail = () => {
     setEditingEmailFor(null);
     setEmailValue('');
+  };
+
+  const handleMarkEmailSent = (lead: Lead) => {
+    if (!lead.email || !currentUser) return;
+    const entry: EmailLog = {
+      id: generateId(),
+      leadId: leadKey(lead),
+      businessName: lead.businessName,
+      email: lead.email,
+      sheetRowIndex: lead.rowIndex,
+      sentById: currentUser.id,
+      sentByName: currentUser.name,
+      sentAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
+    toast.success('Email marked as sent');
   };
 
   const handleCopyEmail = async (lead: Lead) => {
@@ -573,6 +602,7 @@ export function LeadsPage() {
               const calledToday = latestCall && todayLeadIds.has(leadKey(lead));
               const isExpanded = expandedId === leadKey(lead);
               const leadCallLogs = callLogs.filter(l => l.leadId === leadKey(lead));
+              const hasBeenEmailed = emailLogsByLead.has(leadKey(lead));
 
               const statusBadge = !latestCall
                 ? <Badge label="Not Called" variant="danger" className="text-[10px]" />
@@ -594,6 +624,7 @@ export function LeadsPage() {
                           <h3 className="font-semibold text-gray-900 text-sm">{lead.businessName || 'Unknown Business'}</h3>
                           {statusBadge}
                           {calledToday && <Badge label="Called Today" variant="success" className="text-[10px]" />}
+                          {hasBeenEmailed && lead.email && <Badge label="Emailed" variant="info" className="text-[10px]" />}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500">
@@ -695,20 +726,62 @@ export function LeadsPage() {
                       <div className="border-t border-gray-100 pt-3 mt-1">
                         {/* Email action — shown if lead has an email, regardless of call status */}
                         {lead.email && (
-                          <button
-                            onClick={() => handleCopyEmail(lead)}
-                            disabled={copyingLeadId === leadKey(lead)}
-                            className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50"
-                          >
-                            {copyingLeadId === leadKey(lead) ? (
-                              <>Copying...</>
-                            ) : (
-                              <>
-                                <Copy size={15} />
-                                Copy Email Template
-                              </>
-                            )}
-                          </button>
+                          <>
+                            <div className="flex gap-2 mb-3">
+                              <button
+                                onClick={() => handleCopyEmail(lead)}
+                                disabled={copyingLeadId === leadKey(lead)}
+                                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50"
+                              >
+                                {copyingLeadId === leadKey(lead) ? (
+                                  <>Copying...</>
+                                ) : (
+                                  <>
+                                    <Copy size={15} />
+                                    Copy Template
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleMarkEmailSent(lead)}
+                                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all"
+                              >
+                                <Mail size={15} />
+                                Mark as Sent
+                              </button>
+                            </div>
+
+                            {/* Email history */}
+                            {(() => {
+                              const logs = emailLogsByLead.get(leadKey(lead));
+                              if (!logs || logs.length === 0) return null;
+                              return (
+                                <>
+                                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email History</h4>
+                                  <div className="space-y-2">
+                                    {logs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()).map(log => (
+                                      <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
+                                        <div className="p-1.5 rounded-full flex-shrink-0 bg-blue-100 text-blue-600">
+                                          <Mail size={14} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-gray-700">
+                                            {log.sentByName} — Sent to {log.email}
+                                          </p>
+                                          <p className="text-gray-400 mt-0.5">
+                                            {new Date(log.sentAt).toLocaleDateString('en-CA', {
+                                              month: 'short', day: 'numeric', year: 'numeric',
+                                              hour: 'numeric', minute: '2-digit'
+                                            })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </>
                         )}
 
                         {/* Create Quote action */}

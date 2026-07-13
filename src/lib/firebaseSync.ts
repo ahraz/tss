@@ -11,7 +11,7 @@ import {
 import { db } from './firebase';
 import type { 
   User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
-  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry, Lead, QuoteTemplate,
+  SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry, EmailLog, Lead, QuoteTemplate,
   SharedContract
 } from '../types';
 
@@ -60,6 +60,7 @@ export async function fetchAllCollectionsOnce() {
     inspectionTemplatesSnap,
     incidentReportsSnap,
     callLogsSnap,
+    emailLogsSnap,
     leadsSnap,
     quoteTemplatesSnap,
     sharedContractsSnap,
@@ -79,6 +80,7 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'inspectionTemplates')),
     getDocs(collection(db, 'incidentReports')),
     getDocs(collection(db, 'callLogs')),
+    getDocs(collection(db, 'emailLogs')),
     getDocs(collection(db, 'leads')),
     getDocs(collection(db, 'quoteTemplates')),
     getDocs(collection(db, 'sharedContracts')),
@@ -99,6 +101,7 @@ export async function fetchAllCollectionsOnce() {
   const inspectionTemplates = inspectionTemplatesSnap.docs.map(d => docToObj<InspectionItem>(d));
   const incidentReports = incidentReportsSnap.docs.map(d => docToObj<IncidentReport>(d));
   const callLogs = callLogsSnap.docs.map(d => docToObj<CallLogEntry>(d));
+  const emailLogs = emailLogsSnap.docs.map(d => docToObj<EmailLog>(d));
   const leads = leadsSnap.docs.map(d => docToObj<Lead>(d));
   const quoteTemplates = quoteTemplatesSnap.docs.map(d => docToObj<QuoteTemplate>(d));
   const sharedContracts = sharedContractsSnap.docs.map(d => docToObj<SharedContract>(d));
@@ -106,7 +109,7 @@ export async function fetchAllCollectionsOnce() {
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, leads, quoteTemplates, sharedContracts, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, emailLogs, leads, quoteTemplates, sharedContracts, settings };
 }
 
 /**
@@ -280,6 +283,16 @@ export function subscribeToCollections(
     (err) => onError?.('callLogs', err)
   );
 
+  const unsubEmailLogs = onSnapshot(
+    collection(db, 'emailLogs'),
+    (snapshot) => {
+      const list: EmailLog[] = [];
+      snapshot.forEach(doc => list.push(docToObj<EmailLog>(doc)));
+      dispatch({ type: 'SET_EMAIL_LOGS', payload: list });
+    },
+    (err) => onError?.('emailLogs', err)
+  );
+
   const unsubLeads = onSnapshot(
     collection(db, 'leads'),
     (snapshot) => {
@@ -328,6 +341,7 @@ export function subscribeToCollections(
     unsubInspectionTemplates();
     unsubIncidentReports();
     unsubCallLogs();
+    unsubEmailLogs();
     unsubLeads();
     unsubQuoteTemplates();
     unsubSharedContracts();
@@ -474,6 +488,11 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       case 'ADD_CALL_LOG':
       case 'UPDATE_CALL_LOG':
         await setDoc(doc(db, 'callLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
+        break;
+
+      // Email Logs
+      case 'ADD_EMAIL_LOG':
+        await setDoc(doc(db, 'emailLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
 
       // Quote Templates

@@ -30,6 +30,7 @@ const initialState: AppState = {
   inspectionTemplates: [],
   incidentReports: [],
   callLogs: [],
+  emailLogs: [],
   leads: [],
   quoteTemplates: [],
   sharedContracts: [],
@@ -207,6 +208,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_CALL_LOG':
       return { ...state, callLogs: state.callLogs.map(c => c.id === action.payload.id ? action.payload : c) };
 
+    // Email Logs
+    case 'SET_EMAIL_LOGS':
+      return { ...state, emailLogs: action.payload };
+    case 'ADD_EMAIL_LOG':
+      return { ...state, emailLogs: [...state.emailLogs, action.payload] };
+
     // Leads
     case 'SET_LEADS':
       return { ...state, leads: action.payload };
@@ -327,6 +334,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.inspectionTemplates) originalDispatch({ type: 'SET_INSPECTION_TEMPLATES', payload: remote.inspectionTemplates });
         if (remote.incidentReports) originalDispatch({ type: 'SET_INCIDENT_REPORTS', payload: remote.incidentReports });
         if (remote.callLogs) originalDispatch({ type: 'SET_CALL_LOGS', payload: remote.callLogs });
+        if (remote.emailLogs) originalDispatch({ type: 'SET_EMAIL_LOGS', payload: remote.emailLogs });
         if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
         if (remote.sharedContracts) originalDispatch({ type: 'SET_SHARED_CONTRACTS', payload: remote.sharedContracts });
         // Seed default templates if none exist (one per business type)

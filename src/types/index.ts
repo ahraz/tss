@@ -540,6 +540,18 @@ export interface CallLogEntry {
   createdAt: string;
 }
 
+export interface EmailLog {
+  id: string;
+  leadId: string;
+  businessName: string;
+  email: string;
+  sheetRowIndex: number;
+  sentById: string;
+  sentByName: string;
+  sentAt: string;           // ISO timestamp
+  createdAt: string;
+}
+
 export interface Session {
   userId: string;
   loggedInAt: string;
@@ -568,6 +580,7 @@ export interface AppState {
   inspectionTemplates: InspectionItem[];
   incidentReports: IncidentReport[];
   callLogs: CallLogEntry[];
+  emailLogs: EmailLog[];
   leads: Lead[];
   sharedContracts: SharedContract[];
 }
@@ -655,6 +668,9 @@ export type AppAction =
   | { type: 'SET_CALL_LOGS'; payload: CallLogEntry[] }
   | { type: 'ADD_CALL_LOG'; payload: CallLogEntry }
   | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
+  // Email Logs
+  | { type: 'SET_EMAIL_LOGS'; payload: EmailLog[] }
+  | { type: 'ADD_EMAIL_LOG'; payload: EmailLog }
   // Leads (from Google Sheets, synced to Firestore)
   | { type: 'SET_LEADS'; payload: Lead[] }
   | { type: 'UPDATE_LEAD_EMAIL'; payload: { leadId: string; email: string } }
