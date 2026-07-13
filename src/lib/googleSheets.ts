@@ -498,7 +498,7 @@ export async function scrapeLeadsFromMaps(
       onProgress(`Searching: ${category} in ${zip.code} (${searched}/${zips.length * categories.length})`);
       try {
         const { places, total } = await searchPlaces(
-          `${category}`,
+          `${category} ${zip.code}`,
           coords.lat,
           coords.lng,
           zip.code
@@ -547,21 +547,25 @@ export async function scrapeLeadsFromMaps(
 
   // Write zip statuses back to AZ Zips sheet
   if (zipUpdates.length > 0) {
-    const statusValues = zipUpdates.map(u => [u.status]);
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valueInputOption: 'RAW',
-          data: zipUpdates.map(u => ({
-            range: `AZ Zips!B${u.row}`,
-            values: [[u.status]],
-          })),
-        }),
-      }
-    );
+    try {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            valueInputOption: 'RAW',
+            data: zipUpdates.map(u => ({
+              range: `'AZ Zips'!B${u.row}`,
+              values: [[u.status]],
+            })),
+          }),
+        }
+      );
+      onProgress(`Updated ${zipUpdates.length} zip statuses`);
+    } catch (e) {
+      console.warn('Failed to update zip statuses:', e);
+    }
   }
 
   // Write to Results tab
