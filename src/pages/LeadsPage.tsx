@@ -410,9 +410,22 @@ export function LeadsPage() {
     setSyncingCategories(true);
     try {
       await syncCategoriesToSheet();
-      toast.success('Categories synced to sheet — refresh leads to scrape new types');
-    } catch {
-      toast.error('Failed to sync categories. Reconnect Google Sheets first.');
+      toast.success('Categories synced to sheet');
+    } catch (err: any) {
+      if (err.message === 'NEEDS_AUTH') {
+        try {
+          await waitForGis();
+          initTokenClient();
+          await signIn();
+          await syncCategoriesToSheet();
+          toast.success('Categories synced to sheet');
+          return;
+        } catch {
+          toast.error('Failed to connect. Please try again.');
+        }
+      } else {
+        toast.error('Failed to sync categories. Reconnect Google Sheets first.');
+      }
     } finally {
       setSyncingCategories(false);
     }
