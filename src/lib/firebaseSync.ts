@@ -491,16 +491,20 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await setDoc(doc(db, 'sharedContracts', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
 
-      // Leads — bulk replace from Sheets import
+      // Leads — upsert from Sheets import (preserve existing doc IDs so call logs survive)
       case 'SET_LEADS':
         const leadsBatch = writeBatch(db);
-        // Delete all existing leads first (idempotent import)
-        const existingLeads = await getDocs(collection(db, 'leads'));
-        existingLeads.docs.forEach(d => leadsBatch.delete(d.ref));
-        // Write all incoming leads
+        const existingSnap = await getDocs(collection(db, 'leads'));
+        const existingByRow = new Map<string, string>();
+        for (const d of existingSnap.docs) {
+          const rowIdx = d.data().rowIndex;
+          if (rowIdx) existingByRow.set(String(rowIdx), d.id);
+        }
         for (const lead of action.payload) {
-          const docRef = doc(db, 'leads', lead.placeId || lead.rowIndex.toString());
-          leadsBatch.set(docRef, sanitizeForFirestore(lead));
+          const existingDocId = existingByRow.get(String(lead.rowIndex));
+          const docId = existingDocId || lead.placeId || lead.rowIndex.toString();
+          const docRef = doc(db, 'leads', docId);
+          leadsBatch.set(docRef, sanitizeForFirestore(lead), { merge: true });
         }
         await leadsBatch.commit();
         break;
