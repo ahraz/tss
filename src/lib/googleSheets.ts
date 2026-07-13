@@ -376,11 +376,11 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
   } catch { return { phone: '', website: '', reviews: '[]' }; }
 }
 
-async function searchPlaces(query: string, lat?: number, lng?: number, zip?: string): Promise<PlaceResult[]> {
+async function searchPlaces(query: string, lat?: number, lng?: number, zip?: string): Promise<{ places: PlaceResult[]; total: number }> {
   const body: any = { textQuery: query, maxResultCount: 20 };
   if (lat !== undefined && lng !== undefined) {
     const isFSA = zip && zip.trim().length <= 3;
-    const radius = isFSA ? 15000.0 : 5000.0; // wider for 3-char FSA, tighter for full postal code
+    const radius = isFSA ? 15000.0 : 5000.0;
     body.locationBias = {
       circle: { center: { latitude: lat, longitude: lng }, radius },
     };
@@ -399,17 +399,20 @@ async function searchPlaces(query: string, lat?: number, lng?: number, zip?: str
   );
   const data = await res.json();
   console.log('[scraper] results:', data.places?.length || 0, 'error:', data.error?.message || 'none');
-  if (!data.places) return [];
-  return data.places.map((p: any) => ({
-    id: p.id,
-    name: p.displayName?.text || '',
-    place_id: p.id || '',
-    formatted_address: p.formattedAddress || '',
-    rating: p.rating,
-    userRatingCount: p.userRatingCount || 0,
-    types: p.types || [],
-    location: p.location,
-  }));
+  if (!data.places) return { places: [], total: 0 };
+  return {
+    places: data.places.map((p: any) => ({
+      id: p.id,
+      name: p.displayName?.text || '',
+      place_id: p.id || '',
+      formatted_address: p.formattedAddress || '',
+      rating: p.rating,
+      userRatingCount: p.userRatingCount || 0,
+      types: p.types || [],
+      location: p.location,
+    })),
+    total: data.places.length,
+  };
 }
 
 async function geocodePostalCode(zip: string): Promise<{ lat: number; lng: number } | null> {
@@ -447,13 +450,14 @@ export async function scrapeLeadsFromMaps(
     if (name && status === 'active') categories.push(name);
   }
 
-  // Read zips
+  // Read zips with their status
   onProgress('Reading postal codes...');
   const zipRows = await fetchSheetValues(token, 'AZ+Zips!A:B');
-  const zips: string[] = [];
+  const zips: { code: string; status: string; row: number }[] = [];
   for (let i = 1; i < zipRows.length; i++) {
-    const z = String(zipRows[i][0] || '').trim();
-    if (z) zips.push(z);
+    const code = String(zipRows[i][0] || '').trim();
+    const status = String(zipRows[i][1] || '').trim().toLowerCase();
+    if (code) zips.push({ code, status, row: i + 1 }); // row is 1-indexed for sheet
   }
 
   // Read existing placeIds AND business names for dedup
@@ -471,25 +475,36 @@ export async function scrapeLeadsFromMaps(
   // Scrape
   let newRows: string[][] = [];
   let searched = 0;
+  const zipUpdates: { row: number; status: string }[] = [];
 
   for (const zip of zips) {
-    onProgress(`Geocoding ${zip}...`);
-    const coords = await geocodePostalCode(zip);
-    if (!coords) {
-      onProgress(`Skipping ${zip} — could not geocode`);
+    const skipMsg = zip.status === 'complete' ? ' (skipped — already complete)' : zip.status === 'scraped' ? ' (retrying — was partial)' : '';
+    onProgress(`Geocoding ${zip.code}${skipMsg}...`);
+
+    if (zip.status === 'complete') {
+      searched += categories.length;
       continue;
     }
 
+    const coords = await geocodePostalCode(zip.code);
+    if (!coords) {
+      onProgress(`Skipping ${zip.code} — could not geocode`);
+      continue;
+    }
+
+    let maxThisZip = 0;
+
     for (const category of categories) {
       searched++;
-      onProgress(`Searching: ${category} in ${zip} (${searched}/${zips.length * categories.length})`);
+      onProgress(`Searching: ${category} in ${zip.code} (${searched}/${zips.length * categories.length})`);
       try {
-        const places = await searchPlaces(
+        const { places, total } = await searchPlaces(
           `${category}`,
           coords.lat,
           coords.lng,
-          zip
+          zip.code
         );
+        if (total > maxThisZip) maxThisZip = total;
         for (const place of places) {
           const nameKey = place.name.toLowerCase().trim();
           if (existingPlaceIds.has(place.place_id)) continue;
@@ -519,9 +534,35 @@ export async function scrapeLeadsFromMaps(
           ]);
         }
       } catch (e) {
-        console.warn(`Failed: ${category} in ${zip}`, e);
+        console.warn(`Failed: ${category} in ${zip.code}`, e);
       }
     }
+
+    // Track zip completion status
+    if (maxThisZip < 20) {
+      zipUpdates.push({ row: zip.row, status: 'complete' });
+    } else {
+      zipUpdates.push({ row: zip.row, status: 'partial' });
+    }
+  }
+
+  // Write zip statuses back to AZ Zips sheet
+  if (zipUpdates.length > 0) {
+    const statusValues = zipUpdates.map(u => [u.status]);
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valueInputOption: 'RAW',
+          data: zipUpdates.map(u => ({
+            range: `AZ Zips!B${u.row}`,
+            values: [[u.status]],
+          })),
+        }),
+      }
+    );
   }
 
   // Write to Results tab
