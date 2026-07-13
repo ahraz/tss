@@ -318,6 +318,16 @@ export interface Quote {
   updatedAt: string;
   currentVersion?: number;
   versions?: QuoteVersion[];
+  shareToken?: string;
+  acceptedAt?: string;
+}
+
+
+export interface QuoteView {
+  id: string;
+  quoteId: string;
+  token: string;
+  viewedAt: string;
 }
 
 export interface Task {
@@ -581,6 +591,7 @@ export interface AppState {
   incidentReports: IncidentReport[];
   callLogs: CallLogEntry[];
   emailLogs: EmailLog[];
+  quoteViews: QuoteView[];
   leads: Lead[];
   sharedContracts: SharedContract[];
 }
@@ -672,6 +683,9 @@ export type AppAction =
   | { type: 'SET_EMAIL_LOGS'; payload: EmailLog[] }
   | { type: 'ADD_EMAIL_LOG'; payload: EmailLog }
   | { type: 'DELETE_EMAIL_LOG'; payload: string }
+  // Quote Views
+  | { type: 'SET_QUOTE_VIEWS'; payload: QuoteView[] }
+  | { type: 'ADD_QUOTE_VIEW'; payload: QuoteView }
   // Leads (from Google Sheets, synced to Firestore)
   | { type: 'SET_LEADS'; payload: Lead[] }
   | { type: 'UPDATE_LEAD_EMAIL'; payload: { leadId: string; email: string } }

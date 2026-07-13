@@ -1,6 +1,6 @@
 import React, { useState, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Bookmark, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Bookmark, Clock, Share2, Copy } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -16,6 +16,7 @@ import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion } from '../types';
 import { createVersion, addVersionToQuote } from '../types';
+import { generateShareToken } from '../types/sharedContract';
 import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
 import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
 import { ContractGenerator } from '../components/quotes/ContractGenerator';
@@ -61,6 +62,30 @@ export function QuoteDetailPage() {
   const clientForSigned = signedContract ? state.clients.find(c => c.name === quote?.prospectName) : null;
   if (!currentUser) return null;
   const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+
+  const quoteViews = state.quoteViews.filter(v => v.quoteId === id);
+  const viewCount = quoteViews.length;
+  const lastViewed = quoteViews.length > 0
+    ? quoteViews.reduce((latest, v) => v.viewedAt > latest ? v.viewedAt : latest, quoteViews[0].viewedAt)
+    : null;
+
+  const handleShareQuote = () => {
+    if (!quote) return;
+    const token = quote.shareToken || generateShareToken();
+    const shareUrl = `${window.location.origin}/quote/${token}`;
+
+    if (!quote.shareToken) {
+      dispatch({ type: 'UPDATE_QUOTE', payload: {
+        ...quote, shareToken: token, updatedAt: new Date().toISOString()
+      } as any });
+    }
+
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      toast.success('Quote link copied to clipboard');
+    }).catch(() => {
+      toast(shareUrl, { duration: 8000 });
+    });
+  };
 
   const getMonthlyAmount = (visits: number, perVisit: number, freq: CleaningFrequency) => {
     const multiplier = freq === 'daily' ? 22 : freq === 'weekly' ? 4.33 : freq === 'biweekly' ? 2.17 : 1;
@@ -362,7 +387,9 @@ export function QuoteDetailPage() {
                     <Button size="sm" icon={XCircle} variant="danger" onClick={() => handleStatusChange('rejected')}>Reject</Button>
                   </>
                 )}
-                <Button size="sm" icon={Download} variant="secondary" onClick={() => setShowPdfPreview(true)}>Download PDF</Button>
+                <Button size="sm" icon={Share2} variant="secondary" onClick={handleShareQuote}>
+                  Share{quote.shareToken ? 'd' : ''}
+                </Button>
                 <Button size="sm" icon={Printer} variant="secondary" onClick={handlePrint}>Print</Button>
                 <Button size="sm" icon={Clock} variant="secondary" onClick={() => setShowVersionHistory(true)}>
                   History (v{quote.currentVersion || 1})
@@ -372,6 +399,15 @@ export function QuoteDetailPage() {
             )}
           </div>
         </div>
+
+        {quote.shareToken && viewCount > 0 && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 -mt-4">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Viewed {viewCount} time{viewCount !== 1 ? 's' : ''}
+            {lastViewed && ` · Last: ${new Date(lastViewed).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
+            {quote.status === 'accepted' && <span className="text-emerald-600 font-medium"> · Accepted {quote.acceptedAt ? new Date(quote.acceptedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : ''}</span>}
+          </div>
+        )}
 
         {/* Print-Friendly Proposal View */}
         <div ref={printRef} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-10 print:shadow-none print:border-0 print:p-0">

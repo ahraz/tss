@@ -15,7 +15,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
-import type { Lead, CallLogEntry, CallOutcome, Quote, EmailLog } from '../types';
+import type { Lead, CallLogEntry, CallOutcome, Quote, EmailLog, QuoteLineItem, CleaningFrequency } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
@@ -49,6 +49,25 @@ function getTemplateCategory(leadType: string): string {
   return 'general';
 }
 
+/** Returns pre-filled line items based on business type. */
+function getLineItemsForType(businessType: string): QuoteLineItem[] {
+  const base = (desc: string) => ({
+    id: generateId(),
+    description: desc,
+    siteId: null as string | null,
+    frequency: 'weekly' as CleaningFrequency,
+    amountPerVisit: 0,
+    visitsPerWeek: 1,
+    monthlyAmount: 0,
+  });
+
+  const t = businessType.toLowerCase();
+  if (t.includes('dental')) return [base('Medical-grade disinfection'), base('Exam room cleaning'), base('Reception area'), base('Floor care')];
+  if (t.includes('medical')) return [base('Medical-grade disinfection'), base('Waiting room'), base('Exam rooms'), base('Sanitization')];
+  if (t.includes('physio') || t.includes('vet')) return [base('Treatment area cleaning'), base('Reception'), base('Floor care'), base('Sanitization')];
+  if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return [base('Reception area'), base('Conference rooms'), base('Office cleaning'), base('Window cleaning')];
+  return [base('Workstation cleaning'), base('Reception'), base('Floor care'), base('Breakroom')];
+}
 const OUTCOME_OPTIONS: { value: CallOutcome; label: string; icon: React.ReactNode; color: string }[] = [
   { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={20} />, color: 'text-green-600 bg-green-100' },
   { value: 'no_answer', label: 'No Answer', icon: <XCircle size={20} />, color: 'text-amber-600 bg-amber-100' },
@@ -826,6 +845,8 @@ export function LeadsPage() {
                             const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                             // Parse address into components
                             const addrParts = (lead.address || '').split(',').map(s => s.trim());
+                            const lineItems = getLineItemsForType(lead.type);
+                            const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
                             const q: Quote = {
                               id: generateId(),
                               clientId: null,
@@ -835,8 +856,8 @@ export function LeadsPage() {
                               prospectProvince: addrParts[2]?.slice(0, 2).toUpperCase() || 'ON',
                               prospectPostalCode: addrParts[2]?.match(/[A-Z0-9]{3}\s?[A-Z0-9]{3}/i)?.[0] || '',
                               prospectPhone: lead.phone,
-                              lineItems: [],
-                              totalMonthly: 0,
+                              lineItems,
+                              totalMonthly,
                               status: 'draft',
                               validUntil,
                               notes: `Lead: ${lead.businessName} · ${lead.type || ''} · Rating: ${lead.rating || 'N/A'}`.trim(),

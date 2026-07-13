@@ -23,6 +23,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { TeamPage } from './pages/TeamPage';
 import { QualityPage } from './pages/QualityPage';
 import { LeadsPage } from './pages/LeadsPage';
+import { SharedQuotePage } from './pages/SharedQuotePage';
 
 // AnalyticsPage lazy-loaded because it pulls in ~300 KB of recharts
 const AnalyticsPage = lazy(() =>
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/quotes" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuotesPage /></ProtectedRoute>} />
         <Route path="/quotes/templates" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TemplatesPage /></ProtectedRoute>} />
         <Route path="/quotes/:id" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><QuoteDetailPage /></ProtectedRoute>} />
+        <Route path="/quote/:token" element={<SharedQuotePage />} />
         
         <Route path="/team" element={<ProtectedRoute allowedRoles={['owner', 'partner']}><TeamPage /></ProtectedRoute>} />
         <Route path="/incidents" element={<Navigate to="/quality" replace />} />
