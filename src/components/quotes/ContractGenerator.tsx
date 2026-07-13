@@ -127,14 +127,14 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
           lineItems: quote.lineItems,
           totalMonthly: quote.totalMonthly,
         },
-        contractNumber: `CONTRACT-${quote.id.slice(-6).toUpperCase()}`,
+        contractNumber,
         status: 'pending' as const,
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
         createdBy: '',
       };
 
-      await setDoc(doc(db, 'sharedContracts', token), sharedContract);
+      await setDoc(doc(db, 'sharedContracts', token), sanitizeForFirestore(sharedContract), { merge: true });
 
       const url = `${window.location.origin}/#/share/${token}`;
       setShareLink(url);
