@@ -349,23 +349,31 @@ async function fetchSheetValues(token: string, range: string): Promise<string[][
   return data.values || [];
 }
 
-async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; website: string }> {
+async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; website: string; reviews: string }> {
   try {
     const res = await fetch(
       `${PLACES_API_BASE}/${placeId}`,
       {
         headers: {
           'X-Goog-Api-Key': PLACES_API_KEY,
-          'X-Goog-FieldMask': 'internationalPhoneNumber,websiteUri',
+          'X-Goog-FieldMask': 'internationalPhoneNumber,websiteUri,reviews',
         },
       }
     );
     const data = await res.json();
+    const reviews = (data.reviews || []).map((r: any) => ({
+      rating: r.rating,
+      text: r.text || r.originalText || { text: '', languageCode: 'en' },
+      authorAttribution: r.authorAttribution || {},
+      publishTime: r.publishTime || '',
+      relativePublishTimeDescription: r.relativePublishTimeDescription || '',
+    }));
     return {
       phone: data.internationalPhoneNumber || '',
       website: data.websiteUri || '',
+      reviews: JSON.stringify(reviews),
     };
-  } catch { return { phone: '', website: '' }; }
+  } catch { return { phone: '', website: '', reviews: '[]' }; }
 }
 
 async function searchPlaces(query: string): Promise<PlaceResult[]> {
@@ -469,7 +477,7 @@ export async function scrapeLeadsFromMaps(
             JSON.stringify(place.types || []),       // D: types
             String(place.rating || ''),              // E: rating
             place.formatted_address || '',           // F: address
-            String(place.userRatingCount || ''),     // G: reviews count
+            details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
             place.place_id,                          // I: placeId
             gps,                                     // J: gpsCoordinates
