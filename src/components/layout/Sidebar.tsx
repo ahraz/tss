@@ -43,8 +43,9 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-gray-900 text-gray-300 flex-shrink-0">
-      <div className="p-4 flex items-center gap-3 border-b border-gray-800">
+      <div className="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
           <Logo size={36} variant="full" light />
+          {isOwnerOrPartner && <ContractNotificationBadge />}
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto space-y-6">
@@ -79,8 +80,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Contract notifications */}
-      {isOwnerOrPartner && <ContractNotificationBadge />}
       {/* User profile with dropdown */}
       <div className="p-4 border-t border-gray-800 relative" ref={menuRef}>
         <button

@@ -54,6 +54,7 @@ export function ContractNotificationBadge() {
                   key={c.id}
                   className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
                   onClick={() => {
+                    handleDismiss(c.id);
                     navigate(`/quotes/${c.quoteId}`);
                     setIsOpen(false);
                   }}
