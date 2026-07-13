@@ -318,6 +318,7 @@ export async function syncCategoriesToSheet(): Promise<void> {
 }
 
 const PLACES_API_KEY = 'AIzaSyD1pPF75uPs0zG9ys4cY5Y9mdZfIwJoAxY';
+const PLACES_API_BASE = 'https://places.googleapis.com/v1/places';
 
 interface PlaceResult {
   name: string;
@@ -327,6 +328,13 @@ interface PlaceResult {
   rating?: number;
   types?: string[];
   business_status?: string;
+  /** New Places API field names */
+  id?: string;
+  displayName?: { text: string };
+  formattedAddress?: string;
+  websiteUri?: string;
+  internationalPhoneNumber?: string;
+  primaryTypeDisplayName?: { text: string };
 }
 
 async function fetchSheetValues(token: string, range: string): Promise<string[][]> {
@@ -342,24 +350,46 @@ async function fetchSheetValues(token: string, range: string): Promise<string[][
 async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; website: string }> {
   try {
     const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website&key=${PLACES_API_KEY}`
+      `${PLACES_API_BASE}/${placeId}`,
+      {
+        headers: {
+          'X-Goog-Api-Key': PLACES_API_KEY,
+          'X-Goog-FieldMask': 'internationalPhoneNumber,websiteUri',
+        },
+      }
     );
     const data = await res.json();
     return {
-      phone: data.result?.formatted_phone_number || '',
-      website: data.result?.website || '',
+      phone: data.internationalPhoneNumber || '',
+      website: data.websiteUri || '',
     };
   } catch { return { phone: '', website: '' }; }
 }
 
 async function searchPlaces(query: string): Promise<PlaceResult[]> {
   const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${PLACES_API_KEY}`
+    `${PLACES_API_BASE}:searchText`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': PLACES_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.types',
+      },
+      body: JSON.stringify({ textQuery: query, maxResultCount: 20 }),
+    }
   );
   const data = await res.json();
-  if (data.status === 'ZERO_RESULTS') return [];
-  if (data.status !== 'OK') throw new Error(data.error_message || data.status);
-  return data.results || [];
+  console.log('[scraper] results:', data.places?.length || 0, 'error:', data.error?.message || 'none');
+  if (!data.places) return [];
+  return data.places.map((p: any) => ({
+    id: p.id,
+    name: p.displayName?.text || '',
+    place_id: p.id || '',
+    formatted_address: p.formattedAddress || '',
+    rating: p.rating,
+    types: p.types || [],
+  }));
 }
 
 export interface ScrapeResult {
@@ -392,13 +422,16 @@ export async function scrapeLeadsFromMaps(
     if (z) zips.push(z);
   }
 
-  // Read existing placeIds for dedup
+  // Read existing placeIds AND business names for dedup
   onProgress('Checking existing leads...');
   const resultsRows = await fetchSheetValues(token, 'Results!A:N');
   const existingPlaceIds = new Set<string>();
+  const existingNames = new Set<string>();
   for (let i = 1; i < resultsRows.length; i++) {
     const pid = resultsRows[i][8]; // Column I = placeId
+    const name = String(resultsRows[i][2] || '').toLowerCase().trim(); // Column C = title
     if (pid) existingPlaceIds.add(String(pid).trim());
+    if (name) existingNames.add(name);
   }
 
   // Scrape
@@ -412,8 +445,11 @@ export async function scrapeLeadsFromMaps(
       try {
         const places = await searchPlaces(`${category} ${zip} Ontario Canada`);
         for (const place of places) {
+          const nameKey = place.name.toLowerCase().trim();
           if (existingPlaceIds.has(place.place_id)) continue;
+          if (existingNames.has(nameKey)) continue;
           existingPlaceIds.add(place.place_id);
+          existingNames.add(nameKey);
 
           const details = await fetchPlaceDetails(place.place_id);
           await new Promise(r => setTimeout(r, 200)); // rate limit
