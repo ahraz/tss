@@ -459,7 +459,7 @@ export async function scrapeLeadsFromMaps(
           await new Promise(r => setTimeout(r, 200)); // rate limit
 
           const gps = place.location
-            ? `${place.location.latitude},${place.location.longitude}`
+            ? JSON.stringify({ latitude: place.location.latitude, longitude: place.location.longitude })
             : '';
 
           newRows.push([
@@ -469,7 +469,7 @@ export async function scrapeLeadsFromMaps(
             JSON.stringify(place.types || []),       // D: types
             String(place.rating || ''),              // E: rating
             place.formatted_address || '',           // F: address
-            String(place.userRatingCount || place.rating || ''), // G: reviews
+            String(place.userRatingCount || ''),     // G: reviews count
             details.website,                         // H: website
             place.place_id,                          // I: placeId
             gps,                                     // J: gpsCoordinates
