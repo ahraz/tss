@@ -65,6 +65,7 @@ export function LeadsPage() {
   const [repairing, setRepairing] = useState(false);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [syncingCategories, setSyncingCategories] = useState(false);
+  const [scraping, setScraping] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -406,6 +407,36 @@ export function LeadsPage() {
     setEditingCallLogId(null);
   };
 
+  const handleScrapeLeads = async () => {
+    const webAppUrl = localStorage.getItem('gtascrub_scraper_url');
+    if (!webAppUrl) {
+      const url = prompt('Paste the Google Apps Script Web App deployment URL:\n\n(Deploy scripts/gmaps-scraper.gs as a Web App — see scripts/README.md)');
+      if (!url) return;
+      localStorage.setItem('gtascrub_scraper_url', url);
+      setScraping(true);
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        toast.success(data.message || 'Scrape triggered');
+        setTimeout(() => importLeadsFromSheets(), 3000);
+      } catch {
+        localStorage.removeItem('gtascrub_scraper_url');
+        toast.error('Failed. Check the web app URL and try again.');
+      } finally { setScraping(false); }
+      return;
+    }
+    setScraping(true);
+    try {
+      const res = await fetch(webAppUrl);
+      const data = await res.json();
+      toast.success(data.message || 'Scrape triggered — importing leads...');
+      setTimeout(() => importLeadsFromSheets(), 3000);
+    } catch {
+      localStorage.removeItem('gtascrub_scraper_url');
+      toast.error('Scraper unreachable. Re-enter the web app URL next time.');
+    } finally { setScraping(false); }
+  };
+
   const handleSyncCategories = async () => {
     setSyncingCategories(true);
     try {
@@ -551,6 +582,15 @@ export function LeadsPage() {
             {mergedLeads.length} of {leads.length} leads
           </p>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleScrapeLeads}
+              disabled={scraping}
+              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+              title="Scrape Google Maps for new leads"
+            >
+              <RefreshCw size={14} className={scraping ? 'animate-spin' : ''} />
+              {scraping ? 'Scraping...' : 'Scrape Leads'}
+            </button>
             <button
               onClick={handleSyncCategories}
               disabled={syncingCategories}
