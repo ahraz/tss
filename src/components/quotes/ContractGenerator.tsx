@@ -211,7 +211,7 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate Contract" size="xl">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto">
-        <div ref={contractRef} className="bg-white p-8 border rounded-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
+        <div ref={contractRef} className="bg-white p-4 sm:p-8 border rounded-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
           <div className="flex justify-between items-start mb-8 pb-4 border-b-2 border-gray-800">
             <div className="flex items-center gap-3">
               <img src={logoImage} alt="GTA Scrub" width={48} height={48} style={{ objectFit: 'contain' }} />
@@ -272,7 +272,7 @@ export function ContractGenerator({ isOpen, onClose, quote, onConvert }: Props) 
           </div>
 
           <div className="mb-6 pt-4 border-t border-gray-300">
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <div className="text-sm font-bold mb-1">Client Signature</div>
                 {signatureDataUrl ? (

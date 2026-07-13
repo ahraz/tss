@@ -328,7 +328,7 @@ export function ShareContractPage() {
         </div>
 
         <div className="mb-6 pt-4 border-t border-gray-300">
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <div className="text-sm font-bold mb-1">Client Signature</div>
               {signatureDataUrl ? (

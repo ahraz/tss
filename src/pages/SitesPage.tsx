@@ -152,10 +152,10 @@ export function SitesPage() {
               </Button>
             )}
             {isOwnerOrPartner && (
-              <Button icon={Plus} onClick={() => setShowAddModal(true)}>Add Site</Button>
+              <Button icon={Plus} onClick={() => setShowAddModal(true)}><span className="hidden sm:inline">Add Site</span></Button>
             )}
             {isOwnerOrPartner && (
-              <Button icon={UserPlus} variant="secondary" onClick={() => setShowAddClientModal(true)}>Add Client</Button>
+              <Button icon={UserPlus} variant="secondary" onClick={() => setShowAddClientModal(true)}><span className="hidden sm:inline">Add Client</span></Button>
             )}
           </div>
         </div>
@@ -209,7 +209,7 @@ export function SitesPage() {
                     </div>
                   </div>
                   
-                  <div className="mt-auto pt-4 border-t border-gray-100 grid grid-cols-3 gap-4">
+                  <div className="mt-auto pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="flex items-center gap-2 text-sm">
                       <div className="p-1.5 bg-green-50 text-green-600 rounded-lg"><DollarSign size={16}/></div>
                       <div>
@@ -255,7 +255,7 @@ export function SitesPage() {
             
             <Input label="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input label="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="col-span-1" />
               <Input label="Province" value={formData.province} onChange={e => setFormData({...formData, province: e.target.value})} className="col-span-1" />
               <Input label="Postal Code" value={formData.postalCode} onChange={e => setFormData({...formData, postalCode: e.target.value})} className="col-span-1" />
@@ -348,7 +348,7 @@ export function SitesPage() {
             
             <Input label="Address" value={editFormData.address || ''} onChange={e => setEditFormData({...editFormData, address: e.target.value})} />
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input label="City" value={editFormData.city || ''} onChange={e => setEditFormData({...editFormData, city: e.target.value})} className="col-span-1" />
               <Input label="Province" value={editFormData.province || ''} onChange={e => setEditFormData({...editFormData, province: e.target.value})} className="col-span-1" />
               <Input label="Postal Code" value={editFormData.postalCode || ''} onChange={e => setEditFormData({...editFormData, postalCode: e.target.value})} className="col-span-1" />
@@ -448,7 +448,7 @@ export function SitesPage() {
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <Input label="Client/Business Name" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} placeholder="e.g. Kennedy Medical Clinic" required />
             <Input label="Address" value={clientForm.address} onChange={e => setClientForm({...clientForm, address: e.target.value})} />
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input label="City" value={clientForm.city} onChange={e => setClientForm({...clientForm, city: e.target.value})} />
               <Input label="Province" value={clientForm.province} onChange={e => setClientForm({...clientForm, province: e.target.value})} />
               <Input label="Postal Code" value={clientForm.postalCode} onChange={e => setClientForm({...clientForm, postalCode: e.target.value})} />

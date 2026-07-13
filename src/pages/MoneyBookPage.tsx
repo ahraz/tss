@@ -201,7 +201,7 @@ export function MoneyBookPage() {
               </div>
 
               {/* Desktop View - Table */}
-              <div className="hidden md:block overflow-x-auto flex-1">
+              <div className="hidden lg:block overflow-x-auto flex-1">
                 <table className="w-full text-left">
                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                   <tr>
@@ -303,7 +303,7 @@ export function MoneyBookPage() {
               </div>
 
               {/* Desktop View - Table */}
-              <div className="hidden md:block overflow-x-auto flex-1">
+              <div className="hidden lg:block overflow-x-auto flex-1">
                 <table className="w-full text-left">
                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                   <tr>
@@ -428,7 +428,7 @@ export function MoneyBookPage() {
           </div>
 
           {/* Desktop View - Table */}
-          <div className="hidden md:block overflow-x-auto flex-1">
+          <div className="hidden lg:block overflow-x-auto flex-1">
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                 <tr>

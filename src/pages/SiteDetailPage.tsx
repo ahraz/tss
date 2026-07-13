@@ -539,7 +539,7 @@ export function SiteDetailPage() {
           
           <Input label="Address" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} />
           
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input label="City" value={formData.city || ''} onChange={e => setFormData({...formData, city: e.target.value})} className="col-span-1" />
             <Input label="Province" value={formData.province || ''} onChange={e => setFormData({...formData, province: e.target.value})} className="col-span-1" />
             <Input label="Postal Code" value={formData.postalCode || ''} onChange={e => setFormData({...formData, postalCode: e.target.value})} className="col-span-1" />

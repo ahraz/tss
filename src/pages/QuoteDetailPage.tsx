@@ -350,7 +350,7 @@ export function QuoteDetailPage() {
           <button onClick={() => navigate('/quotes')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
             <ArrowLeft size={16} /> Back to Quotes
           </button>
-          <div className="flex gap-2 no-print">
+          <div className="flex gap-2 no-print flex-wrap justify-end">
             {isOwnerOrPartner && (
               <>
                 {quote.status === 'draft' && (
@@ -411,48 +411,50 @@ export function QuoteDetailPage() {
           </div>
 
           {/* Line Items Table */}
-          <table className="w-full mb-6 print:break-inside-avoid">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 text-sm font-semibold text-gray-700">Description</th>
-                <th className="text-center py-2 text-sm font-semibold text-gray-700">Frequency</th>
-                <th className="text-center py-2 text-sm font-semibold text-gray-700">Visits/Week</th>
-                <th className="text-center py-2 text-sm font-semibold text-gray-700">Rate/Visit</th>
-                <th className="text-right py-2 text-sm font-semibold text-gray-700">Monthly</th>
-                {isOwnerOrPartner && <th className="w-10 no-print"></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {quote.lineItems.map(item => (
-                <tr key={item.id} className="border-b border-gray-100">
-                  <td className="py-3 text-sm text-gray-800">{item.description}</td>
-                  <td className="py-3 text-sm text-gray-600 text-center capitalize">{item.frequency}</td>
-                  <td className="py-3 text-sm text-gray-600 text-center">{item.visitsPerWeek}x</td>
-                  <td className="py-3 text-sm text-gray-600 text-center">{formatCAD(item.amountPerVisit)}</td>
-                  <td className="py-3 text-sm font-medium text-gray-900 text-right">{formatCAD(item.monthlyAmount)}</td>
-                  {isOwnerOrPartner && (
-                    <td className="py-3 text-center no-print">
-                      <button onClick={() => handleRemoveLineItem(item.id)} className="text-red-400 hover:text-red-600">
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  )}
+          <div className="overflow-x-auto">
+            <table className="w-full mb-6 print:break-inside-avoid">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 text-sm font-semibold text-gray-700">Description</th>
+                  <th className="text-center py-2 text-sm font-semibold text-gray-700">Frequency</th>
+                  <th className="text-center py-2 text-sm font-semibold text-gray-700">Visits/Week</th>
+                  <th className="text-center py-2 text-sm font-semibold text-gray-700">Rate/Visit</th>
+                  <th className="text-right py-2 text-sm font-semibold text-gray-700">Monthly</th>
+                  {isOwnerOrPartner && <th className="w-10 no-print"></th>}
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={4} className="py-3 text-right text-sm font-semibold text-gray-700">Total Monthly</td>
-                <td className="py-3 text-right text-lg font-bold text-blue-600">{formatCAD(quote.totalMonthly)}</td>
-                {isOwnerOrPartner && <td></td>}
-              </tr>
-              <tr>
-                <td colSpan={4} className="py-1 text-right text-sm text-gray-500">Estimated Annual</td>
-                <td className="py-1 text-right text-base font-semibold text-gray-700">{formatCAD(totalAnnual)}</td>
-                {isOwnerOrPartner && <td></td>}
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {quote.lineItems.map(item => (
+                  <tr key={item.id} className="border-b border-gray-100">
+                    <td className="py-3 text-sm text-gray-800">{item.description}</td>
+                    <td className="py-3 text-sm text-gray-600 text-center capitalize">{item.frequency}</td>
+                    <td className="py-3 text-sm text-gray-600 text-center">{item.visitsPerWeek}x</td>
+                    <td className="py-3 text-sm text-gray-600 text-center">{formatCAD(item.amountPerVisit)}</td>
+                    <td className="py-3 text-sm font-medium text-gray-900 text-right">{formatCAD(item.monthlyAmount)}</td>
+                    {isOwnerOrPartner && (
+                      <td className="py-3 text-center no-print">
+                        <button onClick={() => handleRemoveLineItem(item.id)} className="text-red-400 hover:text-red-600">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={4} className="py-3 text-right text-sm font-semibold text-gray-700">Total Monthly</td>
+                  <td className="py-3 text-right text-lg font-bold text-blue-600">{formatCAD(quote.totalMonthly)}</td>
+                  {isOwnerOrPartner && <td></td>}
+                </tr>
+                <tr>
+                  <td colSpan={4} className="py-1 text-right text-sm text-gray-500">Estimated Annual</td>
+                  <td className="py-1 text-right text-base font-semibold text-gray-700">{formatCAD(totalAnnual)}</td>
+                  {isOwnerOrPartner && <td></td>}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
 
           {/* Action Buttons */}
           {isOwnerOrPartner && (
