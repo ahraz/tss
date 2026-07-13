@@ -12,7 +12,7 @@ import { db } from './firebase';
 import type { 
   User, Site, Shift, Payment, Expense, PayrollRecord, Task, Client, Quote, AppSettings, AppAction,
   SupplyItem, SiteInventory, Inspection, InspectionItem, IncidentReport, CallLogEntry, EmailLog, QuoteView, Lead, QuoteTemplate,
-  SharedContract
+  SharedContract, AppNotification
 } from '../types';
 
 /**
@@ -65,6 +65,7 @@ export async function fetchAllCollectionsOnce() {
     leadsSnap,
     quoteTemplatesSnap,
     sharedContractsSnap,
+    notificationsSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'sites')),
@@ -86,6 +87,7 @@ export async function fetchAllCollectionsOnce() {
     getDocs(collection(db, 'leads')),
     getDocs(collection(db, 'quoteTemplates')),
     getDocs(collection(db, 'sharedContracts')),
+    getDocs(collection(db, 'notifications')),
   ]);
 
   const users = usersSnap.docs.map(d => docToObj<User>(d));
@@ -108,11 +110,12 @@ export async function fetchAllCollectionsOnce() {
   const leads = leadsSnap.docs.map(d => docToObj<Lead>(d));
   const quoteTemplates = quoteTemplatesSnap.docs.map(d => docToObj<QuoteTemplate>(d));
   const sharedContracts = sharedContractsSnap.docs.map(d => docToObj<SharedContract>(d));
+  const notifications = notificationsSnap.docs.map(d => docToObj<AppNotification>(d));
 
   const settingsSnap = await getDoc(doc(db, 'settings', 'current'));
   const settings = settingsSnap.exists() ? (settingsSnap.data() as AppSettings) : null;
 
-  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, emailLogs, quoteViews, leads, quoteTemplates, sharedContracts, settings };
+  return { users, sites, shifts, payments, expenses, payroll, tasks, clients, quotes, supplyItems, siteInventory, inspections, inspectionTemplates, incidentReports, callLogs, emailLogs, quoteViews, leads, quoteTemplates, sharedContracts, notifications, settings };
 }
 
 /**
@@ -336,6 +339,16 @@ export function subscribeToCollections(
     (err) => onError?.('sharedContracts', err)
   );
 
+  const unsubNotifications = onSnapshot(
+    collection(db, 'notifications'),
+    (snapshot) => {
+      const list: AppNotification[] = [];
+      snapshot.forEach(doc => list.push(docToObj<AppNotification>(doc)));
+      dispatch({ type: 'SET_NOTIFICATIONS', payload: list });
+    },
+    (err) => onError?.('notifications', err)
+  );
+
   // Return unsubscribe cleanup function
   return () => {
     unsubUsers();
@@ -359,6 +372,7 @@ export function subscribeToCollections(
     unsubLeads();
     unsubQuoteTemplates();
     unsubSharedContracts();
+    unsubNotifications();
   };
 }
 
@@ -530,6 +544,13 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       case 'UPDATE_SHARED_CONTRACT':
         if (!action.payload.id) return;
         await setDoc(doc(db, 'sharedContracts', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
+        break;
+
+      // Notifications
+      case 'ADD_NOTIFICATION':
+      case 'UPDATE_NOTIFICATION':
+        if (!action.payload.id) return;
+        await setDoc(doc(db, 'notifications', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
 
       // Leads — upsert from Sheets import (preserve existing doc IDs so call logs survive)

@@ -4,6 +4,7 @@ import { getDefaultTemplates } from '../types';
 import { generateId } from '../utils/storage';
 import { toast } from 'react-hot-toast';
 import { setSession, getSession } from '../utils/storage';
+import { requestNotificationPermission } from '../services/notificationService';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import app from '../lib/firebase';
 import {
@@ -35,6 +36,7 @@ const initialState: AppState = {
   leads: [],
   quoteTemplates: [],
   sharedContracts: [],
+  notifications: [],
   settings: {
     businessName: 'GTA Scrub',
     ownerName: 'Ahraz Malik',
@@ -245,6 +247,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_SHARED_CONTRACT':
       return { ...state, sharedContracts: state.sharedContracts.map(c => c.id === action.payload.id ? { ...c, ...action.payload } : c) };
 
+    // Notifications
+    case 'SET_NOTIFICATIONS':
+      return { ...state, notifications: action.payload };
+    case 'ADD_NOTIFICATION':
+      return { ...state, notifications: [...state.notifications, action.payload] };
+    case 'UPDATE_NOTIFICATION':
+      return { ...state, notifications: state.notifications.map(n => n.id === action.payload.id ? { ...n, ...action.payload } : n) };
+
     // Import
     case 'IMPORT_DATA':
       return { ...state, ...action.payload };
@@ -315,6 +325,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch (authErr) {
           console.warn('Anonymous auth failed — Firestore reads may be denied', authErr);
         }
+        // Request notification permission if not yet decided
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+          requestNotificationPermission();
+        }
         // Hydrate from Firestore
         let remote = await fetchAllCollectionsOnce();
 
@@ -347,6 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (remote.quoteViews) originalDispatch({ type: 'SET_QUOTE_VIEWS', payload: remote.quoteViews });
         if (remote.leads) originalDispatch({ type: 'SET_LEADS', payload: remote.leads });
         if (remote.sharedContracts) originalDispatch({ type: 'SET_SHARED_CONTRACTS', payload: remote.sharedContracts });
+        if (remote.notifications) originalDispatch({ type: 'SET_NOTIFICATIONS', payload: remote.notifications });
         // Seed default templates if none exist (one per business type)
         const templates: QuoteTemplate[] = remote.quoteTemplates?.length
           ? remote.quoteTemplates

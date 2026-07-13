@@ -594,6 +594,7 @@ export interface AppState {
   quoteViews: QuoteView[];
   leads: Lead[];
   sharedContracts: SharedContract[];
+  notifications: AppNotification[];
 }
 
 // --- Action Types ---
@@ -697,6 +698,10 @@ export type AppAction =
   | { type: 'SET_SHARED_CONTRACTS'; payload: SharedContract[] }
   | { type: 'ADD_SHARED_CONTRACT'; payload: SharedContract }
   | { type: 'UPDATE_SHARED_CONTRACT'; payload: Partial<SharedContract> & { id: string } }
+  // Notifications
+  | { type: 'SET_NOTIFICATIONS'; payload: AppNotification[] }
+  | { type: 'ADD_NOTIFICATION'; payload: AppNotification }
+  | { type: 'UPDATE_NOTIFICATION'; payload: Partial<AppNotification> & { id: string } }
   // Data Management
   | { type: 'IMPORT_DATA'; payload: Omit<AppState, 'isInitialized' | 'session'> }
   | { type: 'CLEAR_ALL_DATA' };
