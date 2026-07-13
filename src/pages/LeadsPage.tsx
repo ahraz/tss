@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Star, MapPin, Search, Phone,
   CheckCircle2, Clock, XCircle, RotateCcw,
   ChevronDown, ExternalLink, User,
   RefreshCw, AlertCircle, Database,
-  FileText, Mail, Copy
+  FileText, Mail, Copy, Wrench
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -96,7 +96,7 @@ export function LeadsPage() {
   const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
   const [emailValue, setEmailValue] = useState('');
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
-  const hasRepaired = useRef(false);
+  const [repairing, setRepairing] = useState(false);
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
@@ -131,37 +131,42 @@ export function LeadsPage() {
     }).catch(() => {});
   }, []);
 
-  // ── Auto-repair orphaned call logs when leads load (once per mount) ──
-  useEffect(() => {
-    if (hasRepaired.current || leadsFromFirestore.length === 0) return;
-    hasRepaired.current = true;
-
-    const repair = async () => {
-      const callLogsSnap = await getDocs(collection(db, 'callLogs'));
-      const callLogs = callLogsSnap.docs.map(d => ({ _id: d.id, ...d.data() })) as (CallLogEntry & { _id: string })[];
-
+  // ── Repair orphaned call logs (re-link to correct lead doc IDs) ──
+  const repairCallLogs = useCallback(async () => {
+    setRepairing(true);
+    try {
+      const [leadsSnap, callLogsSnap] = await Promise.all([
+        getDocs(collection(db, 'leads')),
+        getDocs(collection(db, 'callLogs')),
+      ]);
       const rowToDocId = new Map<number, string>();
-      for (const lead of leadsFromFirestore) {
-        if (lead.rowIndex && lead.id) rowToDocId.set(lead.rowIndex, lead.id);
-      }
-
-      const orphaned = callLogs.filter(log => {
+      leadsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.rowIndex) rowToDocId.set(data.rowIndex, d.id);
+      });
+      const logs = callLogsSnap.docs.map(d => ({ _id: d.id, ...d.data() })) as (CallLogEntry & { _id: string })[];
+      const orphaned = logs.filter(log => {
         const docId = rowToDocId.get(log.sheetRowIndex);
         return docId && log.leadId !== docId;
       });
-
-      if (orphaned.length === 0) return;
-
+      if (orphaned.length === 0) {
+        toast('Call history is already up to date');
+        return;
+      }
       const batch = writeBatch(db);
       for (const log of orphaned) {
         const correctDocId = rowToDocId.get(log.sheetRowIndex)!;
         batch.update(doc(db, 'callLogs', log._id), { leadId: correctDocId });
       }
       await batch.commit();
-    };
-
-    repair().catch(() => {});
-  }, [leadsFromFirestore]);
+      toast.success(`Restored ${orphaned.length} call records`);
+    } catch (e) {
+      console.error('Repair failed:', e);
+      toast.error('Failed to restore call history');
+    } finally {
+      setRepairing(false);
+    }
+  }, []);
 
   // ── Import leads from Google Sheets ──
   const importLeadsFromSheets = useCallback(async () => {
@@ -171,6 +176,7 @@ export function LeadsPage() {
       const sheetLeads = await fetchLeadsFromSheet();
       dispatch({ type: 'SET_LEADS', payload: sheetLeads });
       toast.success(`Imported ${sheetLeads.length} leads`);
+      setTimeout(() => repairCallLogs(), 1500);
     } catch (err: any) {
       if (err.message === 'NEEDS_AUTH') {
         try {
@@ -181,6 +187,7 @@ export function LeadsPage() {
           const sheetLeads = await fetchLeadsFromSheet();
           dispatch({ type: 'SET_LEADS', payload: sheetLeads });
           toast.success(`Imported ${sheetLeads.length} leads`);
+          setTimeout(() => repairCallLogs(), 1500);
           return;
         } catch {
           toast.error('Failed to connect. Please try again.');
@@ -491,14 +498,24 @@ export function LeadsPage() {
           <p className="text-sm text-gray-500">
             {mergedLeads.length} of {leads.length} leads
           </p>
-          <button
-            onClick={importLeadsFromSheets}
-            disabled={importingFromSheets}
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={importingFromSheets ? 'animate-spin' : ''} />
-            {importingFromSheets ? 'Importing...' : 'Refresh from Sheets'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={repairCallLogs}
+              disabled={repairing}
+              className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 disabled:opacity-50"
+            >
+              <Wrench size={14} className={repairing ? 'animate-spin' : ''} />
+              {repairing ? 'Restoring...' : 'Restore Call History'}
+            </button>
+            <button
+              onClick={importLeadsFromSheets}
+              disabled={importingFromSheets}
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={importingFromSheets ? 'animate-spin' : ''} />
+              {importingFromSheets ? 'Importing...' : 'Refresh from Sheets'}
+            </button>
+          </div>
         </div>
 
         {/* Lead Cards */}
