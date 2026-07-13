@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
 import { Logo } from '../../assets/Logo';
+import { ContractNotificationBadge } from '../notifications/ContractNotificationBadge';
 import { groupedLinks, sectionLabels } from './navLinks';
 import type { NavSection } from './navLinks';
 
@@ -78,6 +79,8 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Contract notifications */}
+      {isOwnerOrPartner && <ContractNotificationBadge />}
       {/* User profile with dropdown */}
       <div className="p-4 border-t border-gray-800 relative" ref={menuRef}>
         <button

@@ -207,6 +207,7 @@ export function ShareContractPage() {
         status: 'signed',
         clientSignature: signatureDataUrl,
         signedAt: now,
+        expiresAt: now,
       });
 
       setPageState('thankyou');

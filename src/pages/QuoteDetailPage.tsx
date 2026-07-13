@@ -19,6 +19,10 @@ import { createVersion, addVersionToQuote } from '../types';
 import { QuoteVersionHistory } from '../components/quotes/QuoteVersionHistory';
 import { QuoteVersionCompare } from '../components/quotes/QuoteVersionCompare';
 import { ContractGenerator } from '../components/quotes/ContractGenerator';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { CONTRACT_TERMS, CONTRACT_FOOTER } from '../utils/contract-terms';
+import logoImage from '../assets/gtascrub.png';
 
 const QuotePdfPreview = lazy(() => import('../components/quotes/QuotePdfPreview').then(m => ({ default: m.QuotePdfPreview })));
 
@@ -51,6 +55,10 @@ export function QuoteDetailPage() {
   });
 
   const quote = state.quotes.find(q => q.id === id);
+  const signedContract = state.sharedContracts.find(
+    c => c.quoteId === id && c.status === 'signed'
+  );
+  const clientForSigned = signedContract ? state.clients.find(c => c.name === quote?.prospectName) : null;
   if (!currentUser) return null;
   const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
@@ -211,6 +219,127 @@ export function QuoteDetailPage() {
     window.print();
   };
 
+  const handleDownloadSignedContract = async () => {
+    if (!signedContract) return;
+    const element = document.createElement('div');
+    element.style.cssText = 'position:fixed;left:-9999px;top:0;background:white;padding:32px;font-family:Times New Roman,serif;z-index:-1';
+    
+    const today = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const { quoteData } = signedContract;
+    
+    element.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:16px;border-bottom:2px solid #1a1a2e">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="${logoImage}" alt="GTA Scrub" width="48" height="48" style="object-fit:contain" />
+          <div>
+            <div style="font-size:20px;font-weight:bold;color:#111">GTA Scrub</div>
+            <div style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Commercial Cleaning Services</div>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:14px;color:#555">
+          <div style="font-weight:bold;font-size:18px;color:#111">SERVICE AGREEMENT</div>
+          <div style="margin-top:4px">${signedContract.contractNumber}</div>
+          <div>${today}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px;font-size:14px">
+        <div style="margin-bottom:8px"><strong>Between:</strong> GTA Scrub (Service Provider)</div>
+        <div style="margin-bottom:4px"><strong>Client:</strong> ${quoteData.prospectName}</div>
+        <div>${quoteData.prospectAddress}</div>
+        <div>${quoteData.prospectCity}, ${quoteData.prospectProvince} ${quoteData.prospectPostalCode}</div>
+        ${quoteData.prospectPhone ? `<div>Phone: ${quoteData.prospectPhone}</div>` : ''}
+      </div>
+      <div style="margin-bottom:24px">
+        <h3 style="font-size:14px;font-weight:bold;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Scope of Services</h3>
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid #999">
+              <th style="text-align:left;padding:8px 4px">Description</th>
+              <th style="text-align:center;padding:8px 4px">Frequency</th>
+              <th style="text-align:center;padding:8px 4px">Visits/Week</th>
+              <th style="text-align:center;padding:8px 4px">Rate/Visit</th>
+              <th style="text-align:right;padding:8px 4px">Monthly</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${quoteData.lineItems.map(item => `
+              <tr style="border-bottom:1px solid #eee">
+                <td style="padding:8px 4px">${item.description}</td>
+                <td style="padding:8px 4px;text-align:center;text-transform:capitalize">${item.frequency}</td>
+                <td style="padding:8px 4px;text-align:center">${item.visitsPerWeek}x</td>
+                <td style="padding:8px 4px;text-align:right">$${item.amountPerVisit.toFixed(2)}</td>
+                <td style="padding:8px 4px;text-align:right;font-weight:500">$${item.monthlyAmount.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="border-top:2px solid #999">
+              <td colspan="4" style="padding:8px 4px;text-align:right;font-weight:bold">Total Monthly</td>
+              <td style="padding:8px 4px;text-align:right;font-weight:bold;font-size:18px">$${quoteData.totalMonthly.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div style="margin-bottom:24px;font-size:14px;line-height:1.6;white-space:pre-wrap">${CONTRACT_TERMS}</div>
+      <div style="margin-bottom:24px;padding-top:16px;border-top:1px solid #999">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+          <div>
+            <div style="font-size:14px;font-weight:bold;margin-bottom:4px">Client Signature</div>
+            ${signedContract.clientSignature
+              ? `<img src="${signedContract.clientSignature}" alt="Client Signature" style="height:48px;border-bottom:1px solid #999" />`
+              : `<div style="height:48px;border-bottom:1px solid #999;display:flex;align-items:flex-end;font-size:12px;color:#999;padding-bottom:4px">Awaiting signature...</div>`
+            }
+            <div style="font-size:12px;color:#666;margin-top:4px">Date: ${today}</div>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:bold;margin-bottom:4px">GTA Scrub Representative</div>
+            <div style="height:48px;border-bottom:1px solid #999;display:flex;align-items:flex-end;font-size:14px;color:#555;padding-bottom:4px">GTA Scrub</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Date: ${today}</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:#999;padding-top:16px;border-top:1px solid #999">${CONTRACT_FOOTER}</div>
+    `;
+    
+    document.body.appendChild(element);
+    
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageHeight = 297;
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      const fileName = `Contract-${quoteData.prospectName.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      document.body.removeChild(element);
+    }
+  };
+
   const totalAnnual = quote.totalMonthly * 12;
 
   return (
@@ -344,13 +473,23 @@ export function QuoteDetailPage() {
             </div>
           )}
 
-          {/* Generate Contract */}
+          {/* Download or Generate Contract */}
           {isOwnerOrPartner && (quote.status === 'accepted') && (
             <div className="no-print border-t border-gray-200 pt-4 mt-6">
-              <Button icon={FileText} onClick={() => setShowContractGenerator(true)}>
-                Generate Contract
-              </Button>
-              <p className="text-xs text-gray-400 mt-1">Generate a service agreement, capture signature, and convert to client</p>
+              {signedContract ? (
+                <Button icon={Download} onClick={handleDownloadSignedContract}>
+                  Download Signed Contract
+                </Button>
+              ) : (
+                <Button icon={FileText} onClick={() => setShowContractGenerator(true)}>
+                  Generate Contract
+                </Button>
+              )}
+              <p className="text-xs text-gray-400 mt-1">
+                {signedContract
+                  ? 'Download the signed service agreement as PDF'
+                  : 'Generate a service agreement, share link with client, and convert to client'}
+              </p>
             </div>
           )}
 

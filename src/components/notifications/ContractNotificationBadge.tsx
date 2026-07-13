@@ -61,7 +61,7 @@ export function ContractNotificationBadge() {
                   <div className="flex items-start gap-2">
                     <CheckCircle size={16} className="text-green-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-sm text-gray-900">{c.quoteData.prospectName}</p>
+                      <p className="font-medium text-sm text-gray-900">{c.quoteData.prospectName} signed their contract</p>
                       <p className="text-xs text-gray-500">
                         {c.signedAt && format(new Date(c.signedAt), 'MMM d, h:mm a')}
                       </p>

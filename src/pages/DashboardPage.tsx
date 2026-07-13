@@ -11,7 +11,6 @@ import { Badge } from '../components/ui/Badge';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { formatCAD, formatDuration } from '../utils/formatters';
 import { calculateSiteProfit, calculateEmployeePay } from '../utils/calculations';
-import { ContractNotificationBadge } from '../components/notifications/ContractNotificationBadge';
 
 export function DashboardPage() {
   const { state, currentUser, dispatch } = useApp();
@@ -76,10 +75,6 @@ export function DashboardPage() {
 
   const renderOwnerDashboard = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div />
-        <ContractNotificationBadge />
-      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Today's Revenue" value={formatCAD(todayRevenue)} icon={DollarSign} iconColor="text-green-600" iconBg="bg-green-100" />
         <StatCard label="Monthly Net Profit" value={formatCAD(monthlyNetProfit)} icon={TrendingUp} iconColor="text-blue-600" iconBg="bg-blue-100" />
