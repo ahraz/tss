@@ -4,7 +4,7 @@ import { ArrowLeft, User, LogOut, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Logo } from '../../assets/Logo';
-import { ContractNotificationBadge } from '../notifications/ContractNotificationBadge';
+import { NotificationBadge } from '../notifications/NotificationBadge';
 
 interface TopBarProps {
   title?: string;
@@ -56,7 +56,7 @@ export function TopBar({ title }: TopBarProps) {
         )}
       </div>
       <div className="flex items-center gap-2">
-        <ContractNotificationBadge />
+        <NotificationBadge />
         <div className="relative" ref={menuRef}>
         <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
           <UserAvatar user={currentUser} size="sm" />

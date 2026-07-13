@@ -5,7 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { UserAvatar } from '../ui/UserAvatar';
 import { Badge } from '../ui/Badge';
 import { Logo } from '../../assets/Logo';
-import { ContractNotificationBadge } from '../notifications/ContractNotificationBadge';
+import { NotificationBadge } from '../notifications/NotificationBadge';
 import { groupedLinks, sectionLabels } from './navLinks';
 import type { NavSection } from './navLinks';
 
@@ -45,7 +45,7 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col w-64 h-screen bg-gray-900 text-gray-300 flex-shrink-0">
       <div className="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
           <Logo size={36} variant="full" light />
-          {isOwnerOrPartner && <ContractNotificationBadge />}
+          {isOwnerOrPartner && <NotificationBadge />}
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto space-y-6">
