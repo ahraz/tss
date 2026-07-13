@@ -50,6 +50,7 @@ export function ShareContractPage() {
 
         if (data.status === 'signed') {
           setContract(data);
+          setSignatureDataUrl(data.clientSignature ?? null);
           setPageState('signed');
           return;
         }
@@ -318,25 +319,31 @@ export function ShareContractPage() {
 
   if (pageState === 'signed') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Contract Already Signed</h1>
-          <p className="text-gray-500 mb-4">This contract has already been signed.</p>
-          <Button onClick={handleDownloadPdf}>Download Copy</Button>
+      <>
+        <div className="hidden">{renderContractHtml()}</div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Contract Already Signed</h1>
+            <p className="text-gray-500 mb-4">This contract has already been signed.</p>
+            <Button onClick={handleDownloadPdf}>Download Copy</Button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (pageState === 'thankyou') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
-          <p className="text-gray-500 mb-4">Your contract has been signed successfully.</p>
-          <Button onClick={handleDownloadPdf}>Download a Copy</Button>
+      <>
+        <div className="hidden">{renderContractHtml()}</div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
+            <p className="text-gray-500 mb-4">Your contract has been signed successfully.</p>
+            <Button onClick={handleDownloadPdf}>Download a Copy</Button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
