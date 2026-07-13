@@ -37,6 +37,14 @@ const FILTER_TABS: { key: FilterMode; label: string }[] = [
   { key: 'completed', label: 'Completed' },
 ];
 
+/** Maps lead business types to the right email template category. */
+function getTemplateCategory(leadType: string): string {
+  const t = leadType.toLowerCase();
+  if (t.includes('dental') || t.includes('medical') || t.includes('physio') || t.includes('vet')) return 'medical';
+  if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return 'professional';
+  return 'general';
+}
+
 const OUTCOME_OPTIONS: { value: CallOutcome; label: string; icon: React.ReactNode; color: string }[] = [
   { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={20} />, color: 'text-green-600 bg-green-100' },
   { value: 'no_answer', label: 'No Answer', icon: <XCircle size={20} />, color: 'text-amber-600 bg-amber-100' },
@@ -82,7 +90,7 @@ export function LeadsPage() {
   const [outcomeNotes, setOutcomeNotes] = useState('');
   const [savingOutcome, setSavingOutcome] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [emailTemplate, setEmailTemplate] = useState<string>('');
+  const [emailTemplates, setEmailTemplates] = useState<Record<string, string>>({});
   const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
   const [emailValue, setEmailValue] = useState('');
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
@@ -102,12 +110,22 @@ export function LeadsPage() {
     }
   }, [hasLeads]);
 
-  // ── Fetch email template once ──
+  // ── Fetch email templates once ──
   useEffect(() => {
-    fetch('/emails/cold-outreach-dental.html')
-      .then(r => r.text())
-      .then(setEmailTemplate)
-      .catch(() => {});
+    const templates = {
+      medical: '/emails/cold-outreach-medical.html',
+      professional: '/emails/cold-outreach-professional.html',
+      general: '/emails/cold-outreach-general.html',
+    };
+    Promise.all(
+      Object.entries(templates).map(([key, url]) =>
+        fetch(url).then(r => r.text()).then(html => ({ key, html }))
+      )
+    ).then(results => {
+      const map: Record<string, string> = {};
+      results.forEach(({ key, html }) => { map[key] = html; });
+      setEmailTemplates(map);
+    }).catch(() => {});
   }, []);
 
   // ── Import leads from Google Sheets ──
@@ -292,7 +310,9 @@ export function LeadsPage() {
   };
 
   const handleCopyEmail = async (lead: Lead) => {
-    if (!emailTemplate || !lead.email) return;
+    const category = getTemplateCategory(lead.type);
+    const template = emailTemplates[category];
+    if (!template || !lead.email) return;
     setCopyingLeadId(lead.placeId);
 
     const city = (lead.address || '').split(',')[1]?.trim() || 'the GTA';
@@ -302,7 +322,7 @@ export function LeadsPage() {
       try { reviewsCount = JSON.parse(lead.reviews).length.toString(); } catch {}
     }
 
-    const rendered = emailTemplate
+    const rendered = template
       .replace(/\{\{business_name\}\}/g, lead.businessName)
       .replace(/\{\{rating\}\}/g, rating)
       .replace(/\{\{reviews_count\}\}/g, reviewsCount)
