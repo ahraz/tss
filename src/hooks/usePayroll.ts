@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { getPayPeriodDates, calculateEmployeeHours, calculateEmployeePay } from '../utils/calculations';
 import { generateId } from '../utils/storage';
+import { NOTIFICATION_CONTENT } from '../types/notification';
+import { showNotification } from '../services/notificationService';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import type { PayrollRecord, PayPeriod } from '../types';
 
 export type PayrollTab = 'current' | 'history';
@@ -129,6 +133,23 @@ export function usePayroll() {
         createdAt: new Date().toISOString(),
       };
       dispatch({ type: 'ADD_PAYROLL', payload: record });
+    }
+
+    const pendingCount = state.payroll.filter(r => r.status === 'calculated' && !r.isPaid).length;
+    if (pendingCount > 0) {
+      const notificationId = generateId();
+      const content = NOTIFICATION_CONTENT.payroll_pending({ count: pendingCount });
+      setDoc(doc(db, 'notifications', notificationId), {
+        id: notificationId,
+        type: 'payroll_pending',
+        title: content.title,
+        body: content.body,
+        link: content.link,
+        read: false,
+        createdAt: new Date().toISOString(),
+        userId: '',
+      });
+      showNotification(content.title, content.body, content.link);
     }
   };
 

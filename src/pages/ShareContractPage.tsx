@@ -12,6 +12,8 @@ import jsPDF from 'jspdf';
 import logoImage from '../assets/gtascrub.png';
 import type { SharedContract } from '../types/sharedContract';
 import { generateId } from '../utils/storage';
+import { NOTIFICATION_CONTENT } from '../types/notification';
+import { showNotification } from '../services/notificationService';
 import { sanitizeForFirestore } from '../lib/firebaseSync';
 import type { CleaningFrequency, SiteType } from '../types';
 
@@ -212,6 +214,23 @@ export function ShareContractPage() {
 
       setPageState('thankyou');
       toast.success('Contract signed successfully!');
+
+      const notificationId = generateId();
+      const content = NOTIFICATION_CONTENT.contract_signed({
+        prospectName: contract.quoteData.prospectName,
+        quoteId: contract.quoteId,
+      });
+      await setDoc(doc(db, 'notifications', notificationId), {
+        id: notificationId,
+        type: 'contract_signed',
+        title: content.title,
+        body: content.body,
+        link: content.link,
+        read: false,
+        createdAt: now,
+        userId: '',
+      });
+      showNotification(content.title, content.body, content.link);
     } catch (err) {
       console.error('Failed to sign contract:', err);
       toast.error('Failed to submit. Please try again.');

@@ -14,6 +14,10 @@ import toast from 'react-hot-toast';
 import { Logo } from '../assets/Logo';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
+import { NOTIFICATION_CONTENT } from '../types/notification';
+import { showNotification } from '../services/notificationService';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import type { Quote, QuoteLineItem, QuoteStatus, CleaningFrequency, QuoteVersion } from '../types';
 import { createVersion, addVersionToQuote } from '../types';
 import { generateShareToken } from '../types/sharedContract';
@@ -111,6 +115,26 @@ export function QuoteDetailPage() {
       type: 'UPDATE_QUOTE',
       payload: { ...updatedQuote, status, updatedAt: new Date().toISOString() },
     });
+
+    if (status === 'accepted' || status === 'rejected') {
+      const notificationId = generateId();
+      const type = status === 'accepted' ? 'quote_accepted' : 'quote_rejected';
+      const content = NOTIFICATION_CONTENT[type]({
+        prospectName: quote.prospectName,
+        quoteId: quote.id,
+      });
+      setDoc(doc(db, 'notifications', notificationId), {
+        id: notificationId,
+        type,
+        title: content.title,
+        body: content.body,
+        link: content.link,
+        read: false,
+        createdAt: new Date().toISOString(),
+        userId: '',
+      });
+      showNotification(content.title, content.body, content.link);
+    }
   };
 
   const handleDelete = () => {
