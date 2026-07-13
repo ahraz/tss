@@ -22,6 +22,7 @@ import {
   waitForGis,
   initTokenClient,
   ensureHeaderColumns,
+  syncCategoriesToSheet,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -63,6 +64,7 @@ export function LeadsPage() {
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
+  const [syncingCategories, setSyncingCategories] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -404,6 +406,18 @@ export function LeadsPage() {
     setEditingCallLogId(null);
   };
 
+  const handleSyncCategories = async () => {
+    setSyncingCategories(true);
+    try {
+      await syncCategoriesToSheet();
+      toast.success('Categories synced to sheet — refresh leads to scrape new types');
+    } catch {
+      toast.error('Failed to sync categories. Reconnect Google Sheets first.');
+    } finally {
+      setSyncingCategories(false);
+    }
+  };
+
   const handleCopyEmail = async (lead: Lead) => {
     const category = getTemplateCategory(lead.type);
     const template = emailTemplates[category];
@@ -524,6 +538,14 @@ export function LeadsPage() {
             {mergedLeads.length} of {leads.length} leads
           </p>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleSyncCategories}
+              disabled={syncingCategories}
+              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={syncingCategories ? 'animate-spin' : ''} />
+              {syncingCategories ? 'Syncing...' : 'Sync Categories'}
+            </button>
             <button
               onClick={repairCallLogs}
               disabled={repairing}

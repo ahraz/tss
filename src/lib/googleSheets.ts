@@ -278,3 +278,41 @@ function columnLetter(n: number): string {
   }
   return s;
 }
+
+const CATEGORIES = [
+  'Dental Clinic',
+  'Medical Center',
+  'Physiotherapy Clinic',
+  'Veterinary Clinic',
+  'Law Firm',
+  'Accounting Office',
+  'Real Estate Agency',
+  'Insurance Agency',
+  'Daycare Center',
+  'Gym / Fitness Center',
+  'Beauty Salon & Spa',
+  'Optometry Clinic',
+  'Pharmacy',
+  'Chiropractic Clinic',
+  'Funeral Home',
+  'Auto Dealership',
+  'Private School / Tutoring',
+  'Hotel / Motel',
+];
+
+export async function syncCategoriesToSheet(): Promise<void> {
+  const token = await getAccessToken();
+
+  // Clear the sheet first, then write categories
+  const values = CATEGORIES.map(c => [c, 'Active']);
+  values.unshift(['Subcategory', 'STATUS']); // header
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Google+Maps+Categories!A:B?valueInputOption=RAW`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range: 'Google Maps Categories!A:B', majorDimension: 'ROWS', values }),
+    }
+  );
+}
