@@ -6,7 +6,7 @@ export function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) return Promise.resolve(false);
   if (Notification.permission === 'granted') return Promise.resolve(true);
   if (Notification.permission === 'denied') return Promise.resolve(false);
-  if (permissionRequested) return Promise.resolve(Notification.permission === 'granted');
+  if (permissionRequested) return Promise.resolve(false);
   permissionRequested = true;
   return Notification.requestPermission().then(p => p === 'granted');
 }

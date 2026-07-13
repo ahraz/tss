@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { QuoteVersion } from './quote-version';
+import type { AppNotification, NotificationType } from './notification';
 
 // --- Enums & Literal Types ---
 
