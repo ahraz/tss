@@ -208,7 +208,7 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
       reviews: row[6] || '',
       website: row[7] || '',
       email: row[8] || '',
-      placeId: row[8] || '',
+      placeId: String(i + 1),
       gpsCoordinates: row[9] || '',
     });
   }

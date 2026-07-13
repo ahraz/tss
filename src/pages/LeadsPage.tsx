@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Star, MapPin, Search, Phone,
-  CheckCircle2, Clock, XCircle, RotateCcw,
-  ChevronDown, ExternalLink, User,
-  RefreshCw, AlertCircle, Database,
-  FileText, Mail, Copy, Wrench
+  Building2, Phone, Clock, CheckCircle2, RotateCcw,
+  ExternalLink, RefreshCw, Database, Wrench
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
-import type { Lead, CallLogEntry, CallOutcome, Quote, EmailLog, QuoteLineItem, CleaningFrequency } from '../types';
+import { LeadCard } from '../components/leads/LeadCard';
+import { LeadFilters, FILTER_OPTIONS } from '../components/leads/LeadFilters';
+import { CallOutcomeModal } from '../components/leads/CallOutcomeModal';
+import type { Lead, CallLogEntry, CallOutcome, EmailLog } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
@@ -29,19 +26,8 @@ import {
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
+export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
 
-const FILTER_OPTIONS: { key: FilterMode; label: string }[] = [
-  { key: 'all', label: 'All Leads' },
-  { key: 'not_called', label: 'Not Called' },
-  { key: 'today', label: 'Called Today' },
-  { key: 'callback', label: 'Needs Callback' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'no_answer', label: 'No Answer' },
-  { key: 'wrong_number', label: 'Wrong Number' },
-];
-
-/** Maps lead business types to the right email template category. */
 function getTemplateCategory(leadType: string): string {
   const t = leadType.toLowerCase();
   if (t.includes('dental') || t.includes('medical') || t.includes('physio') || t.includes('vet')) return 'medical';
@@ -49,64 +35,20 @@ function getTemplateCategory(leadType: string): string {
   return 'general';
 }
 
-/** Returns pre-filled line items based on business type. */
-function getLineItemsForType(businessType: string): QuoteLineItem[] {
-  const base = (desc: string) => ({
-    id: generateId(),
-    description: desc,
-    siteId: null as string | null,
-    frequency: 'weekly' as CleaningFrequency,
-    amountPerVisit: 0,
-    visitsPerWeek: 1,
-    monthlyAmount: 0,
-  });
-
-  const t = businessType.toLowerCase();
-  if (t.includes('dental')) return [base('Medical-grade disinfection'), base('Exam room cleaning'), base('Reception area'), base('Floor care')];
-  if (t.includes('medical')) return [base('Medical-grade disinfection'), base('Waiting room'), base('Exam rooms'), base('Sanitization')];
-  if (t.includes('physio') || t.includes('vet')) return [base('Treatment area cleaning'), base('Reception'), base('Floor care'), base('Sanitization')];
-  if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return [base('Reception area'), base('Conference rooms'), base('Office cleaning'), base('Window cleaning')];
-  return [base('Workstation cleaning'), base('Reception'), base('Floor care'), base('Breakroom')];
-}
-const OUTCOME_OPTIONS: { value: CallOutcome; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={20} />, color: 'text-green-600 bg-green-100' },
-  { value: 'no_answer', label: 'No Answer', icon: <XCircle size={20} />, color: 'text-amber-600 bg-amber-100' },
-  { value: 'wrong_number', label: 'Wrong Number', icon: <AlertCircle size={20} />, color: 'text-red-600 bg-red-100' },
-  { value: 'callback', label: 'Callback', icon: <RotateCcw size={20} />, color: 'text-blue-600 bg-blue-100' },
-];
-
-/** Extracts the review count from the Places API JSON blob in the sheet. */
-function ReviewCount({ raw }: { raw: string }) {
-  let count = raw.trim();
-  // If it looks like a JSON array, extract its length
-  if (raw.trim().startsWith('[')) {
-    try {
-      const parsed = JSON.parse(raw.trim());
-      if (Array.isArray(parsed)) count = parsed.length.toString();
-    } catch { /* fall through */ }
-  }
-  return <span className="text-gray-400">({count})</span>;
-}
-
 export function LeadsPage() {
   const { state, dispatch, currentUser } = useApp();
-  const navigate = useNavigate();
   const isOwner = currentUser?.role === 'owner';
   if (!isOwner) return null;
 
-  // ── Leads come from Firestore (synced via onSnapshot) ──
   const leadsFromFirestore = state.leads;
   const hasLeads = leadsFromFirestore.length > 0;
 
-  // ── Sheets import state (only needed when Firestore is empty) ──
   const [importingFromSheets, setImportingFromSheets] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
 
-  // ── Data state ──
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ── UI state ──
   const [filter, setFilter] = useState<FilterMode>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [outcomeLead, setOutcomeLead] = useState<Lead | null>(null);
@@ -121,23 +63,19 @@ export function LeadsPage() {
   const [repairing, setRepairing] = useState(false);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
 
-  // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
 
-  // ── Sync leads from Firestore into local state ──
   useEffect(() => {
     setLeads(leadsFromFirestore);
   }, [leadsFromFirestore]);
 
-  // ── Pre-load GIS lib (in background) so it's ready if needed ──
   useEffect(() => {
     if (!hasLeads) {
       waitForGis().then(initTokenClient).catch(() => {});
     }
   }, [hasLeads]);
 
-  // ── Fetch email templates once ──
   useEffect(() => {
     const templates = {
       medical: '/emails/cold-outreach-medical.html',
@@ -155,7 +93,6 @@ export function LeadsPage() {
     }).catch(() => {});
   }, []);
 
-  // ── Repair orphaned call logs (re-link to correct lead doc IDs) ──
   const repairCallLogs = useCallback(async () => {
     setRepairing(true);
     try {
@@ -192,7 +129,6 @@ export function LeadsPage() {
     }
   }, []);
 
-  // ── Import leads from Google Sheets ──
   const importLeadsFromSheets = useCallback(async () => {
     setImportingFromSheets(true);
     try {
@@ -225,7 +161,6 @@ export function LeadsPage() {
     }
   }, [dispatch]);
 
-  // ── Build map of leadId → latest call (also by rowIndex for robustness) ──
   const latestCallsMap = useMemo(() => {
     const map = new Map<string, CallLogEntry>();
     for (const log of callLogs) {
@@ -244,13 +179,11 @@ export function LeadsPage() {
     return map;
   }, [callLogs]);
 
-  // Resolve a lead's key for looking up call logs (tries primary key, then row fallback)
   const leadCallFor = (lead: Lead) =>
     latestCallsMap.get(leadKey(lead)) || latestCallsMap.get(`row_${lead.rowIndex}`) || null;
 
   const leadKey = (lead: Lead) => lead.id || lead.placeId || String(lead.rowIndex);
 
-  // ── Derive daily called lead IDs ──
   const todayLeadIds = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -261,7 +194,6 @@ export function LeadsPage() {
     );
   }, [callLogs]);
 
-  // ── Build map of leadId → email logs ──
   const emailLogsByLead = useMemo(() => {
     const map = new Map<string, EmailLog[]>();
     for (const log of emailLogs) {
@@ -272,19 +204,16 @@ export function LeadsPage() {
     return map;
   }, [emailLogs]);
 
-  // ── Merge leads with call data and apply filters ──
   const mergedLeads = useMemo(() => {
     let result = leads.map(lead => ({
       ...lead,
       latestCall: leadCallFor(lead),
     }));
 
-    // Type filter
     if (typeFilter !== 'all') {
       result = result.filter(l => l.type === typeFilter);
     }
 
-    // Filter
     switch (filter) {
       case 'not_called':
         result = result.filter(l => !l.latestCall);
@@ -306,7 +235,6 @@ export function LeadsPage() {
         break;
     }
 
-    // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(l =>
@@ -318,7 +246,6 @@ export function LeadsPage() {
       );
     }
 
-    // Sort: uncalled first, then by rating desc
     result.sort((a, b) => {
       const aCalled = a.latestCall ? 1 : 0;
       const bCalled = b.latestCall ? 1 : 0;
@@ -329,7 +256,6 @@ export function LeadsPage() {
     return result;
   }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter]);
 
-  // ── Stats ──
   const stats = useMemo(() => {
     const total = leads.length;
     const notCalled = leads.filter(l => !leadCallFor(l)).length;
@@ -339,13 +265,11 @@ export function LeadsPage() {
     return { total, notCalled, calledToday, callbacks, completed };
   }, [leads, latestCallsMap, callLogs, todayLeadIds]);
 
-  // ── Unique business types for filter ──
   const businessTypes = useMemo(() => {
     const types = new Set(leads.map(l => l.type).filter(Boolean));
     return Array.from(types).sort();
   }, [leads]);
 
-  // ── Counts per call-status filter ──
   const callStatusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
     for (const lead of leads) {
@@ -357,15 +281,12 @@ export function LeadsPage() {
     return counts;
   }, [leads, callLogs, todayLeadIds]);
 
-  // ── Connect to Google & import ──
-  // ── Connect to Google & import ──
   const handleConnect = useCallback(async () => {
     setAuthInProgress(true);
     try {
       await waitForGis();
       initTokenClient();
       await signIn();
-      // Retry the import now that we have a token
       setImportingFromSheets(true);
       try {
         await ensureHeaderColumns();
@@ -383,7 +304,7 @@ export function LeadsPage() {
       setAuthInProgress(false);
     }
   }, [dispatch]);
-  // ── Handle call outcome ──
+
   const handleSaveOutcome = async () => {
     if (!outcomeLead || !currentUser) return;
     setSavingOutcome(true);
@@ -402,10 +323,8 @@ export function LeadsPage() {
         createdAt: new Date().toISOString(),
       };
 
-      // 1. Save to Firestore (real-time sync)
       dispatch({ type: 'ADD_CALL_LOG', payload: entry });
 
-      // 2. Write back to sheet (fire-and-forget but catch errors)
       updateLeadInSheet(outcomeLead.rowIndex, outcome, currentUser.name, outcomeNotes)
         .catch(err => console.warn('Sheet write failed:', err));
 
@@ -420,7 +339,6 @@ export function LeadsPage() {
     }
   };
 
-  // ── Email helpers ──
   const handleStartEditEmail = (lead: Lead) => {
     setEditingEmailFor(leadKey(lead));
     setEmailValue(lead.email || '');
@@ -509,7 +427,6 @@ export function LeadsPage() {
     }
   };
 
-  // ── Render ──
   if (importingFromSheets) {
     return (
       <AppShell pageTitle="Leads">
@@ -557,7 +474,6 @@ export function LeadsPage() {
     <AppShell pageTitle="Leads Call Center">
       <div className="page-container flex flex-col gap-6 pb-8">
 
-        {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <StatCard label="Total Leads" value={stats.total.toString()} icon={Building2} iconColor="text-blue-600" iconBg="bg-blue-100" />
           <StatCard label="Not Called" value={stats.notCalled.toString()} icon={Phone} iconColor="text-red-600" iconBg="bg-red-100" />
@@ -566,47 +482,18 @@ export function LeadsPage() {
           <StatCard label="Completed" value={stats.completed.toString()} icon={CheckCircle2} iconColor="text-emerald-600" iconBg="bg-emerald-100" />
         </div>
 
-        {/* Filters + Search */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex gap-2 items-center">
-            {/* Call Status Dropdown */}
-            <select
-              value={filter}
-              onChange={e => setFilter(e.target.value as FilterMode)}
-              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]"
-            >
-              {FILTER_OPTIONS.map(opt => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.label} {callStatusCounts[opt.key] ? `(${callStatusCounts[opt.key]})` : ''}
-                </option>
-              ))}
-            </select>
+        <LeadFilters
+          filter={filter}
+          typeFilter={typeFilter}
+          searchQuery={searchQuery}
+          businessTypes={businessTypes}
+          callStatusCounts={callStatusCounts}
+          leadCount={leads.length}
+          onFilterChange={setFilter}
+          onTypeFilterChange={setTypeFilter}
+          onSearchChange={setSearchQuery}
+        />
 
-            {/* Business Type Dropdown */}
-            <select
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]"
-            >
-              <option value="all">All Types ({leads.length})</option>
-              {businessTypes.map(t => (
-                <option key={t} value={t}>{t} ({leads.filter(l => l.type === t).length})</option>
-              ))}
-            </select>
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search name, phone, email..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Refresh from Sheets (only shown when leads exist in Firestore) */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
             {mergedLeads.length} of {leads.length} leads
@@ -631,7 +518,6 @@ export function LeadsPage() {
           </div>
         </div>
 
-        {/* Lead Cards */}
         {mergedLeads.length === 0 ? (
           <Card>
             <div className="text-center py-12 text-gray-400">
@@ -651,344 +537,48 @@ export function LeadsPage() {
               const leadCallLogs = callLogs.filter(l => l.leadId === leadKey(lead));
               const hasBeenEmailed = emailLogsByLead.has(leadKey(lead));
 
-              const statusBadge = !latestCall
-                ? <Badge label="Not Called" variant="danger" className="text-[10px]" />
-                : latestCall.outcome === 'completed'
-                  ? <Badge label="Completed" variant="success" className="text-[10px]" />
-                  : latestCall.outcome === 'no_answer'
-                    ? <Badge label="No Answer" variant="warning" className="text-[10px]" />
-                    : latestCall.outcome === 'wrong_number'
-                      ? <Badge label="Wrong Number" variant="danger" className="text-[10px]" />
-                      : <Badge label="Callback" variant="info" className="text-[10px]" />;
-
               return (
-                <Card key={leadKey(lead)} className="hover:shadow-md transition-shadow">
-                  <div className="flex flex-col gap-3">
-                    {/* Main row */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900 text-sm">{lead.businessName || 'Unknown Business'}</h3>
-                          {statusBadge}
-                          {calledToday && <Badge label="Called Today" variant="success" className="text-[10px]" />}
-                          {hasBeenEmailed && lead.email && <Badge label="Emailed" variant="info" className="text-[10px]" />}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500">
-                          {lead.phone && (
-                            <a href={`tel:${lead.phone}`} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium">
-                              <Phone size={12} />
-                              {lead.phone}
-                            </a>
-                          )}
-                          {editingEmailFor === leadKey(lead) ? (
-                            <span className="flex items-center gap-1">
-                              <Mail size={12} />
-                              <input
-                                type="email"
-                                value={emailValue}
-                                onChange={e => setEmailValue(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') handleSaveEmail(leadKey(lead)); if (e.key === 'Escape') handleCancelEditEmail(); }}
-                                placeholder="email@example.com"
-                                className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                autoFocus
-                              />
-                              <button onClick={() => handleSaveEmail(leadKey(lead))} className="text-green-600 hover:text-green-700 ml-0.5">
-                                <CheckCircle2 size={12} />
-                              </button>
-                              <button onClick={handleCancelEditEmail} className="text-gray-400 hover:text-gray-600">
-                                <XCircle size={12} />
-                              </button>
-                            </span>
-                          ) : lead.email ? (
-                            <span className="flex items-center gap-1 text-gray-600">
-                              <Mail size={12} />
-                              <span className="truncate max-w-[180px]">{lead.email}</span>
-                              <button onClick={() => handleStartEditEmail(lead)} className="text-gray-400 hover:text-blue-500 ml-0.5">
-                                <ExternalLink size={10} />
-                              </button>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleStartEditEmail(lead)}
-                              className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors"
-                            >
-                              <Mail size={12} />
-                              Add email
-                            </button>
-                          )}
-                          {lead.rating && (
-                            <span className="flex items-center gap-1">
-                              <Star size={12} className="text-amber-400 fill-amber-400" />
-                              {lead.rating}
-                              {lead.reviews ? (
-                                <ReviewCount raw={lead.reviews} />
-                              ) : null}
-                            </span>
-                          )}
-                          {lead.address && (
-                            <span className="flex items-center gap-1 truncate max-w-[200px]">
-                              <MapPin size={12} />
-                              {lead.address}
-                            </span>
-                          )}
-                          {lead.type && (
-                            <span className="text-gray-400">{lead.type}</span>
-                          )}
-                        </div>
-
-                        {latestCall && (
-                          <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
-                            <User size={11} />
-                            Called by {latestCall.calledByName} · {new Date(latestCall.calledAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <a
-                          href={`tel:${lead.phone}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                          onClick={() => {
-                            // Show outcome modal after a brief delay to let the tel: link fire
-                            setTimeout(() => setOutcomeLead(lead), 500);
-                          }}
-                        >
-                          <Phone size={14} />
-                          Call
-                        </a>
-                        <button
-                          onClick={() => setExpandedId(isExpanded ? null : leadKey(lead))}
-                          className="p-2 text-gray-400 hover:text-gray-600"
-                        >
-                          <ChevronDown size={16} className={isExpanded ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Expanded: Email, Create Quote + Call history */}
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 pt-3 mt-1">
-                        {/* Email action — shown if lead has an email, regardless of call status */}
-                        {lead.email && (
-                          <>
-                            <div className="flex gap-2 mb-3">
-                              <button
-                                onClick={() => handleCopyEmail(lead)}
-                                disabled={copyingLeadId === leadKey(lead)}
-                                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50"
-                              >
-                                {copyingLeadId === leadKey(lead) ? (
-                                  <>Copying...</>
-                                ) : (
-                                  <>
-                                    <Copy size={15} />
-                                    Copy Template
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handleMarkEmailSent(lead)}
-                                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all"
-                              >
-                                <Mail size={15} />
-                                Mark as Sent
-                              </button>
-                            </div>
-
-                            {/* Email history */}
-                            {(() => {
-                              const logs = emailLogsByLead.get(leadKey(lead));
-                              if (!logs || logs.length === 0) return null;
-                              return (
-                                <>
-                                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email History</h4>
-                                  <div className="space-y-2">
-                                    {logs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()).map(log => (
-                                      <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 relative group">
-                                        <div className="p-1.5 rounded-full flex-shrink-0 bg-blue-100 text-blue-600">
-                                          <Mail size={14} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="font-medium text-gray-700">
-                                            {log.sentByName} — Sent to {log.email}
-                                          </p>
-                                          <p className="text-gray-400 mt-0.5">
-                                            {new Date(log.sentAt).toLocaleDateString('en-CA', {
-                                              month: 'short', day: 'numeric', year: 'numeric',
-                                              hour: 'numeric', minute: '2-digit'
-                                            })}
-                                          </p>
-                                        </div>
-                                        <button
-                                          onClick={() => dispatch({ type: 'DELETE_EMAIL_LOG', payload: log.id })}
-                                          className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          <XCircle size={14} />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </>
-                        )}
-
-                        {/* Create Quote action */}
-                        <button
-                          onClick={() => {
-                            // Create a quote pre-populated with lead info
-                            const now = new Date().toISOString();
-                            const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                            // Parse address into components
-                            const addrParts = (lead.address || '').split(',').map(s => s.trim());
-                            const lineItems = getLineItemsForType(lead.type);
-                            const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
-                            const q: Quote = {
-                              id: generateId(),
-                              clientId: null,
-                              prospectName: lead.businessName,
-                              prospectAddress: addrParts[0] || lead.address,
-                              prospectCity: addrParts[1] || '',
-                              prospectProvince: addrParts[2]?.slice(0, 2).toUpperCase() || 'ON',
-                              prospectPostalCode: addrParts[2]?.match(/[A-Z0-9]{3}\s?[A-Z0-9]{3}/i)?.[0] || '',
-                              prospectPhone: lead.phone,
-                              lineItems,
-                              totalMonthly,
-                              status: 'draft',
-                              validUntil,
-                              notes: `Lead: ${lead.businessName} · ${lead.type || ''} · Rating: ${lead.rating || 'N/A'}`.trim(),
-                              createdBy: currentUser.id,
-                              createdAt: now,
-                              updatedAt: now,
-                            };
-                            dispatch({ type: 'ADD_QUOTE', payload: q });
-                            toast.success('Quote created from lead');
-                            navigate(`/quotes/${q.id}`);
-                          }}
-                          className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all"
-                        >
-                          <FileText size={15} />
-                          Create Quote from Lead
-                        </button>
-
-                        {/* Call history */}
-                        {leadCallLogs.length > 0 && (
-                          <>
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
-                            <div className="space-y-2">
-                              {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
-                                <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
-                                  <button
-                                    onClick={() => setEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
-                                    className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
-                                      log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                                      : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-                                      : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                    }`}
-                                    title="Click to change outcome"
-                                  >
-                                    {log.outcome === 'completed' ? <CheckCircle2 size={14} />
-                                      : log.outcome === 'no_answer' ? <XCircle size={14} />
-                                      : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
-                                      : <RotateCcw size={14} />}
-                                  </button>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-gray-700">
-                                      {log.calledByName} — {log.outcome.replace('_', ' ')}
-                                    </p>
-                                    {editingCallLogId === log.id && (
-                                      <div className="flex gap-1 mt-1 flex-wrap">
-                                        {OUTCOME_OPTIONS.filter(o => o.value !== log.outcome).map(opt => (
-                                          <button
-                                            key={opt.value}
-                                            onClick={() => handleChangeOutcome(log, opt.value)}
-                                            className={`px-2 py-0.5 rounded text-[10px] font-medium ${opt.color}`}
-                                          >
-                                            {opt.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                    <p className="text-gray-400 mt-0.5">
-                                      {new Date(log.calledAt).toLocaleDateString('en-CA', {
-                                        month: 'short', day: 'numeric', year: 'numeric',
-                                        hour: 'numeric', minute: '2-digit'
-                                      })}
-                                    </p>
-                                    {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </Card>
+                <LeadCard
+                  key={leadKey(lead)}
+                  lead={lead}
+                  leadKey={leadKey(lead)}
+                  latestCall={latestCall}
+                  calledToday={!!calledToday}
+                  hasBeenEmailed={hasBeenEmailed}
+                  isExpanded={isExpanded}
+                  leadCallLogs={leadCallLogs}
+                  emailLogsByLead={emailLogsByLead}
+                  editingEmailFor={editingEmailFor}
+                  emailValue={emailValue}
+                  copyingLeadId={copyingLeadId}
+                  editingCallLogId={editingCallLogId}
+                  onToggleExpand={() => setExpandedId(isExpanded ? null : leadKey(lead))}
+                  onStartEditEmail={() => handleStartEditEmail(lead)}
+                  onSaveEmail={handleSaveEmail}
+                  onCancelEditEmail={handleCancelEditEmail}
+                  onEmailValueChange={setEmailValue}
+                  onCopyEmail={handleCopyEmail}
+                  onMarkEmailSent={handleMarkEmailSent}
+                  onChangeOutcome={handleChangeOutcome}
+                  onSetEditingCallLogId={setEditingCallLogId}
+                  onCallClick={setOutcomeLead}
+                />
               );
             })}
           </div>
         )}
       </div>
 
-      {/* Call Outcome Modal */}
-      <Modal isOpen={!!outcomeLead} onClose={() => { setOutcomeLead(null); setOutcomeNotes(''); }} title="Log Call Outcome" size="md">
-        {outcomeLead && (
-          <div className="space-y-5">
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h4 className="font-semibold text-gray-900">{outcomeLead.businessName}</h4>
-              <a href={`tel:${outcomeLead.phone}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-1">
-                <Phone size={12} /> {outcomeLead.phone}
-              </a>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-2">How did the call go?</label>
-              <div className="grid grid-cols-2 gap-2">
-                {OUTCOME_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setOutcome(opt.value)}
-                    className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                      outcome === opt.value
-                        ? `${opt.color} border-current`
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {opt.icon}
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Notes</label>
-              <textarea
-                value={outcomeNotes}
-                onChange={e => setOutcomeNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-                placeholder="Any notes about the call…"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => { setOutcomeLead(null); setOutcomeNotes(''); }}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveOutcome} disabled={savingOutcome}>
-                {savingOutcome ? 'Saving...' : 'Save Outcome'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <CallOutcomeModal
+        lead={outcomeLead}
+        outcome={outcome}
+        notes={outcomeNotes}
+        saving={savingOutcome}
+        onClose={() => { setOutcomeLead(null); setOutcomeNotes(''); }}
+        onSave={handleSaveOutcome}
+        setOutcome={setOutcome}
+        setNotes={setOutcomeNotes}
+      />
     </AppShell>
   );
 }

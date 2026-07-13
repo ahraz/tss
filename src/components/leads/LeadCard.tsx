@@ -1,0 +1,274 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Building2, Star, MapPin, Phone, CheckCircle2, XCircle, RotateCcw,
+  ChevronDown, ExternalLink, User, AlertCircle, FileText, Mail, Copy,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Card } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import type { Lead, CallLogEntry, CallOutcome, EmailLog, Quote, QuoteLineItem, CleaningFrequency } from '../../types';
+import { generateId } from '../../utils/storage';
+import { useApp } from '../../context/AppContext';
+
+interface Props {
+  lead: Lead;
+  leadKey: string;
+  latestCall: CallLogEntry | null;
+  calledToday: boolean;
+  hasBeenEmailed: boolean;
+  isExpanded: boolean;
+  leadCallLogs: CallLogEntry[];
+  emailLogsByLead: Map<string, EmailLog[]>;
+  editingEmailFor: string | null;
+  emailValue: string;
+  copyingLeadId: string | null;
+  editingCallLogId: string | null;
+  onToggleExpand: () => void;
+  onStartEditEmail: () => void;
+  onSaveEmail: (leadId: string) => void;
+  onCancelEditEmail: () => void;
+  onEmailValueChange: (v: string) => void;
+  onCopyEmail: (lead: Lead) => void;
+  onMarkEmailSent: (lead: Lead) => void;
+  onChangeOutcome: (log: CallLogEntry, newOutcome: CallOutcome) => void;
+  onSetEditingCallLogId: (id: string | null) => void;
+  onCallClick: (lead: Lead) => void;
+}
+
+const OUTCOME_OPTIONS: { value: CallOutcome; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: 'completed', label: 'Completed', icon: <CheckCircle2 size={20} />, color: 'text-green-600 bg-green-100' },
+  { value: 'no_answer', label: 'No Answer', icon: <XCircle size={20} />, color: 'text-amber-600 bg-amber-100' },
+  { value: 'wrong_number', label: 'Wrong Number', icon: <AlertCircle size={20} />, color: 'text-red-600 bg-red-100' },
+  { value: 'callback', label: 'Callback', icon: <RotateCcw size={20} />, color: 'text-blue-600 bg-blue-100' },
+];
+
+function getLineItemsForType(businessType: string): QuoteLineItem[] {
+  const base = (desc: string): QuoteLineItem => ({
+    id: generateId(),
+    description: desc,
+    siteId: null,
+    frequency: 'weekly' as CleaningFrequency,
+    amountPerVisit: 0,
+    visitsPerWeek: 1,
+    monthlyAmount: 0,
+  });
+  const t = businessType.toLowerCase();
+  if (t.includes('dental')) return [base('Medical-grade disinfection'), base('Exam room cleaning'), base('Reception area'), base('Floor care')];
+  if (t.includes('medical')) return [base('Medical-grade disinfection'), base('Waiting room'), base('Exam rooms'), base('Sanitization')];
+  if (t.includes('physio') || t.includes('vet')) return [base('Treatment area cleaning'), base('Reception'), base('Floor care'), base('Sanitization')];
+  if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return [base('Reception area'), base('Conference rooms'), base('Office cleaning'), base('Window cleaning')];
+  return [base('Workstation cleaning'), base('Reception'), base('Floor care'), base('Breakroom')];
+}
+
+export function LeadCard({
+  lead, leadKey: lk, latestCall, calledToday, hasBeenEmailed, isExpanded, leadCallLogs, emailLogsByLead,
+  editingEmailFor, emailValue, copyingLeadId, editingCallLogId,
+  onToggleExpand, onStartEditEmail, onSaveEmail, onCancelEditEmail, onEmailValueChange,
+  onCopyEmail, onMarkEmailSent, onChangeOutcome, onSetEditingCallLogId, onCallClick,
+}: Props) {
+  const navigate = useNavigate();
+  const { currentUser, dispatch } = useApp();
+
+  const handleCreateQuote = () => {
+    if (!currentUser) return;
+    const now = new Date().toISOString();
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const addrParts = (lead.address || '').split(',').map(s => s.trim());
+    const lineItems = getLineItemsForType(lead.type);
+    const totalMonthly = lineItems.reduce((sum, li) => sum + li.monthlyAmount, 0);
+    const q: Quote = {
+      id: generateId(),
+      clientId: null,
+      prospectName: lead.businessName,
+      prospectAddress: addrParts[0] || lead.address,
+      prospectCity: addrParts[1] || '',
+      prospectProvince: addrParts[2]?.slice(0, 2).toUpperCase() || 'ON',
+      prospectPostalCode: addrParts[2]?.match(/[A-Z0-9]{3}\s?[A-Z0-9]{3}/i)?.[0] || '',
+      prospectPhone: lead.phone,
+      lineItems,
+      totalMonthly,
+      status: 'draft',
+      validUntil,
+      notes: `Lead: ${lead.businessName} · ${lead.type || ''} · Rating: ${lead.rating || 'N/A'}`.trim(),
+      createdBy: currentUser.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    dispatch({ type: 'ADD_QUOTE', payload: q });
+    toast.success('Quote created from lead');
+    navigate(`/quotes/${q.id}`);
+  };
+
+  const statusBadge = !latestCall
+    ? <Badge label="Not Called" variant="danger" className="text-[10px]" />
+    : latestCall.outcome === 'completed'
+      ? <Badge label="Completed" variant="success" className="text-[10px]" />
+      : latestCall.outcome === 'no_answer'
+        ? <Badge label="No Answer" variant="warning" className="text-[10px]" />
+        : latestCall.outcome === 'wrong_number'
+          ? <Badge label="Wrong Number" variant="danger" className="text-[10px]" />
+          : <Badge label="Callback" variant="info" className="text-[10px]" />;
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <div className="flex flex-col gap-3">
+        {/* Main row */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-gray-900 text-sm">{lead.businessName || 'Unknown Business'}</h3>
+              {statusBadge}
+              {calledToday && <Badge label="Called Today" variant="success" className="text-[10px]" />}
+              {hasBeenEmailed && lead.email && <Badge label="Emailed" variant="info" className="text-[10px]" />}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500">
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium">
+                  <Phone size={12} />{lead.phone}
+                </a>
+              )}
+              {editingEmailFor === lk ? (
+                <span className="flex items-center gap-1">
+                  <Mail size={12} />
+                  <input type="email" value={emailValue} onChange={e => onEmailValueChange(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onSaveEmail(lk); if (e.key === 'Escape') onCancelEditEmail(); }}
+                    placeholder="email@example.com"
+                    className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" autoFocus />
+                  <button onClick={() => onSaveEmail(lk)} className="text-green-600 hover:text-green-700 ml-0.5"><CheckCircle2 size={12} /></button>
+                  <button onClick={onCancelEditEmail} className="text-gray-400 hover:text-gray-600"><XCircle size={12} /></button>
+                </span>
+              ) : lead.email ? (
+                <span className="flex items-center gap-1 text-gray-600">
+                  <Mail size={12} /><span className="truncate max-w-[180px]">{lead.email}</span>
+                  <button onClick={onStartEditEmail} className="text-gray-400 hover:text-blue-500 ml-0.5"><ExternalLink size={10} /></button>
+                </span>
+              ) : (
+                <button onClick={onStartEditEmail} className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors">
+                  <Mail size={12} />Add email
+                </button>
+              )}
+              {lead.rating && (
+                <span className="flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400" />{lead.rating}</span>
+              )}
+              {lead.address && (
+                <span className="flex items-center gap-1 truncate max-w-[200px]"><MapPin size={12} />{lead.address}</span>
+              )}
+              {lead.type && <span className="text-gray-400">{lead.type}</span>}
+            </div>
+
+            {latestCall && (
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                <User size={11} />
+                Called by {latestCall.calledByName} · {new Date(latestCall.calledAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <a href={`tel:${lead.phone}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={() => setTimeout(() => onCallClick(lead), 500)}>
+              <Phone size={14} />Call
+            </a>
+            <button onClick={onToggleExpand} className="p-2 text-gray-400 hover:text-gray-600">
+              <ChevronDown size={16} className={isExpanded ? 'rotate-180 transition-transform' : 'transition-transform'} />
+            </button>
+          </div>
+        </div>
+
+        {/* Expanded section */}
+        {isExpanded && (
+          <div className="border-t border-gray-100 pt-3 mt-1">
+            {lead.email && (
+              <>
+                <div className="flex gap-2 mb-3">
+                  <button onClick={() => onCopyEmail(lead)} disabled={copyingLeadId === lk}
+                    className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50">
+                    {copyingLeadId === lk ? <>Copying...</> : <><Copy size={15} />Copy Template</>}
+                  </button>
+                  <button onClick={() => onMarkEmailSent(lead)}
+                    className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
+                    <Mail size={15} />Mark as Sent
+                  </button>
+                </div>
+
+                {(() => {
+                  const logs = emailLogsByLead.get(lk);
+                  if (!logs || logs.length === 0) return null;
+                  return (
+                    <>
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email History</h4>
+                      <div className="space-y-2">
+                        {logs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()).map(log => (
+                          <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 relative group">
+                            <div className="p-1.5 rounded-full flex-shrink-0 bg-blue-100 text-blue-600"><Mail size={14} /></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-700">{log.sentByName} — Sent to {log.email}</p>
+                              <p className="text-gray-400 mt-0.5">
+                                {new Date(log.sentAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <button onClick={() => dispatch({ type: 'DELETE_EMAIL_LOG', payload: log.id })}
+                              className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <XCircle size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
+            )}
+
+            <button onClick={handleCreateQuote}
+              className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
+              <FileText size={15} />Create Quote from Lead
+            </button>
+
+            {leadCallLogs.length > 0 && (
+              <>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
+                <div className="space-y-2">
+                  {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
+                    <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
+                      <button onClick={() => onSetEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
+                        className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
+                          log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                          : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                          : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                        }`} title="Click to change outcome">
+                        {log.outcome === 'completed' ? <CheckCircle2 size={14} />
+                          : log.outcome === 'no_answer' ? <XCircle size={14} />
+                          : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
+                          : <RotateCcw size={14} />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-700">{log.calledByName} — {log.outcome.replace('_', ' ')}</p>
+                        {editingCallLogId === log.id && (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {OUTCOME_OPTIONS.filter(o => o.value !== log.outcome).map(opt => (
+                              <button key={opt.value} onClick={() => onChangeOutcome(log, opt.value)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium ${opt.color}`}>{opt.label}</button>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-gray-400 mt-0.5">
+                          {new Date(log.calledAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                        {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
