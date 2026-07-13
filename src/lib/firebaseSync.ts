@@ -505,6 +505,10 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await leadsBatch.commit();
         break;
 
+      case 'UPDATE_LEAD_EMAIL':
+        await setDoc(doc(db, 'leads', action.payload.leadId), { email: action.payload.email }, { merge: true });
+        break;
+
       // Import data (Bulk setup)
       case 'IMPORT_DATA':
         for (const item of action.payload.users) {

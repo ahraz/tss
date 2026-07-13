@@ -521,6 +521,7 @@ export interface Lead {
   website: string;
   placeId: string;
   gpsCoordinates: string;
+  email?: string;          // user-added email for outreach
   // Computed / derived
   latestCall?: CallLogEntry | null;
 }
@@ -656,6 +657,7 @@ export type AppAction =
   | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
   // Leads (from Google Sheets, synced to Firestore)
   | { type: 'SET_LEADS'; payload: Lead[] }
+  | { type: 'UPDATE_LEAD_EMAIL'; payload: { leadId: string; email: string } }
   // Quote Templates
   | { type: 'SET_QUOTE_TEMPLATES'; payload: QuoteTemplate[] }
   | { type: 'ADD_QUOTE_TEMPLATE'; payload: QuoteTemplate }

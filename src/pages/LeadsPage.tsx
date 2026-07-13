@@ -5,7 +5,7 @@ import {
   CheckCircle2, Clock, XCircle, RotateCcw,
   ChevronDown, ExternalLink, User,
   RefreshCw, AlertCircle, Database,
-  FileText
+  FileText, Mail, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -82,6 +82,10 @@ export function LeadsPage() {
   const [outcomeNotes, setOutcomeNotes] = useState('');
   const [savingOutcome, setSavingOutcome] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [emailTemplate, setEmailTemplate] = useState<string>('');
+  const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
+  const [emailValue, setEmailValue] = useState('');
+  const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
 
   // Call logs from Firestore (real-time)
   const callLogs = state.callLogs;
@@ -97,6 +101,14 @@ export function LeadsPage() {
       waitForGis().then(initTokenClient).catch(() => {});
     }
   }, [hasLeads]);
+
+  // ── Fetch email template once ──
+  useEffect(() => {
+    fetch('/emails/cold-outreach-dental.html')
+      .then(r => r.text())
+      .then(setEmailTemplate)
+      .catch(() => {});
+  }, []);
 
   // ── Import leads from Google Sheets ──
   const importLeadsFromSheets = useCallback(async () => {
@@ -258,6 +270,71 @@ export function LeadsPage() {
     }
   };
 
+  // ── Email helpers ──
+  const handleStartEditEmail = (lead: Lead) => {
+    setEditingEmailFor(lead.placeId);
+    setEmailValue(lead.email || '');
+  };
+
+  const handleSaveEmail = (leadId: string) => {
+    const trimmed = emailValue.trim();
+    if (trimmed) {
+      dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: trimmed } });
+      toast.success('Email saved');
+    }
+    setEditingEmailFor(null);
+    setEmailValue('');
+  };
+
+  const handleCancelEditEmail = () => {
+    setEditingEmailFor(null);
+    setEmailValue('');
+  };
+
+  const handleCopyEmail = async (lead: Lead) => {
+    if (!emailTemplate || !lead.email) return;
+    setCopyingLeadId(lead.placeId);
+
+    const city = (lead.address || '').split(',')[1]?.trim() || 'the GTA';
+    const rating = lead.rating || 'N/A';
+    let reviewsCount = '0';
+    if (lead.reviews?.trim().startsWith('[')) {
+      try { reviewsCount = JSON.parse(lead.reviews).length.toString(); } catch {}
+    }
+
+    const rendered = emailTemplate
+      .replace(/\{\{business_name\}\}/g, lead.businessName)
+      .replace(/\{\{first_name\|'there'\}\}/g, lead.businessName.split(' ')[0] || 'there')
+      .replace(/\{\{rating\}\}/g, rating)
+      .replace(/\{\{reviews_count\}\}/g, reviewsCount)
+      .replace(/\{\{city\}\}/g, city)
+      .replace(/\{\{unsubscribe_url\}\}/g, 'https://gtascrub.com/unsubscribe');
+
+    const subject = `Quick intro - commercial cleaning for ${lead.businessName}`;
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([rendered], { type: 'text/html' }),
+          'text/plain': new Blob([rendered.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()], { type: 'text/plain' }),
+        }),
+      ]);
+      toast.success(
+        <span>
+          Copied email.{' '}
+          <span className="block text-xs opacity-80 mt-0.5">
+            To: {lead.email} · Subject: {subject}
+          </span>
+        </span>,
+        { duration: 4000 }
+      );
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    } finally {
+      setCopyingLeadId(null);
+    }
+  };
+
   // ── Render ──
   if (importingFromSheets) {
     return (
@@ -407,6 +484,42 @@ export function LeadsPage() {
                               {lead.phone}
                             </a>
                           )}
+                          {editingEmailFor === lead.placeId ? (
+                            <span className="flex items-center gap-1">
+                              <Mail size={12} />
+                              <input
+                                type="email"
+                                value={emailValue}
+                                onChange={e => setEmailValue(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveEmail(lead.placeId); if (e.key === 'Escape') handleCancelEditEmail(); }}
+                                placeholder="email@example.com"
+                                className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                autoFocus
+                              />
+                              <button onClick={() => handleSaveEmail(lead.placeId)} className="text-green-600 hover:text-green-700 ml-0.5">
+                                <CheckCircle2 size={12} />
+                              </button>
+                              <button onClick={handleCancelEditEmail} className="text-gray-400 hover:text-gray-600">
+                                <XCircle size={12} />
+                              </button>
+                            </span>
+                          ) : lead.email ? (
+                            <span className="flex items-center gap-1 text-gray-600">
+                              <Mail size={12} />
+                              <span className="truncate max-w-[180px]">{lead.email}</span>
+                              <button onClick={() => handleStartEditEmail(lead)} className="text-gray-400 hover:text-blue-500 ml-0.5">
+                                <ExternalLink size={10} />
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleStartEditEmail(lead)}
+                              className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Mail size={12} />
+                              Add email
+                            </button>
+                          )}
                           {lead.rating && (
                             <span className="flex items-center gap-1">
                               <Star size={12} className="text-amber-400 fill-amber-400" />
@@ -458,9 +571,27 @@ export function LeadsPage() {
                       </div>
                     </div>
 
-                    {/* Expanded: Create Quote + Call history */}
+                    {/* Expanded: Email, Create Quote + Call history */}
                     {isExpanded && (
                       <div className="border-t border-gray-100 pt-3 mt-1">
+                        {/* Email action — only shown if lead has been called and has an email */}
+                        {lead.email && lead.latestCall && (
+                          <button
+                            onClick={() => handleCopyEmail(lead)}
+                            disabled={copyingLeadId === lead.placeId}
+                            className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-50"
+                          >
+                            {copyingLeadId === lead.placeId ? (
+                              <>Copying...</>
+                            ) : (
+                              <>
+                                <Copy size={15} />
+                                Copy Email Template
+                              </>
+                            )}
+                          </button>
+                        )}
+
                         {/* Create Quote action */}
                         <button
                           onClick={() => {

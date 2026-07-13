@@ -210,6 +210,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
     // Leads
     case 'SET_LEADS':
       return { ...state, leads: action.payload };
+    case 'UPDATE_LEAD_EMAIL':
+      return { ...state, leads: state.leads.map(l => l.placeId === action.payload.leadId ? { ...l, email: action.payload.email } : l) };
 
     // Quote Templates
     case 'SET_QUOTE_TEMPLATES':

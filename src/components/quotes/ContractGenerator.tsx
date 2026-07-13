@@ -12,6 +12,7 @@ import type { Quote } from '../../types';
 import { generateShareToken } from '../../types/sharedContract';
 import { db } from '../../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { sanitizeForFirestore } from '../../lib/firebaseSync';
 
 interface Props {
   isOpen: boolean;
