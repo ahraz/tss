@@ -4,12 +4,15 @@ import type { FilterMode } from '../../pages/LeadsPage';
 interface Props {
   filter: FilterMode;
   typeFilter: string;
+  areaFilter: string;
   searchQuery: string;
   businessTypes: string[];
+  areaOptions: [string, number][];
   callStatusCounts: Record<string, number>;
   leadCount: number;
   onFilterChange: (f: FilterMode) => void;
   onTypeFilterChange: (t: string) => void;
+  onAreaFilterChange: (a: string) => void;
   onSearchChange: (q: string) => void;
 }
 
@@ -24,12 +27,12 @@ export const FILTER_OPTIONS: { key: FilterMode; label: string }[] = [
 ];
 
 export function LeadFilters({
-  filter, typeFilter, searchQuery, businessTypes, callStatusCounts, leadCount,
-  onFilterChange, onTypeFilterChange, onSearchChange,
+  filter, typeFilter, areaFilter, searchQuery, businessTypes, areaOptions, callStatusCounts, leadCount,
+  onFilterChange, onTypeFilterChange, onAreaFilterChange, onSearchChange,
 }: Props) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center flex-wrap">
         <select
           value={filter}
           onChange={e => onFilterChange(e.target.value as FilterMode)}
@@ -48,10 +51,20 @@ export function LeadFilters({
           className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]"
         >
           <option value="all">All Types ({leadCount})</option>
-          {businessTypes.map(t => {
-            const count = leadCount; // exact count requires full lead list — kept simple
-            return <option key={t} value={t}>{t}</option>;
-          })}
+          {businessTypes.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        <select
+          value={areaFilter}
+          onChange={e => onAreaFilterChange(e.target.value)}
+          className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px]"
+        >
+          <option value="all">All Areas ({leadCount})</option>
+          {areaOptions.map(([area, count]) => (
+            <option key={area} value={area}>{area} ({count})</option>
+          ))}
         </select>
       </div>
       <div className="relative w-full sm:w-64">

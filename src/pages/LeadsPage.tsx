@@ -51,6 +51,7 @@ export function LeadsPage() {
 
   const [filter, setFilter] = useState<FilterMode>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [outcomeLead, setOutcomeLead] = useState<Lead | null>(null);
   const [outcome, setOutcome] = useState<CallOutcome>('completed');
   const [outcomeNotes, setOutcomeNotes] = useState('');
@@ -214,6 +215,15 @@ export function LeadsPage() {
       result = result.filter(l => l.type === typeFilter);
     }
 
+    if (areaFilter !== 'all') {
+      result = result.filter(l => {
+        const city = (l.address || '').split(',')[1]?.trim() || '';
+        const pcMatch = (l.address || '').match(/[A-Z]\d[A-Z]\s?\d[A-Z]\d/i);
+        const postal = pcMatch ? pcMatch[0].toUpperCase() : '';
+        return city === areaFilter || postal === areaFilter;
+      });
+    }
+
     switch (filter) {
       case 'not_called':
         result = result.filter(l => !l.latestCall);
@@ -254,7 +264,7 @@ export function LeadsPage() {
     });
 
     return result;
-  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter]);
+  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter, areaFilter]);
 
   const stats = useMemo(() => {
     const total = leads.length;
@@ -268,6 +278,18 @@ export function LeadsPage() {
   const businessTypes = useMemo(() => {
     const types = new Set(leads.map(l => l.type).filter(Boolean));
     return Array.from(types).sort();
+  }, [leads]);
+
+  const areaOptions = useMemo(() => {
+    const areas = new Map<string, number>();
+    for (const lead of leads) {
+      const city = (lead.address || '').split(',')[1]?.trim();
+      const pcMatch = (lead.address || '').match(/[A-Z]\d[A-Z]\s?\d[A-Z]\d/i);
+      const postal = pcMatch ? pcMatch[0].toUpperCase() : null;
+      if (city) areas.set(city, (areas.get(city) || 0) + 1);
+      if (postal) areas.set(postal, (areas.get(postal) || 0) + 1);
+    }
+    return Array.from(areas.entries()).sort((a, b) => b[1] - a[1]);
   }, [leads]);
 
   const callStatusCounts = useMemo(() => {
@@ -485,12 +507,15 @@ export function LeadsPage() {
         <LeadFilters
           filter={filter}
           typeFilter={typeFilter}
+          areaFilter={areaFilter}
           searchQuery={searchQuery}
           businessTypes={businessTypes}
+          areaOptions={areaOptions}
           callStatusCounts={callStatusCounts}
           leadCount={leads.length}
           onFilterChange={setFilter}
           onTypeFilterChange={setTypeFilter}
+          onAreaFilterChange={setAreaFilter}
           onSearchChange={setSearchQuery}
         />
 
