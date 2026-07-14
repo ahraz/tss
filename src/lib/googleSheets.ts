@@ -558,32 +558,53 @@ export async function backfillPlaceIds(
   const token = await getAccessToken();
   onProgress('Reading leads...');
   const rows = await fetchSheetValues(token, 'Results!A:O');
-  let updated = 0;
 
+  // Build updates in batches of 50
+  const updates: { row: number; placeId: string }[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const existing = (row[14] || '').trim(); // Column O
-    if (existing) continue; // already has place_id
+    const existing = (row[14] || '').trim();
+    if (existing) continue;
 
     const reviews = (row[6] || '').toString();
     const match = reviews.match(/places\/(ChIJ[^/]+)\/reviews/);
     if (!match) continue;
 
-    const placeId = match[1];
-    const range = `'Results'!O${i + 1}`;
+    updates.push({ row: i + 1, placeId: match[1] });
+  }
+
+  if (updates.length === 0) {
+    onProgress('No place IDs to backfill');
+    return { updated: 0 };
+  }
+
+  // Write in batches
+  let updated = 0;
+  const BATCH_SIZE = 50;
+  for (let b = 0; b < updates.length; b += BATCH_SIZE) {
+    const batch = updates.slice(b, b + BATCH_SIZE);
     try {
       await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
         {
-          method: 'PUT',
+          method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ range, majorDimension: 'ROWS', values: [[placeId]] }),
+          body: JSON.stringify({
+            valueInputOption: 'RAW',
+            data: batch.map(u => ({
+              range: `'Results'!O${u.row}`,
+              values: [[u.placeId]],
+            })),
+          }),
         }
       );
-      updated++;
-      if (updated % 50 === 0) onProgress(`Backfilled ${updated} leads...`);
+      updated += batch.length;
+      onProgress(`Backfilled ${updated}/${updates.length}...`);
     } catch (e) {
-      console.warn(`Failed to backfill row ${i + 1}:`, e);
+      console.warn(`Batch failed at ${b}:`, e);
+    }
+    if (b + BATCH_SIZE < updates.length) {
+      await new Promise(r => setTimeout(r, 1000)); // rate limit buffer
     }
   }
 
