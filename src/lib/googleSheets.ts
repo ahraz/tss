@@ -592,7 +592,7 @@ export async function backfillPlaceIds(
           body: JSON.stringify({
             valueInputOption: 'RAW',
             data: batch.map(u => ({
-              range: `'Results'!O${u.row}`,
+              range: `Results!O${u.row}`,
               values: [[u.placeId]],
             })),
           }),
