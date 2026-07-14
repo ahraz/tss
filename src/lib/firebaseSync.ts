@@ -630,7 +630,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         }
         for (const item of action.payload.leads) {
           const ref = doc(db, 'leads', item.placeId || item.rowIndex.toString());
-          await setDoc(ref, sanitizeForFirestore(item));
+          await setDoc(ref, sanitizeForFirestore(item), { merge: true });
         }
         if (action.payload.quoteTemplates) {
           for (const item of action.payload.quoteTemplates) {
