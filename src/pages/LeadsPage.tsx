@@ -446,8 +446,23 @@ export function LeadsPage() {
       const result = await backfillPlaceIds((msg) => toast(msg));
       toast.success(`Backfilled ${result.updated} place IDs`);
       setTimeout(() => importLeadsFromSheets(), 1500);
-    } catch {
-      toast.error('Backfill failed');
+    } catch (err: any) {
+      if (err.message === 'NEEDS_AUTH') {
+        try {
+          await waitForGis();
+          initTokenClient();
+          await signIn();
+          setBackfilling(true);
+          const result = await backfillPlaceIds((msg) => toast(msg));
+          toast.success(`Backfilled ${result.updated} place IDs`);
+          setTimeout(() => importLeadsFromSheets(), 1500);
+          return;
+        } catch {
+          toast.error('Failed to connect. Please try again.');
+        }
+      } else {
+        toast.error('Backfill failed');
+      }
     } finally {
       setBackfilling(false);
     }
