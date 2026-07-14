@@ -456,7 +456,7 @@ export async function scrapeLeadsFromMaps(
     }
   }
 
-  // Write zip statuses back to AZ Zips sheet
+  // Write zip statuses first — so if the rows write fails, zips aren't left active
   if (zipUpdates.length > 0) {
     for (const u of zipUpdates) {
       try {
@@ -482,14 +482,25 @@ export async function scrapeLeadsFromMaps(
     const lastRow = resultsRows.length; // already has header at row 0
     const range = `Results!A${lastRow + 1}:O${lastRow + newRows.length}`;
 
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
-      {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ range, majorDimension: 'ROWS', values: newRows }),
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+          {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ range, majorDimension: 'ROWS', values: newRows }),
+          }
+        );
+        break;
+      } catch (e) {
+        retries--;
+        if (retries === 0) throw e;
+        await new Promise(r => setTimeout(r, 2000));
+        console.warn(`Rows write failed, retrying (${retries} left):`, e);
       }
-    );
+    }
   }
 
   onProgress(`Done. ${newRows.length} new leads added.`);
