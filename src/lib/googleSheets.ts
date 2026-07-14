@@ -548,3 +548,71 @@ export async function scrapeLeadsFromMaps(
   onProgress(`Done. ${newRows.length} new leads added.`);
   return { searched, added: newRows.length, existing: existingPlaceIds.size };
 }
+
+export async function cleanDuplicateLeads(
+  onProgress: (msg: string) => void
+): Promise<{ removed: number }> {
+  const token = await getAccessToken();
+
+  onProgress('Reading leads...');
+  const rows = await fetchSheetValues(token, 'Results!A:J');
+  if (rows.length <= 1) return { removed: 0 };
+
+  const seen = new Map<string, { row: number; hasPlaceId: boolean }>();
+  const toDelete: number[] = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const name = String(row[2] || '').toLowerCase().trim();
+    if (!name) continue;
+    const placeId = String(row[8] || '').trim();
+    const hasGps = Boolean(String(row[9] || '').trim());
+    const sheetRow = i + 1;
+
+    const hasPlaceId = Boolean(placeId) && hasGps;
+
+    const existing = seen.get(name);
+    if (existing) {
+      if (hasPlaceId && !existing.hasPlaceId) {
+        toDelete.push(existing.row);
+        seen.set(name, { row: sheetRow, hasPlaceId: true });
+      } else {
+        toDelete.push(sheetRow);
+      }
+    } else {
+      seen.set(name, { row: sheetRow, hasPlaceId });
+    }
+  }
+
+  if (toDelete.length === 0) {
+    onProgress('No duplicates found');
+    return { removed: 0 };
+  }
+
+  onProgress(`Removing ${toDelete.length} duplicates...`);
+
+  // Delete rows from bottom up
+  toDelete.sort((a, b) => b - a);
+  const batch = toDelete.map(row => ({
+    deleteDimension: {
+      range: {
+        sheetId: 0, // Results tab (first tab in the sheet)
+        dimension: 'ROWS',
+        startIndex: row - 1,
+        endIndex: row,
+      },
+    },
+  }));
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests: batch }),
+    }
+  );
+
+  onProgress(`Removed ${toDelete.length} duplicates`);
+  return { removed: toDelete.length };
+}
