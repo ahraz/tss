@@ -178,7 +178,7 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
   const token = await getAccessToken();
 
   const response = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:J`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:O`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -208,7 +208,7 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
       reviews: row[6] || '',
       website: row[7] || '',
       email: row[8] || '',
-      placeId: String(i + 1),
+      placeId: row[14] || String(i + 1),
       gpsCoordinates: row[9] || '',
     });
   }
@@ -495,7 +495,8 @@ export async function scrapeLeadsFromMaps(
             details.website,                         // H: website
             '',                                      // I: email (empty)
             gps,                                     // J: gpsCoordinates
-            '', '', '', ''                           // K-N: tracking columns
+            '', '', '', '',                           // K-N: tracking columns
+            place.place_id,                           // O: stable Google Maps place_id
           ]);
         }
       } catch (e) {
