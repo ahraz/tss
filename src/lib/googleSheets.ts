@@ -443,8 +443,13 @@ export async function scrapeLeadsFromMaps(
   const resultsRows = await fetchSheetValues(token, 'Results!A:N');
   const existingPlaceIds = new Set<string>();
   for (let i = 1; i < resultsRows.length; i++) {
-    const pid = resultsRows[i][8]; // Column I = placeId
-    if (pid) existingPlaceIds.add(String(pid).trim());
+    // Extract place_id from reviews JSON (Column G): places/ChIJ.../reviews/...
+    const reviews = resultsRows[i][6] || '';
+    const match = reviews.match(/places\/(ChIJ[^/]+)\/reviews/);
+    if (match) existingPlaceIds.add(match[1]);
+    // Also check Column I for old place_ids and emails
+    const colI = String(resultsRows[i][8] || '').trim();
+    if (colI) existingPlaceIds.add(colI);
   }
 
   // Scrape
@@ -491,7 +496,7 @@ export async function scrapeLeadsFromMaps(
             place.formatted_address || '',           // F: address
             details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
-            place.place_id,                          // I: placeId (cross-scrape dedup)
+            '',                                      // I: email (empty)
             gps,                                     // J: gpsCoordinates
             '', '', '', ''                           // K-N: tracking columns
           ]);
@@ -558,29 +563,31 @@ export async function cleanDuplicateLeads(
   const rows = await fetchSheetValues(token, 'Results!A:J');
   if (rows.length <= 1) return { removed: 0 };
 
-  const seen = new Map<string, { row: number; hasPlaceId: boolean }>();
+  const seen = new Map<string, { row: number; hasEmail: boolean }>();
   const toDelete: number[] = [];
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const name = String(row[2] || '').toLowerCase().trim();
     if (!name) continue;
-    const placeId = String(row[8] || '').trim();
-    const hasGps = Boolean(String(row[9] || '').trim());
+    const email = String(row[8] || '').trim();
     const sheetRow = i + 1;
-
-    const hasPlaceId = Boolean(placeId) && hasGps;
+    const hasEmail = email.length > 0;
 
     const existing = seen.get(name);
     if (existing) {
-      if (hasPlaceId && !existing.hasPlaceId) {
+      if (hasEmail && !existing.hasEmail) {
         toDelete.push(existing.row);
-        seen.set(name, { row: sheetRow, hasPlaceId: true });
-      } else {
+        seen.set(name, { row: sheetRow, hasEmail });
+      } else if (existing.hasEmail && !hasEmail) {
         toDelete.push(sheetRow);
+      } else if (hasEmail && existing.hasEmail) {
+        toDelete.push(sheetRow); // keep older one with email
+      } else {
+        toDelete.push(sheetRow); // neither has email, delete newer
       }
     } else {
-      seen.set(name, { row: sheetRow, hasPlaceId });
+      seen.set(name, { row: sheetRow, hasEmail });
     }
   }
 
