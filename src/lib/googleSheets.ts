@@ -548,5 +548,5 @@ export async function scrapeLeadsFromMaps(
   }
 
   onProgress(`Done. ${newRows.length} new leads added.`);
-  return { searched, added: newRows.length, existing: existingPlaceIds.size };
+  return { searched, added: newRows.length, existing: seenNames.size };
 }
