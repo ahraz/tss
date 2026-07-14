@@ -214,17 +214,17 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
 
     leads.push({
       rowIndex: i + 1, // 1-based row number in the sheet
-      type: row[0] || '',
-      phone: row[1] || '',
-      businessName: row[2] || '',
-      types: row[3] || '',
-      rating: row[4] || '',
-      address: row[5] || '',
-      reviews: row[6] || '',
-      website: row[7] || '',
-      email: row[8] || '',
-      placeId: row[14] || String(i + 1),
-      gpsCoordinates: row[9] || '',
+      type: row[COLUMNS.A.index] || '',
+      phone: row[COLUMNS.B.index] || '',
+      businessName: row[COLUMNS.C.index] || '',
+      types: row[COLUMNS.D.index] || '',
+      rating: row[COLUMNS.E.index] || '',
+      address: row[COLUMNS.F.index] || '',
+      reviews: row[COLUMNS.G.index] || '',
+      website: row[COLUMNS.H.index] || '',
+      email: row[COLUMNS.I.index]?.trim() || undefined,
+      placeId: row[COLUMNS.O.index] || String(i + 1),
+      gpsCoordinates: row[COLUMNS.J.index] || '',
     });
   }
 
