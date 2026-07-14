@@ -5,7 +5,7 @@
 // for the Leads Call Center feature.
 // ============================================================
 
-import type { Lead, CallOutcome } from '../types';
+import type { Lead } from '../types';
 
 // ─── Configuration ──────────────────────────────────────────
 
@@ -13,21 +13,6 @@ const CLIENT_ID = '1065566722892-0qq7pm931g6cnd4l2e5emtigt4r0jqr3.apps.googleuse
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 const SPREADSHEET_ID = '1-0wOhrEFX5EkiajX0gtNFsVSDCaPObt8rD94kQoK6XA';
 const SHEET_NAME = 'Results';
-
-// Column mapping (A=1, B=2, ...)
-const COL = {
-  type: 1, phone: 2, businessName: 3, types: 4, rating: 5,
-  address: 6, reviews: 7, website: 8, placeId: 9, gpsCoordinates: 10,
-  callStatus: 11, calledBy: 12, lastCalled: 13, notes: 14,
-};
-
-// Header labels we expect / write
-const HEADER_LABELS: Record<number, string> = {
-  [COL.callStatus]: 'Call Status',
-  [COL.calledBy]: 'Called By',
-  [COL.lastCalled]: 'Last Called',
-  [COL.notes]: 'Notes',
-};
 
 // Column registry — single source of truth
 const COLUMNS: Record<string, { index: number; label: string }> = {
@@ -232,66 +217,6 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
   ensureHeaderColumns().catch(() => {});
 
   return leads;
-}
-
-/** Write call outcome back to the sheet for a given lead */
-export async function updateLeadInSheet(
-  rowIndex: number,
-  outcome: CallOutcome,
-  calledByName: string,
-  notes: string,
-): Promise<void> {
-  const token = await getAccessToken();
-  const now = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
-
-  const statusLabels: Record<CallOutcome, string> = {
-    completed: 'Completed',
-    no_answer: 'No Answer',
-    wrong_number: 'Wrong Number',
-    callback: 'Callback',
-  };
-
-  const data = [
-    { col: COL.callStatus, value: statusLabels[outcome] },
-    { col: COL.calledBy, value: calledByName },
-    { col: COL.lastCalled, value: now },
-    { col: COL.notes, value: notes },
-  ];
-
-  // Build batch update
-  const body = {
-    valueInputOption: 'USER_ENTERED',
-    data: data.map(d => ({
-      range: `${SHEET_NAME}!${columnLetter(d.col)}${rowIndex}`,
-      values: [[d.value]],
-    })),
-  };
-
-  const response = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('NEEDS_AUTH');
-    throw new Error(`Sheets API write error: ${response.status}`);
-  }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-function columnLetter(n: number): string {
-  let s = '';
-  while (n > 0) {
-    n--;
-    s = String.fromCharCode(65 + (n % 26)) + s;
-    n = Math.floor(n / 26);
-  }
-  return s;
 }
 
 const CATEGORIES = [

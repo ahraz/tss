@@ -16,7 +16,6 @@ import type { Lead, CallLogEntry, CallOutcome, EmailLog } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
-  updateLeadInSheet,
   signIn,
   isSignedIn,
   waitForGis,
@@ -69,6 +68,8 @@ export function LeadsPage() {
   const [syncingCategories, setSyncingCategories] = useState(false);
   const [scraping, setScraping] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [checkingPlaceIds, setCheckingPlaceIds] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -353,9 +354,6 @@ export function LeadsPage() {
 
       dispatch({ type: 'ADD_CALL_LOG', payload: entry });
 
-      updateLeadInSheet(outcomeLead.rowIndex, outcome, currentUser.name, outcomeNotes)
-        .catch(err => console.warn('Sheet write failed:', err));
-
       toast.success('Call logged');
       setOutcomeLead(null);
       setOutcome('completed');
@@ -439,6 +437,61 @@ export function LeadsPage() {
       setScraping(false);
     }
   };
+
+  const handleCheckPlaceIds = useCallback(() => {
+    setCheckingPlaceIds(true);
+    const missing = leads.filter(l => !l.placeId?.startsWith('ChIJ'));
+    const valid = leads.filter(l => l.placeId?.startsWith('ChIJ'));
+    if (missing.length === 0) {
+      toast.success(`All ${leads.length} leads have valid place IDs ✓`);
+    } else {
+      const sample = missing.slice(0, 20).map(l =>
+        `  Row ${l.rowIndex}: "${l.businessName}" (placeId: ${l.placeId || 'empty'})`
+      ).join('\n');
+      const more = missing.length > 20 ? `\n  ...and ${missing.length - 20} more` : '';
+      toast(
+        <div className="text-xs max-h-60 overflow-auto whitespace-pre-wrap font-mono">
+          <p className="font-bold mb-1 text-red-600">
+            {missing.length} of {leads.length} leads missing valid place IDs
+          </p>
+          <p className="mb-1">{valid.length} have valid IDs ✓</p>
+          {sample}{more}
+        </div>,
+        { duration: 20000 }
+      );
+    }
+    setCheckingPlaceIds(false);
+  }, [leads]);
+
+  const handleCheckDuplicates = useCallback(() => {
+    setCheckingDuplicates(true);
+    const names = new Map<string, { rows: number[]; businessName: string; address: string }[]>();
+    for (const lead of leads) {
+      const key = lead.businessName.toLowerCase().trim();
+      if (!key) continue;
+      const list = names.get(key) || [];
+      list.push({ rows: [lead.rowIndex], businessName: lead.businessName, address: lead.address });
+      names.set(key, list);
+    }
+    const dupes = Array.from(names.values()).filter(l => l.length > 1).sort((a, b) => b.length - a.length);
+    if (dupes.length === 0) {
+      toast.success(`No duplicates found among ${leads.length} leads`);
+    } else {
+      const totalDupes = dupes.reduce((sum, d) => sum + d.length, 0);
+      const msg = dupes.slice(0, 10).map(d =>
+        `• "${d[0].businessName}" (${d.length}x) — rows ${d.map(x => x.rows[0]).join(', ')}`
+      ).join('\n');
+      const count = dupes.length > 10 ? `\n...and ${dupes.length - 10} more` : '';
+      toast(
+        <div className="text-xs max-h-60 overflow-auto whitespace-pre-wrap font-mono">
+          <p className="font-bold mb-1">Found {totalDupes} duplicate rows ({dupes.length} groups){count}</p>
+          {msg}
+        </div>,
+        { duration: 15000 }
+      );
+    }
+    setCheckingDuplicates(false);
+  }, [leads]);
 
   const handleBackfillPlaceIds = async () => {
     setBackfilling(true);
@@ -629,6 +682,22 @@ export function LeadsPage() {
             >
               <RefreshCw size={14} className={syncingCategories ? 'animate-spin' : ''} />
               {syncingCategories ? 'Syncing...' : 'Sync Categories'}
+            </button>
+            <button
+              onClick={handleCheckPlaceIds}
+              disabled={checkingPlaceIds}
+              className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={checkingPlaceIds ? 'animate-spin' : ''} />
+              {checkingPlaceIds ? 'Checking...' : 'Check Place IDs'}
+            </button>
+            <button
+              onClick={handleCheckDuplicates}
+              disabled={checkingDuplicates}
+              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={checkingDuplicates ? 'animate-spin' : ''} />
+              {checkingDuplicates ? 'Checking...' : 'Check Duplicates'}
             </button>
             <button
               onClick={handleBackfillPlaceIds}
