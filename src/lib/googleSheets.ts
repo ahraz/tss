@@ -361,6 +361,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
     );
     const data = await res.json();
     const reviews = (data.reviews || []).map((r: any) => ({
+      name: r.name || '',
       rating: r.rating,
       text: r.text || r.originalText || { text: '', languageCode: 'en' },
       authorAttribution: r.authorAttribution || {},
