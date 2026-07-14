@@ -29,6 +29,25 @@ const HEADER_LABELS: Record<number, string> = {
   [COL.notes]: 'Notes',
 };
 
+// Column registry — single source of truth
+const COLUMNS: Record<string, { index: number; label: string }> = {
+  A: { index: 0,  label: 'Business Type' },
+  B: { index: 1,  label: 'Phone' },
+  C: { index: 2,  label: 'Business Name' },
+  D: { index: 3,  label: 'Google Types' },
+  E: { index: 4,  label: 'Rating' },
+  F: { index: 5,  label: 'Address' },
+  G: { index: 6,  label: 'Reviews' },
+  H: { index: 7,  label: 'Website' },
+  I: { index: 8,  label: 'Email' },
+  J: { index: 9,  label: 'GPS Coordinates' },
+  K: { index: 10, label: 'Call Status' },     // legacy
+  L: { index: 11, label: 'Called By' },        // legacy
+  M: { index: 12, label: 'Last Called' },      // legacy
+  N: { index: 13, label: 'Notes' },            // legacy
+  O: { index: 14, label: 'Place ID' },
+};
+
 // ─── Module-level state ─────────────────────────────────────
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
@@ -124,7 +143,7 @@ interface GapiResponse<T> {
 }
 
 /**
- * Ensure the header columns (Call Status, Called By, etc.) exist.
+ * Ensure all header columns (A-O) exist in the Results sheet.
  * Runs once per session.
  */
 export async function ensureHeaderColumns(): Promise<void> {
@@ -139,27 +158,23 @@ export async function ensureHeaderColumns(): Promise<void> {
   const existingHeaders: string[] = data.values?.[0] || [];
 
   const updates: { range: string; value: string }[] = [];
-  for (const [colIndex, label] of Object.entries(HEADER_LABELS)) {
-    const colLetter = columnLetter(Number(colIndex));
-    // If the column doesn't exist or header doesn't match
-    if (!existingHeaders[Number(colIndex) - 1]) {
-      updates.push({ range: `${SHEET_NAME}!${colLetter}1`, value: label });
+  for (const [letter, col] of Object.entries(COLUMNS)) {
+    if (!existingHeaders[col.index] || existingHeaders[col.index] !== col.label) {
+      updates.push({ range: `${SHEET_NAME}!${letter}1`, value: col.label });
     }
   }
 
   if (updates.length === 0) { headersEnsured = true; return; }
-
-  const body = {
-    valueInputOption: 'USER_ENTERED',
-    data: updates.map(u => ({ range: u.range, values: [[u.value]] })),
-  };
 
   await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: updates.map(u => ({ range: u.range, values: [[u.value]] })),
+      }),
     }
   );
   headersEnsured = true;
@@ -611,3 +626,5 @@ export async function backfillPlaceIds(
   onProgress(`Backfilled ${updated} place IDs`);
   return { updated };
 }
+
+
