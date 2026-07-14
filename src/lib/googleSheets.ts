@@ -439,18 +439,13 @@ export async function scrapeLeadsFromMaps(
     if (code) zips.push({ code, status, row: i + 1 }); // row is 1-indexed for sheet
   }
 
-  // Read existing placeIds for cross-scrape dedup
+  // Read existing business names for bulletproof dedup
   onProgress('Checking existing leads...');
   const resultsRows = await fetchSheetValues(token, 'Results!A:N');
-  const existingPlaceIds = new Set<string>();
+  const seenNames = new Set<string>();
   for (let i = 1; i < resultsRows.length; i++) {
-    // Extract place_id from reviews JSON (Column G): places/ChIJ.../reviews/...
-    const reviews = resultsRows[i][6] || '';
-    const match = reviews.match(/places\/(ChIJ[^/]+)\/reviews/);
-    if (match) existingPlaceIds.add(match[1]);
-    // Also check Column I for old place_ids and emails
-    const colI = String(resultsRows[i][8] || '').trim();
-    if (colI) existingPlaceIds.add(colI);
+    const name = String(resultsRows[i][2] || '').toLowerCase().trim();
+    if (name) seenNames.add(name);
   }
 
   // Scrape
@@ -477,8 +472,9 @@ export async function scrapeLeadsFromMaps(
         const { places, total } = await searchPlaces(`${category} ${zip.code}`);
         if (total > maxThisZip) maxThisZip = total;
         for (const place of places) {
-          if (existingPlaceIds.has(place.place_id)) continue;
-          existingPlaceIds.add(place.place_id);
+          const nameKey = place.name.toLowerCase().trim();
+          if (seenNames.has(nameKey)) continue;
+          seenNames.add(nameKey);
           newThisZip++;
 
           const details = await fetchPlaceDetails(place.place_id);
