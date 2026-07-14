@@ -558,12 +558,17 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         const leadsBatch = writeBatch(db);
         const existingSnap = await getDocs(collection(db, 'leads'));
         const existingByRow = new Map<string, string>();
+        const existingByPlaceId = new Map<string, string>();
         for (const d of existingSnap.docs) {
-          const rowIdx = d.data().rowIndex;
-          if (rowIdx) existingByRow.set(String(rowIdx), d.id);
+          const data = d.data();
+          if (data.rowIndex) existingByRow.set(String(data.rowIndex), d.id);
+          if (data.placeId && data.placeId.startsWith('ChIJ')) existingByPlaceId.set(data.placeId, d.id);
         }
         for (const lead of action.payload) {
-          const existingDocId = existingByRow.get(String(lead.rowIndex));
+          let existingDocId = existingByRow.get(String(lead.rowIndex));
+          if (!existingDocId && lead.placeId?.startsWith('ChIJ')) {
+            existingDocId = existingByPlaceId.get(lead.placeId);
+          }
           const docId = existingDocId || lead.placeId || lead.rowIndex.toString();
           const docRef = doc(db, 'leads', docId);
           leadsBatch.set(docRef, sanitizeForFirestore(lead), { merge: true });
