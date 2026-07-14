@@ -24,7 +24,6 @@ import {
   ensureHeaderColumns,
   syncCategoriesToSheet,
   scrapeLeadsFromMaps,
-  cleanDuplicateLeads,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -68,7 +67,6 @@ export function LeadsPage() {
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [syncingCategories, setSyncingCategories] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [cleaning, setCleaning] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -440,19 +438,6 @@ export function LeadsPage() {
     }
   };
 
-  const handleCleanDuplicates = async () => {
-    setCleaning(true);
-    try {
-      const result = await cleanDuplicateLeads((msg) => toast(msg));
-      toast.success(`Removed ${result.removed} duplicates`);
-      setTimeout(() => importLeadsFromSheets(), 1500);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to clean duplicates');
-    } finally {
-      setCleaning(false);
-    }
-  };
-
   const handleSyncCategories = async () => {
     setSyncingCategories(true);
     try {
@@ -614,14 +599,6 @@ export function LeadsPage() {
             >
               <RefreshCw size={14} className={syncingCategories ? 'animate-spin' : ''} />
               {syncingCategories ? 'Syncing...' : 'Sync Categories'}
-            </button>
-            <button
-              onClick={handleCleanDuplicates}
-              disabled={cleaning}
-              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={cleaning ? 'animate-spin' : ''} />
-              {cleaning ? 'Cleaning...' : 'Clean Duplicates'}
             </button>
             <button
               onClick={repairCallLogs}
