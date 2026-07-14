@@ -381,15 +381,17 @@ export async function scrapeLeadsFromMaps(
 
   // Read existing business names for bulletproof dedup
   onProgress('Checking existing leads...');
-  const resultsRows = await fetchSheetValues(token, 'Results!A:N');
-  const seenNames = new Set<string>();
+  const resultsRows = await fetchSheetValues(token, 'Results!A:O');
+  const seenKeys = new Set<string>();
   for (let i = 1; i < resultsRows.length; i++) {
-    const name = String(resultsRows[i][2] || '').toLowerCase().trim();
-    if (name) seenNames.add(name);
+    const name = String(resultsRows[i][COLUMNS.C.index] || '').toLowerCase().trim();
+    const address = String(resultsRows[i][COLUMNS.F.index] || '');
+    const city = address.split(',')[1]?.trim().toLowerCase() || '';
+    if (name) seenKeys.add(`${name}|${city}`);
   }
 
   // Scrape
-  let newRows: string[][] = [];
+  let newRows: (string | null)[][] = [];
   let searched = 0;
   const zipUpdates: { row: number; status: string }[] = [];
 
@@ -413,8 +415,10 @@ export async function scrapeLeadsFromMaps(
         if (total > maxThisZip) maxThisZip = total;
         for (const place of places) {
           const nameKey = place.name.toLowerCase().trim();
-          if (seenNames.has(nameKey)) continue;
-          seenNames.add(nameKey);
+          const city = (place.formatted_address || '').split(',')[1]?.trim().toLowerCase() || '';
+          const dedupKey = `${nameKey}|${city}`;
+          if (seenKeys.has(dedupKey)) continue;
+          seenKeys.add(dedupKey);
           newThisZip++;
 
           const details = await fetchPlaceDetails(place.place_id);
@@ -433,9 +437,9 @@ export async function scrapeLeadsFromMaps(
             place.formatted_address || '',           // F: address
             details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
-            '',                                      // I: email (empty)
+            null,                                    // I: email (empty — user fills later)
             gps,                                     // J: gpsCoordinates
-            '', '', '', '',                           // K-N: tracking columns
+            null, null, null, null,                   // K-N: legacy tracking (not used)
             place.place_id,                           // O: stable Google Maps place_id
           ]);
         }
@@ -476,7 +480,7 @@ export async function scrapeLeadsFromMaps(
   if (newRows.length > 0) {
     onProgress(`Writing ${newRows.length} new leads...`);
     const lastRow = resultsRows.length; // already has header at row 0
-    const range = `Results!A${lastRow + 1}:N${lastRow + newRows.length}`;
+    const range = `Results!A${lastRow + 1}:O${lastRow + newRows.length}`;
 
     await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
@@ -489,7 +493,7 @@ export async function scrapeLeadsFromMaps(
   }
 
   onProgress(`Done. ${newRows.length} new leads added.`);
-  return { searched, added: newRows.length, existing: seenNames.size };
+  return { searched, added: newRows.length, existing: seenKeys.size };
 }
 
 export async function backfillPlaceIds(
