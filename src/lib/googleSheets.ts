@@ -438,16 +438,13 @@ export async function scrapeLeadsFromMaps(
     if (code) zips.push({ code, status, row: i + 1 }); // row is 1-indexed for sheet
   }
 
-  // Read existing placeIds AND business names for dedup
+  // Read existing placeIds for cross-scrape dedup
   onProgress('Checking existing leads...');
   const resultsRows = await fetchSheetValues(token, 'Results!A:N');
   const existingPlaceIds = new Set<string>();
-  const existingNames = new Set<string>();
   for (let i = 1; i < resultsRows.length; i++) {
     const pid = resultsRows[i][8]; // Column I = placeId
-    const name = String(resultsRows[i][2] || '').toLowerCase().trim(); // Column C = title
     if (pid) existingPlaceIds.add(String(pid).trim());
-    if (name) existingNames.add(name);
   }
 
   // Scrape
@@ -457,7 +454,7 @@ export async function scrapeLeadsFromMaps(
 
   for (const zip of zips) {
     const skipMsg = zip.status === 'complete' ? ' (skipped — already complete)' : zip.status === 'scraped' ? ' (retrying — was partial)' : '';
-    onProgress(`Geocoding ${zip.code}${skipMsg}...`);
+    onProgress(`Processing ${zip.code}${skipMsg}...`);
 
     if (zip.status === 'complete') {
       searched += categories.length;
@@ -465,6 +462,7 @@ export async function scrapeLeadsFromMaps(
     }
 
     let maxThisZip = 0;
+    let newThisZip = 0;
 
     for (const category of categories) {
       searched++;
@@ -473,11 +471,9 @@ export async function scrapeLeadsFromMaps(
         const { places, total } = await searchPlaces(`${category} ${zip.code}`);
         if (total > maxThisZip) maxThisZip = total;
         for (const place of places) {
-          const nameKey = place.name.toLowerCase().trim();
           if (existingPlaceIds.has(place.place_id)) continue;
-          if (existingNames.has(nameKey)) continue;
           existingPlaceIds.add(place.place_id);
-          existingNames.add(nameKey);
+          newThisZip++;
 
           const details = await fetchPlaceDetails(place.place_id);
           await new Promise(r => setTimeout(r, 200)); // rate limit
@@ -495,7 +491,7 @@ export async function scrapeLeadsFromMaps(
             place.formatted_address || '',           // F: address
             details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
-            '',                                      // I: email (not available from Places API)
+            place.place_id,                          // I: placeId (cross-scrape dedup)
             gps,                                     // J: gpsCoordinates
             '', '', '', ''                           // K-N: tracking columns
           ]);
@@ -505,10 +501,10 @@ export async function scrapeLeadsFromMaps(
       }
     }
 
-    // Track zip completion status
-    if (maxThisZip < 20) {
+    // Track zip completion status — use new leads added, not API total
+    if (newThisZip === 0 && maxThisZip < 20) {
       zipUpdates.push({ row: zip.row, status: 'complete' });
-    } else {
+    } else if (newThisZip > 0) {
       zipUpdates.push({ row: zip.row, status: 'partial' });
     }
   }
