@@ -197,9 +197,6 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
     // Skip empty rows
     if (!row || row.every(c => !c?.trim())) continue;
 
-    const rawId = (row[8] || '').trim();
-    const isMapId = rawId.startsWith('ChIJ');
-
     leads.push({
       rowIndex: i + 1, // 1-based row number in the sheet
       type: row[0] || '',
@@ -210,8 +207,8 @@ export async function fetchLeadsFromSheet(): Promise<Lead[]> {
       address: row[5] || '',
       reviews: row[6] || '',
       website: row[7] || '',
-      email: isMapId ? '' : rawId,
-      placeId: isMapId ? rawId : String(i + 1),
+      email: row[8] || '',
+      placeId: String(i + 1),
       gpsCoordinates: row[9] || '',
     });
   }
@@ -496,7 +493,7 @@ export async function scrapeLeadsFromMaps(
             place.formatted_address || '',           // F: address
             details.reviews,                         // G: reviews (JSON array)
             details.website,                         // H: website
-            place.place_id,                          // I: place_id (stable identifier)
+            '',                                      // I: email (empty)
             gps,                                     // J: gpsCoordinates
             '', '', '', ''                           // K-N: tracking columns
           ]);
