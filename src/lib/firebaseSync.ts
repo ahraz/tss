@@ -806,3 +806,10 @@ export async function seedIfEmpty(): Promise<void> {
 
   console.log('✅ Seeded default data into Firestore');
 }
+
+/** Delete all documents from the Firestore leads collection */
+export async function clearFirestoreLeads(): Promise<void> {
+  const snap = await getDocs(collection(db, 'leads'));
+  const deletions = snap.docs.map(d => deleteDoc(doc(db, 'leads', d.id)));
+  await Promise.all(deletions);
+}

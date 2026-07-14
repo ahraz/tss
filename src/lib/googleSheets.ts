@@ -507,6 +507,36 @@ export async function scrapeLeadsFromMaps(
   return { searched, added: newRows.length, existing: seenKeys.size };
 }
 
+/** Reset AZ Zips statuses to 'active' and clear Firestore leads for a fresh scrape */
+export async function resetAllForRescrape(): Promise<void> {
+  const token = await getAccessToken();
+
+  // Read all AZ Zips
+  const zipRows = await fetchSheetValues(token, 'AZ+Zips!A:A');
+  const updates: { row: number }[] = [];
+  for (let i = 1; i < zipRows.length; i++) {
+    const code = String(zipRows[i][0] || '').trim();
+    if (code) updates.push({ row: i + 1 });
+  }
+
+  // Reset each zip to 'active'
+  for (const u of updates) {
+    try {
+      const range = `'AZ Zips'!B${u.row}`;
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ range, majorDimension: 'ROWS', values: [['active']] }),
+        }
+      );
+    } catch (e) {
+      console.warn(`Failed to reset zip row ${u.row}:`, e);
+    }
+  }
+}
+
 export async function backfillPlaceIds(
   onProgress: (msg: string) => void
 ): Promise<{ updated: number }> {

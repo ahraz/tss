@@ -24,9 +24,11 @@ import {
   syncCategoriesToSheet,
   scrapeLeadsFromMaps,
   backfillPlaceIds,
+  resetAllForRescrape,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { clearFirestoreLeads } from '../lib/firebaseSync';
 
 export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
 
@@ -70,6 +72,7 @@ export function LeadsPage() {
   const [backfilling, setBackfilling] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [checkingPlaceIds, setCheckingPlaceIds] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -493,6 +496,36 @@ export function LeadsPage() {
     setCheckingDuplicates(false);
   }, [leads]);
 
+  const handleResetAndRescrape = useCallback(async () => {
+    setResetting(true);
+    try {
+      await resetAllForRescrape();
+      await clearFirestoreLeads();
+      dispatch({ type: 'SET_LEADS', payload: [] });
+      toast.success('AZ Zips reset, Firestore leads cleared. Ready to rescrape.');
+    } catch (err: any) {
+      if (err.message === 'NEEDS_AUTH') {
+        try {
+          await waitForGis();
+          initTokenClient();
+          await signIn();
+          setResetting(true);
+          await resetAllForRescrape();
+          await clearFirestoreLeads();
+          dispatch({ type: 'SET_LEADS', payload: [] });
+          toast.success('AZ Zips reset, Firestore leads cleared.');
+          return;
+        } catch {
+          toast.error('Failed to connect.');
+        }
+      } else {
+        toast.error('Reset failed: ' + (err.message || 'unknown'));
+      }
+    } finally {
+      setResetting(false);
+    }
+  }, [dispatch]);
+
   const handleBackfillPlaceIds = async () => {
     setBackfilling(true);
     try {
@@ -717,11 +750,19 @@ export function LeadsPage() {
             </button>
             <button
               onClick={importLeadsFromSheets}
-              disabled={importingFromSheets}
+               disabled={importingFromSheets}
               className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
             >
               <RefreshCw size={14} className={importingFromSheets ? 'animate-spin' : ''} />
               {importingFromSheets ? 'Importing...' : 'Refresh from Sheets'}
+            </button>
+            <button
+              onClick={handleResetAndRescrape}
+              disabled={resetting}
+              className="flex items-center gap-1.5 text-sm text-red-700 hover:text-red-800 disabled:opacity-50 font-semibold"
+            >
+              <RefreshCw size={14} className={resetting ? 'animate-spin' : ''} />
+              {resetting ? 'Resetting...' : 'Reset & Rescrape'}
             </button>
           </div>
         </div>
