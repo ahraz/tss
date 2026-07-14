@@ -551,3 +551,42 @@ export async function scrapeLeadsFromMaps(
   onProgress(`Done. ${newRows.length} new leads added.`);
   return { searched, added: newRows.length, existing: seenNames.size };
 }
+
+export async function backfillPlaceIds(
+  onProgress: (msg: string) => void
+): Promise<{ updated: number }> {
+  const token = await getAccessToken();
+  onProgress('Reading leads...');
+  const rows = await fetchSheetValues(token, 'Results!A:O');
+  let updated = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const existing = (row[14] || '').trim(); // Column O
+    if (existing) continue; // already has place_id
+
+    const reviews = (row[6] || '').toString();
+    const match = reviews.match(/places\/(ChIJ[^/]+)\/reviews/);
+    if (!match) continue;
+
+    const placeId = match[1];
+    const range = `'Results'!O${i + 1}`;
+    try {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ range, majorDimension: 'ROWS', values: [[placeId]] }),
+        }
+      );
+      updated++;
+      if (updated % 50 === 0) onProgress(`Backfilled ${updated} leads...`);
+    } catch (e) {
+      console.warn(`Failed to backfill row ${i + 1}:`, e);
+    }
+  }
+
+  onProgress(`Backfilled ${updated} place IDs`);
+  return { updated };
+}

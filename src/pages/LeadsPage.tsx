@@ -24,6 +24,7 @@ import {
   ensureHeaderColumns,
   syncCategoriesToSheet,
   scrapeLeadsFromMaps,
+  backfillPlaceIds,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -67,6 +68,7 @@ export function LeadsPage() {
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [syncingCategories, setSyncingCategories] = useState(false);
   const [scraping, setScraping] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -438,6 +440,19 @@ export function LeadsPage() {
     }
   };
 
+  const handleBackfillPlaceIds = async () => {
+    setBackfilling(true);
+    try {
+      const result = await backfillPlaceIds((msg) => toast(msg));
+      toast.success(`Backfilled ${result.updated} place IDs`);
+      setTimeout(() => importLeadsFromSheets(), 1500);
+    } catch {
+      toast.error('Backfill failed');
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   const handleSyncCategories = async () => {
     setSyncingCategories(true);
     try {
@@ -599,6 +614,14 @@ export function LeadsPage() {
             >
               <RefreshCw size={14} className={syncingCategories ? 'animate-spin' : ''} />
               {syncingCategories ? 'Syncing...' : 'Sync Categories'}
+            </button>
+            <button
+              onClick={handleBackfillPlaceIds}
+              disabled={backfilling}
+              className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={backfilling ? 'animate-spin' : ''} />
+              {backfilling ? 'Backfilling...' : 'Backfill Place IDs'}
             </button>
             <button
               onClick={repairCallLogs}
