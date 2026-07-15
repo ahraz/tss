@@ -45,7 +45,21 @@ The agent reads from a structured profile containing:
 
 ### Process
 
-For each catalog entry:
+**Pre-Check: Immigration Status Gate**
+
+Before running the full catalog scan, verify immigration status. This is a hard gate — not all programs accept work permit holders.
+
+| Status | Programs Available |
+|--------|-------------------|
+| Permanent Resident (PR) | All federal and provincial programs |
+| Work Permit (Spousal Open, etc.) | Most federal programs (CCB, GST/HST, CWB, Dental, CAIP, Medical Expense Credit). Check residency requirements for Ontario programs. |
+| Visitor/Temporary | Very limited. Most government programs require legal residency. |
+
+**For spousal work permit holders:** Flag programs restricted to PR/citizenship and note which accept work permit holders. The profile should specify when the work permit expires and whether a PR application is in progress.
+
+---
+
+**Full Audit: For each catalog entry:**
 
 1. **Does the person qualify?** Check income thresholds, family size, immigration status, residency requirements, age, health status.
 2. **Have they already claimed this?** If the profile says they already receive it, skip.
