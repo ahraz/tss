@@ -119,7 +119,7 @@ Before running the full catalog scan, verify immigration status. This is a hard 
 
 | Source | What It Pays | Eligibility | Est. Value | How to Access | Priority |
 |--------|-------------|-------------|------------|---------------|----------|
-| **Bank of Canada Unclaimed Properties** | Forgotten bank accounts, deposits, investments | Any Canadian with unclaimed funds | $100-$10,000+ | Search: unclaimedproperties.ca | 1 |
+| **Bank of Canada Unclaimed Properties** | Forgotten bank accounts, deposits, investments | Any Canadian with unclaimed funds | $100-$10,000+ | Search: https://www.unclaimedproperties.bankofcanada.ca/ | 1 |
 | **Class Action Settlements** | Payouts from lawsuits against companies | Anyone who purchased/use specific products/services | $20-500+ per claim | Search: canadianclassactions.ca or settlement administrator sites | 2 |
 | **Bank Account Switching Bonuses** | Cash bonuses for switching primary banking | New customer, meet minimum requirements | $100-500 | Open new chequing account at promo rate | 2 |
 | **Credit Card Sign-Up Bonuses** | Points/cash bonuses for new cards | New cardholder, meet spend requirement | $200-500+ | Apply for card, meet minimum spend | 2 |
