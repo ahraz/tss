@@ -78,6 +78,9 @@
 - **Pain point:** Immigration paperwork organization critical before Sep 30
 - **Priority:** PR-related document system
 
+### 8. Assets
+- **Aeroplan points:** 100,408 (~$1,000-1,200 travel value)
+
 ---
 
 ## Key People
