@@ -1,0 +1,130 @@
+# Baseline Test Output — Agent WITHOUT canadian-financial-audit skill
+
+## Verbatim Subagent Output
+
+---
+
+**Zara's Financial Rescue Plan — Ahraz Malik**
+
+**Priority 1: Immediate Cash Collection (This Week)**
+
+**Tax Returns ($12K–$20K)** — Your single biggest source of immediate cash.
+- **Do not** do this yourself. Go to **Liberty Tax** or **H&R Block** (Brampton locations) and ask for a *5-year consolidation package*. Should cost ~$400–$600. Pay it from the return itself.
+- File 2020–2024 within 14 days. Written estimate from their portal gets you a check in ~3–4 weeks.
+- **Missing credits:** You likely have **Canada Worker's Benefit (CWB)** for any low-income year, **GST/HST credit** (pro-rated), **Climate Action Incentive Payment (CAIP)** for Ontario — all must be claimed on the return.
+
+**Child Benefit ($7,741/yr)** — You said $700/mo. Are you sure that's the full amount? With $3,827 net income + $700 CCB = ~$4,527/mo household. If your wife's immigration status restricts her, fine — but **double-check** that you're getting the *Ontario Child Benefit* add-on (up to $1,484/year) on top of the federal CCB. Call CRA at 1-800-387-1193 and ask: *"Am I receiving the full Canada Child Benefit including the Ontario Child Benefit?"*
+
+**Priority 2: Debt Strategy (Attack This Month)**
+
+**$25K at high interest** — Your #1 wealth killer. You're paying ~$500–$700/mo *just in interest*.
+- **Consolidate immediately:** Apply with **Fairstone** or **MoneyKey** for a debt consolidation loan. A single payment of ~$600 at 18% beats 5 cards at 28%+.
+- **Balance transfer:** If any card has a 0% balance transfer offer (RBC, TD, CIBC — check your mail), move as much as you can. Pay the 2–3% fee — still cheaper than 28%.
+- **Minimum payments only** on all debt until the tax return arrives. Do not send extra — that return money will clear them faster.
+
+**Priority 3: Benefits You Are Paying For But Not Using**
+
+**Employment Insurance (EI)** — You pay EI premiums on your paycheck. If you've lost a job at any point in the last 52 weeks or had a >40% reduction in hours, file a claim. Even if you're working now, *you may have unused weeks of entitlement from a separation*. Check MSCA (My Service Canada Account) today.
+
+**Canada Pension Plan (CPP)** — You pay into it. Not relevant now, but if you ever become disabled due to your low testosterone, **CPP Disability ($1,500+/mo)** is available. Medical documentation of 3 nmol/L with symptoms of fatigue, depression, inability to work consistently = qualifies. This is for *worst case*.
+
+**Priority 4: Cutting Leaks ($500+/mo recovered)**
+
+| Item | Problem | Fix |
+|------|---------|-----|
+| **Gym ($30)** | Unused | Cancel today. 30-second fix. |
+| **Car ($276)** | Parked 6 months | Sell it. That's $276/mo + $185 gas + insurance savings = **$461/mo freed**. Use TTC/Uber until tax return lands. You cannot afford a parked car. |
+| **2nd phone ($70)** | ? | If this is a duplicate line, cancel. |
+| **Groceries ($500)** | For 2.5 people | That's fine. Do not touch this — you're feeding a baby. |
+
+Cancel gym and list the car on AutoTrader/FB Marketplace this week. That gives you **$276/mo + $5,000–$8,000 cash** on the car sale.
+
+**Priority 5: Tax Loopholes & Free Money**
+
+**Work-from-home deduction** — If you work from home even 1 day a week, you can claim $2/day flat rate (T777S form). No receipts needed. That's ~$500 deduction, saving you ~$100 in taxes.
+
+**Child care expense deduction** — If wife watches baby while you work, you can still claim up to $8,000 in child care (attributed to the lower-income spouse). Talk to your tax preparer.
+
+**Medical expense tax credit** — Low testosterone qualifies. Blood tests, doctor visits, *any* supplements prescribed, even *private prescription coverage premiums*. You need to exceed $2,500-ish to claim, but with a family of 3, the threshold drops. Track everything.
+
+**GST/HST Credit** — Are you receiving this? At $3,827 income, you should get ~$300/quarter (family of 3). Check CRA My Account. If not enrolled, update your marital status and dependents.
+
+**Canada Dental Benefit** — If your child is under 12, you get up to $650/year per child *plus* the new **Canadian Dental Care Plan** (2024+, expanded to all families under $90K). You are under both thresholds. The baby qualifies this year. Call Service Canada: 1-833-537-4342.
+
+**Ontario Trillium Benefit** — Energy and property tax credit. As a renter paying $1,500/mo, you likely qualify. Check CRA. This is rolled into the same payment as GST/HST credit, so you may already be getting it. Verify.
+
+**Priority 6: Testosterone & Health (Long-Term Money)**
+
+3 nmol/L is *clinically deficient*. Normal is 8–35. At your level:
+- **Cognitive decline** → poor decision-making, missed opportunities
+- **Fatigue** → zero energy to sell, walk doors, cold call
+- **Depression** → kills motivation, kills pipeline, kills business
+
+You are running GTA Scrub AND managing a baby AND working a job with 3 nmol/L — that is like running a marathon with a broken ankle.
+
+**Action:** See Dr. Ahluwalia or Dr. Kohli (Walk-In Clinic Brampton). Say: *"I have bloodwork showing 3 nmol/L testosterone. I need a referral to an endocrinologist or a prescription for TRT."* Ask for **Covered by OHIP** options (AndroGel, or injectable testosterone cypionate — both covered in Ontario if labs confirm deficiency). Cost: **$0–$8/mo** on OHIP + Trillium Drug Program.
+
+The ROI on fixing this is: you can work 2x as hard, cold call 3x as long, and actually follow through. This is worth $20K+/year to GTA Scrub.
+
+**Priority 7: Immigration & Deadline Strategy**
+
+Your work permit expires **Sep 30, 2026**. If you do not have an extension or PR application in progress by then, you lose the right to work.
+- **Apply for spousal open work permit extension** — NOW. Don't wait. If you are waiting on PR, file it ASAP. A maintained status (implied status) keeps you working while it processes.
+- **Cost:** ~$255 (open work permit fee). This is non-negotiable spending.
+- **Impact:** If you lose work status, you lose $3,827/mo income, your family loses everything. This trumps *everything* else on this list.
+
+**Summary: Total Recoverable**
+
+| Source | Amount | Timeline |
+|--------|--------|----------|
+| Tax return (5 years) | $12K–$20K | 3–4 weeks |
+| Car sale | $5K–$8K | 1 week |
+| Cancel gym + phone | $100/mo | Today |
+| Unclaimed benefits (dental/trillium) | $800–$1,500/yr | 2 weeks |
+| Debt restructure | $200–$400/mo saved | 1 week |
+| TRT (energy/productivity) | Priceless | 1 week |
+| **Total one-time** | **$17K–$28K** | **30 days** |
+| **Total monthly savings** | **$1,300+** | **30 days** |
+
+**Your 7-Day Action List (Do Not Skip)**
+
+| Day | Task |
+|-----|------|
+| **Today** | Cancel Fit4Less. List car on FB Marketplace. Call CRA (1-800-387-1193) about CCB + OTB + GST status. |
+| **Mon** | Call 3 tax offices in Brampton — ask for 5-year consolidation quote. |
+| **Tue** | Walk into Fairstone (or call) for debt consolidation quote. |
+| **Wed** | Walk-in clinic for TRT referral (labs in hand). |
+| **Thu** | Submit work permit extension application online (if not already done). |
+| **Fri** | Call Service Canada about Canada Dental Benefit for the baby. |
+| **Sat** | Chase tax office — start the 5-year filing process. |
+
+---
+
+## Analysis: Gaps vs. Expected Failure Patterns
+
+### Expected: Misses Ontario-specific benefits (Trillium, OESP)
+- **Found Trillium** ✓
+- **Missed:** OESP, LEAP, Healthy Smiles Ontario
+
+### Expected: Doesn't check immigration eligibility
+- **Found immigration** ✓ (gave spousal permit extension advice)
+
+### Expected: Generic debt advice without ranking
+- **Found:** consolidation and balance transfer
+- **Missed:** consumer proposal, bankruptcy, credit counselling — no ranked options
+
+### Expected: No dollar estimates
+- **Found:** Had estimates ✓ (tax return, car sale, monthly savings)
+
+### Expected: Misses non-government sources
+- **Complete miss** — no mention of unclaimed Bank of Canada properties, class action settlements, bank switching bonuses, cashback apps, employer benefits audit
+
+### Expected: No prioritization
+- **Found:** Had priority 1-7 system ✓
+
+## Key Insight for Skill Design
+Agent did well on obvious government benefits but missed non-government bucket entirely. Need:
+1. Catalog of non-government money sources
+2. Structured debt ranking (consolidation → DMP → consumer proposal → bankruptcy)
+3. Ontario-specific programs database (OESP, LEAP, etc.)
+4. Standardized 4-section output template
