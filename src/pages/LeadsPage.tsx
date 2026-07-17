@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Building2, ExternalLink, RefreshCw, Database, Wrench, Search,
+  Building2, ExternalLink, RefreshCw, Database, Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -17,14 +17,10 @@ import {
   waitForGis,
   initTokenClient,
   ensureHeaderColumns,
-  syncCategoriesToSheet,
   scrapeLeadsFromMaps,
-  backfillPlaceIds,
-  resetAllForRescrape,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { clearFirestoreLeads } from '../lib/firebaseSync';
 
 export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
 
@@ -60,14 +56,8 @@ export function LeadsPage() {
   const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
   const [emailValue, setEmailValue] = useState('');
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
-  const [repairing, setRepairing] = useState(false);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
-  const [syncingCategories, setSyncingCategories] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [backfilling, setBackfilling] = useState(false);
-  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [checkingPlaceIds, setCheckingPlaceIds] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -96,7 +86,6 @@ export function LeadsPage() {
   }, []);
 
   const repairCallLogs = useCallback(async () => {
-    setRepairing(true);
     try {
       const [leadsSnap, callLogsSnap] = await Promise.all([
         getDocs(collection(db, 'leads')),
@@ -112,22 +101,15 @@ export function LeadsPage() {
         const docId = rowToDocId.get(log.sheetRowIndex);
         return docId && log.leadId !== docId;
       });
-      if (orphaned.length === 0) {
-        toast('Call history is already up to date');
-        return;
-      }
+      if (orphaned.length === 0) return;
       const batch = writeBatch(db);
       for (const log of orphaned) {
         const correctDocId = rowToDocId.get(log.sheetRowIndex)!;
         batch.update(doc(db, 'callLogs', log._id), { leadId: correctDocId });
       }
       await batch.commit();
-      toast.success(`Restored ${orphaned.length} call records`);
     } catch (e) {
       console.error('Repair failed:', e);
-      toast.error('Failed to restore call history');
-    } finally {
-      setRepairing(false);
     }
   }, []);
 
@@ -424,146 +406,7 @@ export function LeadsPage() {
     }
   };
 
-  const handleCheckPlaceIds = useCallback(() => {
-    setCheckingPlaceIds(true);
-    const missing = leads.filter(l => !l.placeId?.startsWith('ChIJ'));
-    const valid = leads.filter(l => l.placeId?.startsWith('ChIJ'));
-    if (missing.length === 0) {
-      toast.success(`All ${leads.length} leads have valid place IDs ✓`);
-    } else {
-      const sample = missing.slice(0, 20).map(l =>
-        `  Row ${l.rowIndex}: "${l.businessName}" (placeId: ${l.placeId || 'empty'})`
-      ).join('\n');
-      const more = missing.length > 20 ? `\n  ...and ${missing.length - 20} more` : '';
-      toast(
-        <div className="text-xs max-h-60 overflow-auto whitespace-pre-wrap font-mono">
-          <p className="font-bold mb-1 text-red-600">
-            {missing.length} of {leads.length} leads missing valid place IDs
-          </p>
-          <p className="mb-1">{valid.length} have valid IDs ✓</p>
-          {sample}{more}
-        </div>,
-        { duration: 20000 }
-      );
-    }
-    setCheckingPlaceIds(false);
-  }, [leads]);
 
-  const handleCheckDuplicates = useCallback(() => {
-    setCheckingDuplicates(true);
-    const names = new Map<string, { rows: number[]; businessName: string; address: string }[]>();
-    for (const lead of leads) {
-      const key = lead.businessName.toLowerCase().trim();
-      if (!key) continue;
-      const list = names.get(key) || [];
-      list.push({ rows: [lead.rowIndex], businessName: lead.businessName, address: lead.address });
-      names.set(key, list);
-    }
-    const dupes = Array.from(names.values()).filter(l => l.length > 1).sort((a, b) => b.length - a.length);
-    if (dupes.length === 0) {
-      toast.success(`No duplicates found among ${leads.length} leads`);
-    } else {
-      const totalDupes = dupes.reduce((sum, d) => sum + d.length, 0);
-      const msg = dupes.slice(0, 10).map(d =>
-        `• "${d[0].businessName}" (${d.length}x) — rows ${d.map(x => x.rows[0]).join(', ')}`
-      ).join('\n');
-      const count = dupes.length > 10 ? `\n...and ${dupes.length - 10} more` : '';
-      toast(
-        <div className="text-xs max-h-60 overflow-auto whitespace-pre-wrap font-mono">
-          <p className="font-bold mb-1">Found {totalDupes} duplicate rows ({dupes.length} groups){count}</p>
-          {msg}
-        </div>,
-        { duration: 15000 }
-      );
-    }
-    setCheckingDuplicates(false);
-  }, [leads]);
-
-  const handleResetAndRescrape = useCallback(async () => {
-    setResetting(true);
-    try {
-      await resetAllForRescrape();
-      await clearFirestoreLeads();
-      dispatch({ type: 'SET_LEADS', payload: [] });
-      toast.success('AZ Zips reset, Firestore leads cleared. Ready to rescrape.');
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg === 'NEEDS_AUTH') {
-        try {
-          await waitForGis();
-          initTokenClient();
-          await signIn();
-          setResetting(true);
-          await resetAllForRescrape();
-          await clearFirestoreLeads();
-          dispatch({ type: 'SET_LEADS', payload: [] });
-          toast.success('AZ Zips reset, Firestore leads cleared.');
-          return;
-        } catch {
-          toast.error('Failed to connect.');
-        }
-      } else {
-        toast.error('Reset failed: ' + (errMsg || 'unknown'));
-      }
-    } finally {
-      setResetting(false);
-    }
-  }, [dispatch]);
-
-  const handleBackfillPlaceIds = async () => {
-    setBackfilling(true);
-    try {
-      const result = await backfillPlaceIds((msg) => toast(msg));
-      toast.success(`Backfilled ${result.updated} place IDs`);
-      setTimeout(() => importLeadsFromSheets(), 1500);
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg === 'NEEDS_AUTH') {
-        try {
-          await waitForGis();
-          initTokenClient();
-          await signIn();
-          setBackfilling(true);
-          const result = await backfillPlaceIds((msg) => toast(msg));
-          toast.success(`Backfilled ${result.updated} place IDs`);
-          setTimeout(() => importLeadsFromSheets(), 1500);
-          return;
-        } catch {
-          toast.error('Failed to connect. Please try again.');
-        }
-      } else {
-        toast.error('Backfill failed');
-      }
-    } finally {
-      setBackfilling(false);
-    }
-  };
-
-  const handleSyncCategories = async () => {
-    setSyncingCategories(true);
-    try {
-      await syncCategoriesToSheet();
-      toast.success('Categories synced to sheet');
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg === 'NEEDS_AUTH') {
-        try {
-          await waitForGis();
-          initTokenClient();
-          await signIn();
-          await syncCategoriesToSheet();
-          toast.success('Categories synced to sheet');
-          return;
-        } catch {
-          toast.error('Failed to connect. Please try again.');
-        }
-      } else {
-        toast.error('Failed to sync categories. Reconnect Google Sheets first.');
-      }
-    } finally {
-      setSyncingCategories(false);
-    }
-  };
 
   const handleCopyEmail = async (lead: Lead) => {
     const category = getTemplateCategory(lead.type);
@@ -706,73 +549,15 @@ export function LeadsPage() {
           <p className="text-sm text-gray-500">
             {mergedLeads.length} of {leads.length} leads
           </p>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleScrapeLeads}
-              disabled={scraping}
-              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
-              title="Scrape Google Maps for new leads"
-            >
-              <RefreshCw size={14} className={scraping ? 'animate-spin' : ''} />
-              {scraping ? 'Scraping...' : 'Scrape Leads'}
-            </button>
-            <button
-              onClick={handleSyncCategories}
-              disabled={syncingCategories}
-              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={syncingCategories ? 'animate-spin' : ''} />
-              {syncingCategories ? 'Syncing...' : 'Sync Categories'}
-            </button>
-            <button
-              onClick={handleCheckPlaceIds}
-              disabled={checkingPlaceIds}
-              className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={checkingPlaceIds ? 'animate-spin' : ''} />
-              {checkingPlaceIds ? 'Checking...' : 'Check Place IDs'}
-            </button>
-            <button
-              onClick={handleCheckDuplicates}
-              disabled={checkingDuplicates}
-              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={checkingDuplicates ? 'animate-spin' : ''} />
-              {checkingDuplicates ? 'Checking...' : 'Check Duplicates'}
-            </button>
-            <button
-              onClick={handleBackfillPlaceIds}
-              disabled={backfilling}
-              className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={backfilling ? 'animate-spin' : ''} />
-              {backfilling ? 'Backfilling...' : 'Backfill Place IDs'}
-            </button>
-            <button
-              onClick={repairCallLogs}
-              disabled={repairing}
-              className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 disabled:opacity-50"
-            >
-              <Wrench size={14} className={repairing ? 'animate-spin' : ''} />
-              {repairing ? 'Restoring...' : 'Restore Call History'}
-            </button>
-            <button
-              onClick={importLeadsFromSheets}
-               disabled={importingFromSheets}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={importingFromSheets ? 'animate-spin' : ''} />
-              {importingFromSheets ? 'Importing...' : 'Refresh from Sheets'}
-            </button>
-            <button
-              onClick={handleResetAndRescrape}
-              disabled={resetting}
-              className="flex items-center gap-1.5 text-sm text-red-700 hover:text-red-800 disabled:opacity-50 font-semibold"
-            >
-              <RefreshCw size={14} className={resetting ? 'animate-spin' : ''} />
-              {resetting ? 'Resetting...' : 'Reset & Rescrape'}
-            </button>
-          </div>
+          <button
+            onClick={handleScrapeLeads}
+            disabled={scraping}
+            className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+            title="Scrape Google Maps for new leads"
+          >
+            <RefreshCw size={14} className={scraping ? 'animate-spin' : ''} />
+            {scraping ? 'Scraping...' : 'Scrape'}
+          </button>
         </div>
 
         {mergedLeads.length === 0 ? (
