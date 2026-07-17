@@ -297,12 +297,10 @@ export function LeadCard({
         isOpen={showClearData}
         onClose={() => setShowClearData(false)}
         title="Clear Lead Data"
-        message="Delete all call logs and email history for this lead? This cannot be undone."
+        message="Delete all call logs for this lead? Call history cannot be restored. Emails are kept."
         confirmLabel="Clear All"
         onConfirm={() => {
           leadCallLogs.forEach(log => dispatch({ type: 'DELETE_CALL_LOG', payload: log.id }));
-          const emailLogs = emailLogsByLead.get(lk);
-          if (emailLogs) emailLogs.forEach(log => dispatch({ type: 'DELETE_EMAIL_LOG', payload: log.id }));
         }}
       />
     </Card>
