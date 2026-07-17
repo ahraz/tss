@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall, Calendar, ArrowRight } from 'lucide-react';
+import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall, Calendar, ArrowRight, ExternalLink } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek, parseISO, isSameDay } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -380,6 +380,13 @@ export function DashboardPage() {
         </div>
 
         {isOwnerOrPartner ? renderOwnerDashboard() : renderEmployeeDashboard()}
+
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+          <a href="https://gtascrub.com" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-600 transition-colors">
+            gtascrub.com <ExternalLink size={12} />
+          </a>
+        </div>
       </div>
     </AppShell>
   );
