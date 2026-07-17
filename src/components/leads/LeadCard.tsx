@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Star, MapPin, Phone, CheckCircle2, XCircle, RotateCcw,
-  ChevronDown, ExternalLink, User, AlertCircle, FileText, Mail, Copy, Trash2,
+  ChevronDown, ExternalLink, User, AlertCircle, FileText, Mail, Copy, Trash2, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import type { Lead, CallLogEntry, CallOutcome, EmailLog, Quote, QuoteLineItem, CleaningFrequency } from '../../types';
 import { generateId } from '../../utils/storage';
@@ -72,6 +74,64 @@ export function LeadCard({
   const { currentUser, dispatch } = useApp();
   const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
   const [showClearData, setShowClearData] = useState(false);
+  const [showQuickQuote, setShowQuickQuote] = useState(false);
+  const [qqSqft, setQqSqft] = useState(1500);
+  const [qqDays, setQqDays] = useState(6);
+  const [qqGeneratedQuoteId, setQqGeneratedQuoteId] = useState<string | null>(null);
+  const [qqShareUrl, setQqShareUrl] = useState('');
+
+  const freqMult: Record<number, number> = { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 };
+
+  function leadTypeToRate(leadType: string): { rate: number; facility: string } {
+    const t = (leadType || '').toLowerCase();
+    if (t.includes('dental')) return { rate: 0.42, facility: 'Dental Clinic' };
+    if (t.includes('medical') || t.includes('physio') || t.includes('vet')) return { rate: 0.40, facility: 'Medical Clinic' };
+    if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return { rate: 0.30, facility: 'Office' };
+    if (t.includes('retail')) return { rate: 0.28, facility: 'Retail' };
+    if (t.includes('warehouse')) return { rate: 0.20, facility: 'Warehouse' };
+    if (t.includes('restaurant')) return { rate: 0.45, facility: 'Restaurant' };
+    return { rate: 0.30, facility: 'Commercial' };
+  }
+
+  const handleQuickQuote = () => {
+    if (!currentUser) return;
+    setQqSqft(1500);
+    setQqDays(6);
+    setQqGeneratedQuoteId(null);
+    setQqShareUrl('');
+    setShowQuickQuote(true);
+  };
+
+  const handleGenerateQuickQuote = () => {
+    if (!currentUser) return;
+    const { rate, facility } = leadTypeToRate(lead.type);
+    const mul = freqMult[qqDays] || 1.0;
+    const baseMonthly = Math.ceil(qqSqft * rate * mul);
+    const lineItems: QuoteLineItem[] = [
+      { id: generateId(), description: `${facility} cleaning — ${qqSqft} sq ft`, siteId: null, frequency: 'weekly' as CleaningFrequency, amountPerVisit: Math.round(baseMonthly / (qqDays * 4.33)), visitsPerWeek: qqDays, monthlyAmount: baseMonthly },
+    ];
+    const totalMonthly = baseMonthly;
+    const now = new Date().toISOString();
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const quoteId = generateId();
+    const token = Array.from({ length: 20 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 62)]).join('');
+    const shareUrl = `${window.location.origin}/#/quote/${token}`;
+    const addrParts = (lead.address || '').split(',').map(s => s.trim());
+    const q: Quote = {
+      id: quoteId, clientId: null,
+      prospectName: lead.businessName, prospectAddress: addrParts[0] || lead.address,
+      prospectCity: addrParts[1] || '', prospectProvince: addrParts[2]?.slice(0, 2).toUpperCase() || 'ON',
+      prospectPostalCode: addrParts[2]?.match(/[A-Z0-9]{3}\s?[A-Z0-9]{3}/i)?.[0] || '',
+      prospectPhone: lead.phone, lineItems, totalMonthly, status: 'draft',
+      validUntil, shareToken: token,
+      notes: `Quick quote from lead: ${lead.businessName}`.trim(),
+      createdBy: currentUser.id, createdAt: now, updatedAt: now,
+    };
+    dispatch({ type: 'ADD_QUOTE', payload: q });
+    setQqGeneratedQuoteId(quoteId);
+    setQqShareUrl(shareUrl);
+    toast.success('Quote generated');
+  };
 
   const handleCreateQuote = () => {
     if (!currentUser) return;
@@ -226,10 +286,16 @@ export function LeadCard({
               </>
             )}
 
-            <button onClick={handleCreateQuote}
-              className="w-full flex items-center justify-center gap-2 p-2.5 mb-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
-              <FileText size={15} />Create Quote from Lead
-            </button>
+            <div className="flex gap-2 mb-3">
+              <button onClick={handleQuickQuote}
+                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all">
+                <Zap size={15} />Quick Quote
+              </button>
+              <button onClick={handleCreateQuote}
+                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
+                <FileText size={15} />Full Quote
+              </button>
+            </div>
 
             {leadCallLogs.length > 0 && (
               <>
@@ -283,6 +349,55 @@ export function LeadCard({
           </div>
         )}
       </div>
+
+      <Modal isOpen={showQuickQuote} onClose={() => { setShowQuickQuote(false); setQqGeneratedQuoteId(null); }} title="Quick Quote" size="sm">
+        <div className="space-y-5">
+          {!qqGeneratedQuoteId ? (
+            <>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Square Footage</label>
+                <input type="number" value={qqSqft} onChange={e => setQqSqft(Math.max(100, Number(e.target.value)))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500" min={100} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-2">Visits per Week</label>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                    <button key={d} onClick={() => setQqDays(d)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        qqDays === d ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}>{d}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">Estimated monthly</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${(qqSqft * leadTypeToRate(lead.type).rate * (freqMult[qqDays] || 1.0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  <span className="text-sm font-normal text-gray-500">/mo</span>
+                </p>
+              </div>
+              <Button onClick={handleGenerateQuickQuote} className="w-full">Generate Quote & Share</Button>
+            </>
+          ) : (
+            <>
+              <div className="bg-emerald-50 rounded-xl p-4 text-center">
+                <p className="text-sm font-semibold text-emerald-700">Quote generated!</p>
+                <p className="text-xs text-gray-500 mt-1">Share this link with your prospect</p>
+                <div className="mt-3 flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2">
+                  <input type="text" value={qqShareUrl} readOnly
+                    className="flex-1 text-xs text-gray-600 bg-transparent outline-none truncate" />
+                  <button onClick={() => { navigator.clipboard.writeText(qqShareUrl); toast.success('Link copied'); }}
+                    className="p-1.5 text-blue-600 hover:text-blue-700 flex-shrink-0">
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+              <Button onClick={() => navigate(`/quotes/${qqGeneratedQuoteId}`)} className="w-full">Open Quote</Button>
+            </>
+          )}
+        </div>
+      </Modal>
 
       <ConfirmModal
         isOpen={!!deleteLogId}
