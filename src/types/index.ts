@@ -480,8 +480,8 @@ function itemId(): string {
 /** Generate a default template for a given facility type */
 export function createTemplateForFacility(ft: FacilityType, name?: string): Omit<QuoteTemplate, 'id'> & { id?: string } {
   const baseRate: Record<FacilityType, number> = {
-    medical_clinic: 0.40, dental_clinic: 0.42, office: 0.30, retail: 0.28,
-    pharmacy: 0.35, warehouse: 0.20, restaurant: 0.45, other: 0.30,
+    medical_clinic: 0.22, dental_clinic: 0.22, office: 0.12, retail: 0.15,
+    pharmacy: 0.32, warehouse: 0.13, restaurant: 0.30, other: 0.15,
   };
   return {
     id: '',
