@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, TrendingUp, Building2, Clock, CheckCircle2, Plus, Banknote, ClipboardCheck, PhoneCall, Calendar, ArrowRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval, startOfWeek, endOfWeek, parseISO, isSameDay } from 'date-fns';
@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { formatCAD, formatDuration } from '../utils/formatters';
-import { calculateSiteProfit, calculateEmployeePay } from '../utils/calculations';
+import { calculateSiteProfit } from '../utils/calculations';
 
 export function DashboardPage() {
   const { state, currentUser, dispatch } = useApp();

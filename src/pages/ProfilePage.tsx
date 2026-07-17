@@ -19,7 +19,6 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-const PROVINCES = ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
 
 export function ProfilePage() {
   const {

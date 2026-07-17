@@ -123,10 +123,6 @@ export function isSignedIn(): boolean {
 
 // ─── Sheets API Calls ───────────────────────────────────────
 
-interface GapiResponse<T> {
-  result: T;
-}
-
 /**
  * Ensure all header columns (A-O) exist in the Results sheet.
  * Runs once per session.
@@ -300,13 +296,13 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
       }
     );
     const data = await res.json();
-    const reviews = (data.reviews || []).map((r: any) => ({
-      name: r.name || '',
-      rating: r.rating,
-      text: r.text || r.originalText || { text: '', languageCode: 'en' },
+    const reviews = (data.reviews || []).map((r: Record<string, unknown>) => ({
+      name: (r.name as string) || '',
+      rating: r.rating as number,
+      text: (r.text as string) || (r.originalText as { text: string; languageCode: string }) || { text: '', languageCode: 'en' },
       authorAttribution: r.authorAttribution || {},
-      publishTime: r.publishTime || '',
-      relativePublishTimeDescription: r.relativePublishTimeDescription || '',
+      publishTime: (r.publishTime as string) || '',
+      relativePublishTimeDescription: (r.relativePublishTimeDescription as string) || '',
     }));
     return {
       phone: data.internationalPhoneNumber || '',
@@ -317,7 +313,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{ phone: string; webs
 }
 
 async function searchPlaces(query: string): Promise<{ places: PlaceResult[]; total: number }> {
-  const body: any = { textQuery: query, maxResultCount: 20 };
+  const body: Record<string, unknown> = { textQuery: query, maxResultCount: 20 };
   const res = await fetch(
     `${PLACES_API_BASE}:searchText`,
     {
@@ -334,15 +330,15 @@ async function searchPlaces(query: string): Promise<{ places: PlaceResult[]; tot
   console.log('[scraper] results:', data.places?.length || 0, 'error:', data.error?.message || 'none');
   if (!data.places) return { places: [], total: 0 };
   return {
-    places: data.places.map((p: any) => ({
-      id: p.id,
-      name: p.displayName?.text || '',
-      place_id: p.id || '',
-      formatted_address: p.formattedAddress || '',
-      rating: p.rating,
-      userRatingCount: p.userRatingCount || 0,
-      types: p.types || [],
-      location: p.location,
+    places: data.places.map((p: Record<string, unknown>) => ({
+      id: p.id as string,
+      name: ((p.displayName as { text?: string })?.text) || '',
+      place_id: (p.id as string) || '',
+      formatted_address: (p.formattedAddress as string) || '',
+      rating: p.rating as number,
+      userRatingCount: (p.userRatingCount as number) || 0,
+      types: p.types as string[] || [],
+      location: p.location as { latitude: number; longitude: number },
     })),
     total: data.places.length,
   };
@@ -391,7 +387,7 @@ export async function scrapeLeadsFromMaps(
   }
 
   // Scrape
-  let newRows: (string | null)[][] = [];
+  const newRows: (string | null)[][] = [];
   let searched = 0;
   const zipUpdates: { row: number; status: string }[] = [];
 

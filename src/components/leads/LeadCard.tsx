@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Star, MapPin, Phone, CheckCircle2, XCircle, RotateCcw,
-  ChevronDown, ExternalLink, User, AlertCircle, FileText, Mail, Copy,
+  Star, MapPin, Phone, CheckCircle2, XCircle, RotateCcw,
+  ChevronDown, ExternalLink, User, AlertCircle, FileText, Mail, Copy, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
@@ -233,7 +233,7 @@ export function LeadCard({
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
                 <div className="space-y-2">
                   {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
-                    <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5">
+                    <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 relative group">
                       <button onClick={() => onSetEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
                         className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
                           log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
@@ -261,6 +261,10 @@ export function LeadCard({
                         </p>
                         {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
                       </div>
+                      <button onClick={() => dispatch({ type: 'DELETE_CALL_LOG', payload: log.id })}
+                        className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>

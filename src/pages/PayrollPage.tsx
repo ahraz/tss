@@ -17,11 +17,11 @@ import { usePayroll } from '../hooks/usePayroll';
 import { formatCAD } from '../utils/formatters';
 export function PayrollPage() {
   const {
-    state, currentUser,
+    state,
     activeTab, setActiveTab,
     selectedPeriod, setSelectedPeriod,
     reviewEmployee, setReviewEmployee,
-    showPayStub, setShowPayStub,
+    setShowPayStub,
     searchQuery, setSearchQuery,
     isOwnerOrPartner,
     periodLabel, employees, periodShifts,

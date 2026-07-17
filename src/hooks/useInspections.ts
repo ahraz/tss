@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { startCamera, capturePhoto, stopCamera } from '../utils/camera';
 import { compressImage } from '../utils/compressImage';
@@ -16,7 +16,7 @@ export function useInspections() {
 
   // ── Perform inspection state ──
   const [selectedSiteId, setSelectedSiteId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedTemplateId, _setSelectedTemplateId] = useState('');
   const [inspectionItems, setInspectionItems] = useState<InspectionResult[]>([]);
   const [inspectionNotes, setInspectionNotes] = useState('');
 
@@ -73,19 +73,20 @@ export function useInspections() {
     return cats.join(' / ');
   };
 
-  // When template is selected, populate inspection items
-  useEffect(() => {
-    if (!selectedTemplateId) {
+  // Populate inspection items when template is selected
+  const setSelectedTemplateId = useCallback((id: string) => {
+    _setSelectedTemplateId(id);
+    if (id) {
+      const items = availableTemplates.get(id) || [];
+      setInspectionItems(items.map(item => ({
+        itemId: item.id,
+        rating: 'pass' as InspectionRating,
+        notes: '',
+      })));
+    } else {
       setInspectionItems([]);
-      return;
     }
-    const items = availableTemplates.get(selectedTemplateId) || [];
-    setInspectionItems(items.map(item => ({
-      itemId: item.id,
-      rating: 'pass' as InspectionRating,
-      notes: '',
-    })));
-  }, [selectedTemplateId, availableTemplates]);
+  }, [availableTemplates]);
 
   // ── Camera functions ──
   const handleStartCamera = async () => {

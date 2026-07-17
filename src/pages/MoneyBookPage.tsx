@@ -19,14 +19,14 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate } from '../utils/formatters';
-import { calculateEmployeePay, calculateEmployeeHours, getPayPeriodDates } from '../utils/calculations';
+
 import { generateId } from '../utils/storage';
 import { EmployeePayCard } from '../components/payroll/EmployeePayCard';
 import { PayHistory } from '../components/payroll/PayHistory';
 import { PayStubModal } from '../components/payroll/PayStubModal';
 import { usePayroll } from '../hooks/usePayroll';
 import type {
-  Payment, Expense, PayrollRecord,
+  Payment, Expense,
   PaymentMethod, ExpenseCategory,
 } from '../types';
 
@@ -43,9 +43,8 @@ export function MoneyBookPage() {
   const {
     selectedPeriod, setSelectedPeriod,
     reviewEmployee, setReviewEmployee,
-    showPayStub, setShowPayStub,
+    setShowPayStub,
     searchQuery, setSearchQuery,
-    isOwnerOrPartner,
     periodLabel, employees, periodShifts,
     filteredSummaries, totals, historyPeriods,
     handleCalculatePayroll, handleApprove, handleMarkPaid, handleVoidRecord,

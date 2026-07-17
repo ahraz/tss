@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, DollarSign, Receipt, Users, AlertTriangle } from 'lucide-react';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, isWithinInterval, format, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 import { useApp } from '../context/AppContext';
@@ -7,9 +7,8 @@ import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
 import { Badge } from '../components/ui/Badge';
-import { UserAvatar } from '../components/ui/UserAvatar';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
-import { calculateSiteProfit, calculateEmployeeHours, calculateEmployeePay } from '../utils/calculations';
+import { calculateSiteProfit } from '../utils/calculations';
 import { formatCAD } from '../utils/formatters';
 
 export function AnalyticsPage() {
@@ -18,8 +17,6 @@ export function AnalyticsPage() {
   const [period, setPeriod] = useState<'week'|'month'|'lastMonth'|'year'|'custom'>('month');
   const [customStart, setCustomStart] = useState(() => startOfMonth(new Date()).toISOString().split('T')[0]);
   const [customEnd, setCustomEnd] = useState(() => endOfMonth(new Date()).toISOString().split('T')[0]);
-
-  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'partner')) return null;
 
   const dateRange = useMemo(() => {
     const now = new Date();
@@ -75,13 +72,7 @@ export function AnalyticsPage() {
     });
   }, [state, dateRange]);
 
-  // Employee Data
-  const employeeData = state.users.filter(u => u.isActive && u.role !== 'owner').map(user => {
-    const hours = calculateEmployeeHours(user.id, state.shifts, dateRange.start, dateRange.end);
-    const pay = calculateEmployeePay(user.id, state.shifts, user, dateRange.start, dateRange.end);
-    const sitesCovered = new Set(state.shifts.filter(s => s.userId === user.id && s.status === 'completed' && isWithinInterval(new Date(s.clockInTime), dateRange)).map(s => s.siteId)).size;
-    return { user, hours, pay, sitesCovered };
-  }).filter(e => e.hours > 0).sort((a, b) => b.hours - a.hours);
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'partner')) return null;
 
   return (
     <AppShell pageTitle="Analytics">
@@ -91,15 +82,15 @@ export function AnalyticsPage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex overflow-x-auto w-full lg:w-auto bg-gray-100 p-1 rounded-xl">
             {[
-              { id: 'week', label: 'This Week' },
-              { id: 'month', label: 'This Month' },
-              { id: 'lastMonth', label: 'Last Month' },
-              { id: 'year', label: 'This Year' },
-              { id: 'custom', label: 'Custom' },
+              { id: 'week' as const, label: 'This Week' },
+              { id: 'month' as const, label: 'This Month' },
+              { id: 'lastMonth' as const, label: 'Last Month' },
+              { id: 'year' as const, label: 'This Year' },
+              { id: 'custom' as const, label: 'Custom' },
             ].map(p => (
               <button
                 key={p.id}
-                onClick={() => setPeriod(p.id as any)}
+                onClick={() => setPeriod(p.id)}
                 className={`flex-1 lg:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.id ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 {p.label}

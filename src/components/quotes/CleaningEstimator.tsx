@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -28,31 +28,22 @@ export function CleaningEstimator({ isOpen, onClose, onGenerate, templates }: Es
 
   const [sqft, setSqft] = useState(template?.defaultSqft ?? 1500);
   const [days, setDays] = useState(template?.defaultDays ?? 6);
-  const [itemStates, setItemStates] = useState<ItemState[]>([]);
+  const [itemStates, setItemStates] = useState<ItemState[]>(() => {
+    if (!template) return [];
+    return template.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included }));
+  });
   const [activeAddons, setActiveAddons] = useState<string[]>([]);
-
-  // Reset form when template changes
-  const initFromTemplate = (t: QuoteTemplate) => {
-    setSqft(t.defaultSqft);
-    setDays(t.defaultDays);
-    setItemStates(t.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included })));
-    setActiveAddons([]);
-  };
 
   const handleTemplateChange = (id: string) => {
     setSelectedTemplateId(id);
     const t = templates.find(t => t.id === id);
-    if (t) initFromTemplate(t);
-  };
-
-  // Init on first render if template is available
-  const initRef = React.useRef(false);
-  if (!initRef.current && template) {
-    initRef.current = true;
-    if (itemStates.length === 0) {
-      setItemStates(template.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included })));
+    if (t) {
+      setSqft(t.defaultSqft);
+      setDays(t.defaultDays);
+      setItemStates(t.lineItems.map(li => ({ id: li.id, qty: li.defaultQty, included: li.included })));
+      setActiveAddons([]);
     }
-  }
+  };
 
   const fm = template ? (template.frequencyMultipliers[days] ?? 1.0) : 1.0;
 

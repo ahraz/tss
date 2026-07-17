@@ -24,9 +24,6 @@ export function SchedulePage() {
     return map[dayIndex];
   });
 
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
   // All sites scheduled for the selected day
   const daySites = useMemo(() => {
     return state.sites
@@ -53,6 +50,8 @@ export function SchedulePage() {
       employees: new Set(daySites.flatMap(s => s.assignedUserIds)).size,
     };
   }, [daySites]);
+
+  if (!currentUser) return null;
 
   return (
     <AppShell pageTitle="Schedule">

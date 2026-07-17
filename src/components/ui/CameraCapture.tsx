@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { startCamera, capturePhoto, stopCamera, isCameraAvailable } from '../../utils/camera';
+import { startCamera, capturePhoto, stopCamera } from '../../utils/camera';
 import { compressImage } from '../../utils/compressImage';
 
 interface CameraCaptureProps {
@@ -11,31 +11,22 @@ interface CameraCaptureProps {
   onFallbackUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export function CameraCapture({ photo, onPhotoCapture, onRetake, onFallbackUpload }: CameraCaptureProps) {
+export function CameraCapture({ photo, onPhotoCapture, onFallbackUpload }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState(false);
 
-  const initCamera = useCallback(async () => {
-    if (videoRef.current && isCameraAvailable()) {
-      try {
-        const s = await startCamera(videoRef.current);
-        setCameraError(false);
-        return s;
-      } catch {
-        setCameraError(true);
-      }
-    } else {
-      setCameraError(true);
-    }
-  }, []);
-
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    if (!photo) {
-      initCamera().then(s => { if (s) stream = s; });
+    if (!photo && videoRef.current) {
+      startCamera(videoRef.current).then(s => {
+        streamRef.current = s;
+        setCameraError(false);
+      }).catch(() => {
+        setCameraError(true);
+      });
     }
-    return () => { stopCamera(stream); };
-  }, [photo, initCamera]);
+    return () => { stopCamera(streamRef.current); };
+  }, [photo]);
 
   const handleCapture = async () => {
     if (videoRef.current) {

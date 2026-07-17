@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   ClipboardCheck, AlertTriangle, PenSquare, History, ListChecks,
   Plus, Calendar, ChevronDown, User,
@@ -37,14 +37,13 @@ type QualityTab = 'inspections' | 'incidents';
 
 export function QualityPage() {
   const { state, currentUser, dispatch } = useApp();
-  const navigate = useNavigate();
   const [qualityTab, setQualityTab] = useState<QualityTab>('inspections');
 
   const hook = useInspections();
   const {
     activeTab: inspTab, setActiveTab: setInspTab,
     searchQuery, setSearchQuery,
-    isOwnerOrPartner, activeSites, templates, templatesByCategory,
+    activeSites, templates, templatesByCategory,
     availableTemplates, getTemplateLabel,
     selectedSiteId, setSelectedSiteId,
     selectedTemplateId, setSelectedTemplateId,
@@ -203,13 +202,13 @@ export function QualityPage() {
             {/* Inspections sub-tabs */}
             <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto w-fit">
               {[
-                { id: 'perform', icon: PenSquare, label: 'New Inspection' },
-                { id: 'history', icon: History, label: 'History' },
-                { id: 'templates', icon: ListChecks, label: 'Templates' },
+                { id: 'perform' as const, icon: PenSquare, label: 'New Inspection' },
+                { id: 'history' as const, icon: History, label: 'History' },
+                { id: 'templates' as const, icon: ListChecks, label: 'Templates' },
               ].map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setInspTab(tab.id as any)}
+                  onClick={() => setInspTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                     inspTab === tab.id
                       ? 'bg-white text-gray-900 shadow-sm'
@@ -261,7 +260,7 @@ export function QualityPage() {
                 users={state.users}
                 onViewReport={handleViewReport}
                 onSignOff={id => { setSignOffInspectionId(id); setSignOffName(''); }}
-                onNewInspection={() => setInspTab('perform' as any)}
+                onNewInspection={() => setInspTab('perform')}
               />
             )}
             {inspTab === 'templates' && (

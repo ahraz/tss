@@ -43,19 +43,19 @@ export function TasksPage() {
     title: '', description: '', assignedUserId: '', siteId: '', priority: 'medium', dueDate: '',
   });
 
-  if (!currentUser) return null;
-
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+  const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
 
   const filteredTasks = useMemo(() => {
     return state.tasks.filter(t => {
-      if (!isOwnerOrPartner && t.assignedUserId !== currentUser.id) return false;
+      if (!isOwnerOrPartner && t.assignedUserId !== currentUser?.id) return false;
       if (filterAssignee && t.assignedUserId !== filterAssignee) return false;
       if (filterPriority && t.priority !== filterPriority) return false;
       if (filterSite && t.siteId !== filterSite) return false;
       return true;
     });
   }, [state.tasks, isOwnerOrPartner, currentUser, filterAssignee, filterPriority, filterSite]);
+
+  if (!currentUser) return null;
 
   const columns: { id: TaskStatus; title: string; color: string }[] = [
     { id: 'todo', title: 'To Do', color: 'bg-gray-100 text-gray-700' },

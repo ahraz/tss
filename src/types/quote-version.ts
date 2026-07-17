@@ -14,7 +14,7 @@ export function createVersion(
   changedBy: string,
   changeNote?: string
 ): QuoteVersion {
-  const { versions, ...snapshot } = quote;
+  const { versions: _, ...snapshot } = quote; void _;
   return {
     id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     version: (quote.currentVersion || 0) + 1,

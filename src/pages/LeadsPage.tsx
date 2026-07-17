@@ -10,14 +10,13 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/ui/StatCard';
 import { LeadCard } from '../components/leads/LeadCard';
-import { LeadFilters, FILTER_OPTIONS } from '../components/leads/LeadFilters';
+import { LeadFilters } from '../components/leads/LeadFilters';
 import { CallOutcomeModal } from '../components/leads/CallOutcomeModal';
 import type { Lead, CallLogEntry, CallOutcome, EmailLog } from '../types';
 import { generateId } from '../utils/storage';
 import {
   fetchLeadsFromSheet,
   signIn,
-  isSignedIn,
   waitForGis,
   initTokenClient,
   ensureHeaderColumns,
@@ -42,7 +41,6 @@ function getTemplateCategory(leadType: string): string {
 export function LeadsPage() {
   const { state, dispatch, currentUser } = useApp();
   const isOwner = currentUser?.role === 'owner';
-  if (!isOwner) return null;
 
   const leadsFromFirestore = state.leads;
   const hasLeads = leadsFromFirestore.length > 0;
@@ -50,7 +48,7 @@ export function LeadsPage() {
   const [importingFromSheets, setImportingFromSheets] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
 
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const leads = leadsFromFirestore;
   const [searchQuery, setSearchQuery] = useState('');
 
   const [filter, setFilter] = useState<FilterMode>('all');
@@ -76,10 +74,6 @@ export function LeadsPage() {
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
-
-  useEffect(() => {
-    setLeads(leadsFromFirestore);
-  }, [leadsFromFirestore]);
 
   useEffect(() => {
     if (!hasLeads) {
@@ -148,8 +142,8 @@ export function LeadsPage() {
       dispatch({ type: 'SET_LEADS', payload: sheetLeads });
       toast.success(`Imported ${sheetLeads.length} leads`);
       setTimeout(() => repairCallLogs(), 1500);
-    } catch (err: any) {
-      if (err.message === 'NEEDS_AUTH') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'NEEDS_AUTH') {
         try {
           await waitForGis();
           initTokenClient();
@@ -325,13 +319,13 @@ export function LeadsPage() {
         const sheetLeads = await fetchLeadsFromSheet();
         dispatch({ type: 'SET_LEADS', payload: sheetLeads });
         toast.success(`Imported ${sheetLeads.length} leads`);
-      } catch (err2: any) {
-        toast.error(err2.message || 'Failed to import leads');
+      } catch (err2: unknown) {
+        toast.error(err2 instanceof Error ? err2.message : 'Failed to import leads');
       } finally {
         setImportingFromSheets(false);
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to connect');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to connect');
     } finally {
       setAuthInProgress(false);
     }
@@ -361,7 +355,7 @@ export function LeadsPage() {
       setOutcomeLead(null);
       setOutcome('completed');
       setOutcomeNotes('');
-    } catch (err) {
+    } catch {
       toast.error('Failed to save outcome');
     } finally {
       setSavingOutcome(false);
@@ -419,8 +413,9 @@ export function LeadsPage() {
       });
       toast.success(`Scraped ${result.searched} queries — ${result.added} new leads added`);
       setTimeout(() => importLeadsFromSheets(), 1500);
-    } catch (err: any) {
-      if (err.message === 'NEEDS_AUTH') {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'NEEDS_AUTH') {
         try {
           await waitForGis();
           initTokenClient();
@@ -434,7 +429,7 @@ export function LeadsPage() {
           toast.error('Failed to connect. Please try again.');
         }
       } else {
-        toast.error(err.message || 'Scraping failed');
+        toast.error(errMsg || 'Scraping failed');
       }
     } finally {
       setScraping(false);
@@ -503,8 +498,9 @@ export function LeadsPage() {
       await clearFirestoreLeads();
       dispatch({ type: 'SET_LEADS', payload: [] });
       toast.success('AZ Zips reset, Firestore leads cleared. Ready to rescrape.');
-    } catch (err: any) {
-      if (err.message === 'NEEDS_AUTH') {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'NEEDS_AUTH') {
         try {
           await waitForGis();
           initTokenClient();
@@ -519,7 +515,7 @@ export function LeadsPage() {
           toast.error('Failed to connect.');
         }
       } else {
-        toast.error('Reset failed: ' + (err.message || 'unknown'));
+        toast.error('Reset failed: ' + (errMsg || 'unknown'));
       }
     } finally {
       setResetting(false);
@@ -532,8 +528,9 @@ export function LeadsPage() {
       const result = await backfillPlaceIds((msg) => toast(msg));
       toast.success(`Backfilled ${result.updated} place IDs`);
       setTimeout(() => importLeadsFromSheets(), 1500);
-    } catch (err: any) {
-      if (err.message === 'NEEDS_AUTH') {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'NEEDS_AUTH') {
         try {
           await waitForGis();
           initTokenClient();
@@ -559,8 +556,9 @@ export function LeadsPage() {
     try {
       await syncCategoriesToSheet();
       toast.success('Categories synced to sheet');
-    } catch (err: any) {
-      if (err.message === 'NEEDS_AUTH') {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'NEEDS_AUTH') {
         try {
           await waitForGis();
           initTokenClient();
@@ -589,7 +587,7 @@ export function LeadsPage() {
     const rating = lead.rating || 'N/A';
     let reviewsCount = '0';
     if (lead.reviews?.trim().startsWith('[')) {
-      try { reviewsCount = JSON.parse(lead.reviews).length.toString(); } catch {}
+      try { reviewsCount = JSON.parse(lead.reviews).length.toString(); } catch { /* noop */ }
     }
 
     const rendered = template
@@ -623,6 +621,8 @@ export function LeadsPage() {
       setCopyingLeadId(null);
     }
   };
+
+  if (!isOwner) return null;
 
   if (importingFromSheets) {
     return (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Package, Plus, Edit2, Trash2, AlertTriangle, ShoppingCart, Building2, CheckCircle, X } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, AlertTriangle, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -10,7 +10,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { generateId } from '../utils/storage';
-import type { SupplyItem, SupplyCategory, SupplyUnit, SiteInventory } from '../types';
+import type { SupplyItem, SupplyCategory, SupplyUnit } from '../types';
 
 const CATEGORIES: { value: SupplyCategory; label: string }[] = [
   { value: 'paper', label: '🧻 Paper' },
@@ -56,9 +56,6 @@ export function InventoryPage() {
   const [itemForm, setItemForm] = useState({ name: '', category: 'other' as SupplyCategory, unit: 'each' as SupplyUnit, reorderAt: 5, perVisitUsage: 0, notes: '' });
   const [adjustSite, setAdjustSite] = useState<{ siteId: string; itemId: string; qty: number } | null>(null);
 
-  const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
-  if (!isOwner) return null;
-
   const activeSites = state.sites.filter(s => s.status === 'active');
 
   // Low stock items across all sites
@@ -73,6 +70,9 @@ export function InventoryPage() {
     });
     return alerts;
   }, [state.siteInventory, state.supplyItems, state.sites]);
+
+  const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
+  if (!isOwner) return null;
 
   const handleSeedDefaults = () => {
     DEFAULT_SUPPLIES.forEach(s => {

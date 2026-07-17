@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon, Car, Globe, Clock, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Key, Trash2, Phone, DollarSign, Users, ShieldAlert, Award, Briefcase, Lock, Eye, FileText, Star, Calendar, Shirt, AlertTriangle, User as UserIcon, Car, Globe } from 'lucide-react';
 import { startOfWeek, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -11,7 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useTeam } from '../hooks/useTeam';
-import { formatCAD, formatDuration } from '../utils/formatters';
+import { formatCAD } from '../utils/formatters';
 import { getPhoto } from '../utils/photoStore';
 import type { DayOfWeek, User, UserRole } from '../types';
 
@@ -22,7 +22,6 @@ export function TeamPage() {
     showEditModal, setShowEditModal,
     showPinModal, setShowPinModal,
     userToDelete, setUserToDelete,
-    selectedUser,
     addFormData, setAddFormData,
     editFormData, setEditFormData,
     newPin, setNewPin,
@@ -31,28 +30,24 @@ export function TeamPage() {
   } = useTeam();
 
   const [viewedUser, setViewedUser] = useState<User | null>(null);
-  const [docData, setDocData] = useState<Record<string, string>>({});
+  const [loadedDocUrls, setLoadedDocUrls] = useState<Record<string, string>>({});
 
-  // Load document data URLs from Firestore or fall back to IndexedDB
-  // for backward compat with docs stored before the Firestore change.
+  // Load old-style IndexedDB document keys
   useEffect(() => {
-    if (!viewedUser?.documents) { setDocData({}); return; }
-    const entries = Object.entries(viewedUser.documents) as [string, string][];
+    if (!viewedUser?.documents) return;
+    const entries = Object.entries(viewedUser.documents).filter(([, v]) => !v.startsWith('data:'));
+    if (entries.length === 0) return;
+    let cancelled = false;
     const result: Record<string, string> = {};
     let pending = entries.length;
-    if (pending === 0) { setDocData({}); return; }
     for (const [label, value] of entries) {
-      if (value.startsWith('data:')) {
-        result[label] = value;
-        if (--pending === 0) setDocData({ ...result });
-      } else {
-        // Old-style IndexedDB key — try to load it
-        getPhoto(value).then(dataUrl => {
-          if (dataUrl) result[label] = dataUrl;
-          if (--pending === 0) setDocData({ ...result });
-        });
-      }
+      getPhoto(value).then(dataUrl => {
+        if (cancelled) return;
+        if (dataUrl) result[label] = dataUrl;
+        if (--pending === 0) setLoadedDocUrls({ ...result });
+      });
     }
+    return () => { cancelled = true; };
   }, [viewedUser]);
 
   const roleOptions = [
@@ -418,7 +413,7 @@ export function TeamPage() {
                   <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><FileText size={14} /> Documents ({Object.keys(viewedUser.documents).length})</h4>
                   <div className="space-y-3">
                     {Object.entries(viewedUser.documents).map(([label, value]) => {
-                      const dataUrl = docData[label];
+                      const dataUrl = value.startsWith('data:') ? value : loadedDocUrls[label];
                       return (
                         <div key={label} className="bg-gray-50 rounded-lg p-3">
                           <p className="text-sm font-medium text-gray-700 mb-2">{label}</p>

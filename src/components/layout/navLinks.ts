@@ -45,7 +45,7 @@ export const allNavLinks: NavLinkDef[] = [
 ];
 
 /** Filter links for a given user role */
-export function linksForRole(isOwnerOrPartner: boolean, isOwner: boolean, role: string | undefined) {
+export function linksForRole(isOwnerOrPartner: boolean, isOwner: boolean) {
   return allNavLinks.filter((link) => {
     if (!link.roles) return true;
     if (isOwner && link.roles.includes('owner')) return true;
@@ -55,8 +55,8 @@ export function linksForRole(isOwnerOrPartner: boolean, isOwner: boolean, role: 
 }
 
 /** Returns a map of section → links for a given role */
-export function groupedLinks(isOwnerOrPartner: boolean, isOwner: boolean, role: string | undefined) {
-  const links = linksForRole(isOwnerOrPartner, isOwner, role);
+export function groupedLinks(isOwnerOrPartner: boolean, isOwner: boolean) {
+  const links = linksForRole(isOwnerOrPartner, isOwner);
   const grouped = new Map<NavSection, NavLinkDef[]>();
   for (const link of links) {
     if (!grouped.has(link.section)) grouped.set(link.section, []);

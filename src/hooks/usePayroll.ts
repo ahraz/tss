@@ -7,7 +7,7 @@ import { showNotification } from '../services/notificationService';
 import app, { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import type { PayrollRecord, PayPeriod } from '../types';
+import type { PayrollRecord } from '../types';
 
 export type PayrollTab = 'current' | 'history';
 

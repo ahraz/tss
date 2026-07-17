@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, KeySquare, Users, Edit3, Trash2, Plus, Building2, AlertTriangle, Package } from 'lucide-react';
+import { MapPin, Phone, KeySquare, Users, Edit3, Trash2, Plus, Building2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useApp } from '../context/AppContext';
@@ -17,7 +17,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate, formatTime } from '../utils/formatters';
 import { calculateSiteProfit } from '../utils/calculations';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek, SupplyItem, SupplyCategory, SupplyUnit } from '../types';
+import type { Site, SiteType, CleaningFrequency, DayOfWeek, SupplyItem, SupplyCategory, SupplyUnit, SiteStatus } from '../types';
 
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -448,15 +448,15 @@ export function SiteDetailPage() {
         {/* Tabs */}
         <div className="flex overflow-x-auto border-b border-gray-200">
           {[
-            { id: 'info', label: 'Information' },
-            { id: 'shifts', label: 'Recent Shifts' },
-            { id: 'checklist', label: 'Checklist' },
-            ...(isOwnerOrPartner ? [{ id: 'inventory', label: 'Inventory' }] : []),
-            ...(isOwnerOrPartner ? [{ id: 'finances', label: 'Finances' }] : []),
+            { id: 'info' as const, label: 'Information' },
+            { id: 'shifts' as const, label: 'Recent Shifts' },
+            { id: 'checklist' as const, label: 'Checklist' },
+            ...(isOwnerOrPartner ? [{ id: 'inventory' as const, label: 'Inventory' }] : []),
+            ...(isOwnerOrPartner ? [{ id: 'finances' as const, label: 'Finances' }] : []),
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab.id 
                   ? 'border-blue-600 text-blue-600' 
@@ -560,7 +560,7 @@ export function SiteDetailPage() {
             <Input label="Schedule End" type="time" value={formData.scheduleEnd || ''} onChange={e => setFormData({...formData, scheduleEnd: e.target.value})} />
           </div>
 
-          <Select label="Status" options={['active','paused','cancelled'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value as any})} />
+          <Select label="Status" options={['active','paused','cancelled'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value as SiteStatus})} />
 
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Cleaning Days</label>

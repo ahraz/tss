@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, DollarSign, Phone, User, Edit3, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, User, Edit3, Trash2, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -11,9 +11,9 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { formatCAD, formatDate } from '../utils/formatters';
+import { formatCAD } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek, SiteStatus } from '../types';
+import type { Client, Site, SiteType, CleaningFrequency, SiteStatus } from '../types';
 
 type TabType = 'overview' | 'sites' | 'finances';
 
@@ -27,22 +27,7 @@ export function ClientDetailPage() {
   const [showAddSiteModal, setShowAddSiteModal] = useState(false);
 
   const client = state.clients.find(c => c.id === id);
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
-  if (!client) {
-    return (
-      <AppShell pageTitle="Client Not Found">
-        <div className="page-container flex flex-col items-center justify-center gap-4 py-20">
-          <Building2 size={48} className="text-gray-300" />
-          <p className="text-gray-500">Client not found</p>
-          <Button onClick={() => navigate('/clients')}>Back to Clients</Button>
-        </div>
-      </AppShell>
-    );
-  }
-
-  const subSites = state.sites.filter(s => s.clientId === client.id);
+  const subSites = state.sites.filter(s => s.clientId === client?.id);
   const siteIds = subSites.map(s => s.id);
 
   // Financials
@@ -54,7 +39,7 @@ export function ClientDetailPage() {
   const totalDue = clientPayments.filter(p => !p.isPaid).reduce((sum, p) => sum + p.amount, 0);
 
   // Edit form
-  const [editForm, setEditForm] = useState({ ...client });
+  const [editForm, setEditForm] = useState(client ? { ...client } : {} as Client);
 
   const handleEdit = () => {
     dispatch({ type: 'UPDATE_CLIENT', payload: { ...editForm } });
@@ -62,18 +47,33 @@ export function ClientDetailPage() {
   };
 
   const handleDelete = () => {
+    if (!client) return;
     dispatch({ type: 'DELETE_CLIENT', payload: client.id });
     navigate('/clients');
   };
 
   // Add sub-site
   const [siteForm, setSiteForm] = useState<Partial<Site>>({
-    name: '', address: client.address, city: client.city, province: client.province,
-    postalCode: client.postalCode, type: 'clinic', contactName: client.contactName,
-    contactPhone: client.contactPhone, contractRate: 0, frequency: 'weekly',
+    name: '', address: client?.address || '', city: client?.city || '', province: client?.province || '',
+    postalCode: client?.postalCode || '', type: 'clinic', contactName: client?.contactName || '',
+    contactPhone: client?.contactPhone || '', contractRate: 0, frequency: 'weekly',
     cleaningDays: [], assignedUserIds: [], accessNotes: '', status: 'active',
     scheduleStart: '', scheduleEnd: '',
   });
+
+  if (!currentUser) return null;
+  if (!client) {
+    return (
+      <AppShell pageTitle="Client Not Found">
+        <div className="page-container flex flex-col items-center justify-center gap-4 py-20">
+          <Building2 size={48} className="text-gray-300" />
+          <p className="text-gray-500">Client not found</p>
+          <Button onClick={() => navigate('/clients')}>Back to Clients</Button>
+        </div>
+      </AppShell>
+    );
+  }
+  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
   const handleAddSite = () => {
     const newSite: Site = {
@@ -87,8 +87,6 @@ export function ClientDetailPage() {
     dispatch({ type: 'ADD_SITE', payload: newSite });
     setShowAddSiteModal(false);
   };
-
-  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
     <AppShell pageTitle={client.name}>

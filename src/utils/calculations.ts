@@ -2,7 +2,7 @@
 // GTA Scrub — Business Calculations
 // ============================================================
 
-import { isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, previousSunday, nextSaturday, isSunday } from 'date-fns';
+import { isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, previousSunday, isSunday } from 'date-fns';
 import type { Shift, User, Payment, Expense } from '../types';
 
 /**

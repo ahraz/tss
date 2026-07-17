@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Camera, Coffee, AlertTriangle, ShoppingCart, Clock as ClockIcon } from 'lucide-react';
+import { CheckSquare, Coffee, AlertTriangle, ShoppingCart, Clock as ClockIcon } from 'lucide-react';
 
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -8,7 +8,6 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
 import { CameraCapture } from '../components/ui/CameraCapture';
 import { useClock } from '../hooks/useClock';
 import { formatDuration, formatCAD } from '../utils/formatters';
@@ -20,7 +19,7 @@ export function ClockPage() {
     state, currentUser,
     activeShift,
     selectedSiteId, setSelectedSiteId,
-    photo, setPhoto,
+    photo,
     elapsed, checklist, notes, setNotes,
     showSummary, setShowSummary,
     summaryData,
@@ -29,7 +28,7 @@ export function ClockPage() {
     handleClockIn, handleClockOut, toggleChecklist,
     formatElapsed,
     // New superpowers
-    onBreak, workSeconds, breakTotalSeconds, formatWorkElapsed, handleStartBreak, handleEndBreak,
+    onBreak, breakTotalSeconds, formatWorkElapsed, handleStartBreak, handleEndBreak,
     showSupplyModal, setShowSupplyModal,
     supplyDescription, setSupplyDescription,
     handleReportSupplyIssue,

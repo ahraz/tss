@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, MapPin, DollarSign, Search, Users } from 'lucide-react';
+import { Plus, Building2, MapPin, DollarSign, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -30,9 +30,6 @@ export function ClientsPage() {
     status: 'active' as SiteStatus, notes: '',
   });
 
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
   const filteredClients = useMemo(() => {
     return state.clients.filter(client => {
       if (statusFilter !== 'all' && client.status !== statusFilter) return false;
@@ -46,6 +43,9 @@ export function ClientsPage() {
       return true;
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [state.clients, statusFilter, searchQuery]);
+
+  if (!currentUser) return null;
+  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
   const getSubSiteCount = (clientId: string) =>
     state.sites.filter(s => s.clientId === clientId).length;

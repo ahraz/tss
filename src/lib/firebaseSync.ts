@@ -19,26 +19,26 @@ import type {
  * Shared helper to convert a Firestore snapshot into a typed object,
  * preferring the `id` field from the document data over the snapshot key.
  */
-function docToObj<T extends { id?: string }>(snap: { id: string; data(): Record<string, any> }): T {
+function docToObj<T extends { id?: string }>(snap: { id: string; data(): Record<string, unknown> }): T {
   const data = snap.data();
   return { ...data, id: data?.id ?? snap.id } as T;
 }
-export function sanitizeForFirestore<T>(val: T): any {
+export function sanitizeForFirestore<T>(val: T): T {
   if (val === undefined || val === null) {
-    return null;
+    return null as unknown as T;
   }
   if (Array.isArray(val)) {
-    return val.map(sanitizeForFirestore);
+    return val.map(sanitizeForFirestore) as unknown as T;
   }
   if (typeof val === 'object') {
-    const res: any = {};
+    const res: Record<string, unknown> = {};
     for (const key in val) {
       if (Object.prototype.hasOwnProperty.call(val, key)) {
         // Convert undefined to null so Firestore keeps/clears the field
-        res[key] = sanitizeForFirestore(val[key]);
+        res[key] = sanitizeForFirestore((val as Record<string, unknown>)[key]);
       }
     }
-    return res;
+    return res as unknown as T;
   }
   return val;
 }
@@ -517,6 +517,9 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
       case 'UPDATE_CALL_LOG':
         await setDoc(doc(db, 'callLogs', action.payload.id), sanitizeForFirestore(action.payload), { merge: true });
         break;
+      case 'DELETE_CALL_LOG':
+        await deleteDoc(doc(db, 'callLogs', action.payload));
+        break;
 
       // Email Logs
       case 'ADD_EMAIL_LOG':
@@ -554,7 +557,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         break;
 
       // Leads — upsert from Sheets import (preserve existing doc IDs so call logs survive)
-      case 'SET_LEADS':
+      case 'SET_LEADS': {
         const leadsBatch = writeBatch(db);
         const existingSnap = await getDocs(collection(db, 'leads'));
         const existingByRow = new Map<string, string>();
@@ -565,16 +568,15 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
           if (data.placeId && data.placeId.startsWith('ChIJ')) existingByPlaceId.set(data.placeId, d.id);
         }
         for (const lead of action.payload) {
-          let existingDocId = existingByRow.get(String(lead.rowIndex));
-          if (!existingDocId && lead.placeId?.startsWith('ChIJ')) {
-            existingDocId = existingByPlaceId.get(lead.placeId);
-          }
+          let existingDocId = lead.placeId?.startsWith('ChIJ') ? existingByPlaceId.get(lead.placeId) : undefined;
+          if (!existingDocId) existingDocId = existingByRow.get(String(lead.rowIndex));
           const docId = existingDocId || lead.placeId || lead.rowIndex.toString();
           const docRef = doc(db, 'leads', docId);
           leadsBatch.set(docRef, sanitizeForFirestore(lead), { merge: true });
         }
         await leadsBatch.commit();
         break;
+      }
 
       case 'UPDATE_LEAD_EMAIL':
         if (!action.payload.leadId) return;
@@ -645,7 +647,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         await setDoc(doc(db, 'settings', 'current'), sanitizeForFirestore(action.payload.settings));
         break;
 
-      case 'CLEAR_ALL_DATA':
+      case 'CLEAR_ALL_DATA': {
         const collectionsToClear = ['users', 'sites', 'shifts', 'payments', 'expenses', 'payroll', 'tasks', 'clients', 'quotes', 'supplyItems', 'siteInventory', 'inspections', 'inspectionTemplates', 'incidentReports', 'callLogs', 'leads', 'quoteTemplates', 'sharedContracts'];
         for (const colName of collectionsToClear) {
           const snap = await getDocs(collection(db, colName));
@@ -655,6 +657,7 @@ export async function syncActionToFirestore(action: AppAction, currentSettings?:
         }
         await deleteDoc(doc(db, 'settings', 'current'));
         break;
+      }
 
       default:
         break;

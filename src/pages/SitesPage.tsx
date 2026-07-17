@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, DollarSign, Calendar, Search, Building2, Layers, Edit2, Trash2, UserPlus } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Calendar, Building2, Layers, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -15,7 +15,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { formatCAD, formatDate } from '../utils/formatters';
 import { generateId } from '../utils/storage';
-import type { Site, SiteType, CleaningFrequency, DayOfWeek, SiteStatus } from '../types';
+import type { Site, SiteType, CleaningFrequency, DayOfWeek, SiteStatus, User, Client } from '../types';
 
 export function SitesPage() {
   const { state, currentUser, dispatch } = useApp();
@@ -49,10 +49,10 @@ export function SitesPage() {
     status: 'active' as SiteStatus, notes: '',
   });
 
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+  const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
 
   const filteredSites = useMemo(() => {
+    if (!currentUser) return [];
     return state.sites.filter(site => {
       if (activeTab !== 'all' && site.status !== activeTab) return false;
       if (searchQuery) {
@@ -118,15 +118,17 @@ export function SitesPage() {
 
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  if (!currentUser) return null;
+
   return (
     <AppShell pageTitle="Sites">
       <div className="page-container flex flex-col gap-6">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
           <div className="flex overflow-x-auto w-full md:w-auto bg-gray-100 p-1 rounded-xl">
-            {['all', 'active', 'paused', 'cancelled'].map(tab => (
+            {(['all', 'active', 'paused', 'cancelled'] as const).map(tab => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab as any)}
+                onClick={() => setActiveTab(tab)}
                 className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${activeTab === tab ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 {tab}
@@ -182,7 +184,6 @@ export function SitesPage() {
           <AreaView
             sites={filteredSites}
             navigate={navigate}
-            formatCAD={formatCAD}
             state={state}
           />
         ) : filteredSites.length === 0 ? (
@@ -369,7 +370,7 @@ export function SitesPage() {
               <Input label="Schedule End" type="time" value={editFormData.scheduleEnd || ''} onChange={e => setEditFormData({...editFormData, scheduleEnd: e.target.value})} />
             </div>
 
-            <Select label="Status" options={['active','paused','cancelled'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={editFormData.status || ''} onChange={e => setEditFormData({...editFormData, status: e.target.value as any})} />
+            <Select label="Status" options={['active','paused','cancelled'].map(t => ({value: t, label: t.charAt(0).toUpperCase() + t.slice(1)}))} value={editFormData.status || ''} onChange={e => setEditFormData({...editFormData, status: e.target.value as SiteStatus})} />
 
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-2">Cleaning Days</label>
@@ -472,11 +473,10 @@ export function SitesPage() {
 }
 
 // ─── Area View ────────────────────────────────────────────────
-function AreaView({ sites, navigate, formatCAD, state }: {
+function AreaView({ sites, navigate, state }: {
   sites: Site[];
   navigate: ReturnType<typeof useNavigate>;
-  formatCAD: (n: number) => string;
-  state: { users: any[]; clients: any[] };
+  state: { users: User[]; clients: Client[] };
 }) {
   const grouped = useMemo(() => {
     const map = new Map<string, Site[]>();
@@ -503,7 +503,7 @@ function AreaView({ sites, navigate, formatCAD, state }: {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {areaSites.map(site => {
-              const client = site.clientId ? state.clients.find((c: any) => c.id === site.clientId) : null;
+              const client = site.clientId ? state.clients.find((c: Client) => c.id === site.clientId) : null;
               return (
                 <Card key={site.id} className="cursor-pointer hover:shadow-md transition-shadow border border-gray-150"
                   onClick={() => navigate(`/sites/${site.id}`)}>

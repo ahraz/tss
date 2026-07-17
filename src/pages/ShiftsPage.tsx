@@ -39,11 +39,7 @@ export function ShiftsPage() {
 
   // Load photos from IndexedDB when a shift is selected
   useEffect(() => {
-    if (!selectedShift) {
-      setClockInPhoto(null);
-      setClockOutPhoto(null);
-      return;
-    }
+    if (!selectedShift) return;
     let cancelled = false;
     Promise.all([
       getPhoto(`shift:${selectedShift.id}:in`),
@@ -57,11 +53,10 @@ export function ShiftsPage() {
     return () => { cancelled = true; };
   }, [selectedShift]);
 
-  if (!currentUser) return null;
-
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+  const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
 
   const filteredShifts = useMemo(() => {
+    if (!currentUser) return [];
     return state.shifts
       .filter(s => {
         // Role filter
@@ -83,7 +78,7 @@ export function ShiftsPage() {
         return true;
       })
       .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime());
-  }, [state.shifts, isOwnerOrPartner, currentUser.id, startDate, endDate, siteFilter, employeeFilter, statusFilter]);
+  }, [state.shifts, isOwnerOrPartner, currentUser?.id, startDate, endDate, siteFilter, employeeFilter, statusFilter]);
 
   const totalHours = filteredShifts.reduce((acc, s) => acc + (s.durationMinutes || 0) / 60, 0);
 
@@ -139,6 +134,8 @@ export function ShiftsPage() {
       setDeleteShiftId(null);
     }
   };
+
+  if (!currentUser) return null;
 
   const siteOptions = state.sites.map(s => ({ value: s.id, label: s.name }));
   const employeeOptions = state.users.map(u => ({ value: u.id, label: u.name }));

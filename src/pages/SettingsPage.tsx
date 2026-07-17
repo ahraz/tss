@@ -137,7 +137,7 @@ export function SettingsPage() {
         } else {
           toast.error('Invalid backup file format');
         }
-      } catch (err) {
+      } catch {
         toast.error('Failed to parse backup file');
       }
     };

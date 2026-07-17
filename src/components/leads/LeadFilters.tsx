@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Search } from 'lucide-react';
 import type { FilterMode } from '../../pages/LeadsPage';
 

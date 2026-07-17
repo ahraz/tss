@@ -1,6 +1,6 @@
 import React, { useState, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Bookmark, Clock, Share2, Copy } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Trash2, Printer, Send, CheckCircle, XCircle, Download, Calculator, Bookmark, Clock, Share2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -64,7 +64,6 @@ export function QuoteDetailPage() {
   const signedContract = state.sharedContracts.find(
     c => c.quoteId === id && c.status === 'signed'
   );
-  const clientForSigned = signedContract ? state.clients.find(c => c.name === quote?.prospectName) : null;
   if (!currentUser) return null;
   const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
@@ -82,7 +81,7 @@ export function QuoteDetailPage() {
     if (!quote.shareToken) {
       dispatch({ type: 'UPDATE_QUOTE', payload: {
         ...quote, shareToken: token, updatedAt: new Date().toISOString()
-      } as any });
+      } });
     }
 
     navigator.clipboard.writeText(shareUrl).then(() => {

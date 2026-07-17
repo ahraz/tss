@@ -13,8 +13,7 @@ export function BottomNav() {
 
   const links = linksForRole(
     currentUser.role === 'owner' || currentUser.role === 'partner',
-    currentUser.role === 'owner',
-    currentUser.role
+    currentUser.role === 'owner'
   );
 
   const bottomBarLinks = links.filter(l => l.mobileBar || l.to === '/');

@@ -17,12 +17,13 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
 const DEFAULT_SLOT: AvailabilitySlot = { start: '09:00', end: '17:00' };
 
 export function useProfile() {
-  const { state, currentUser, dispatch } = useApp();
+  const { currentUser, dispatch } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [photoLoading, setPhotoLoading] = useState(true);
+  const [optimisticPhotoUrl, setOptimisticPhotoUrl] = useState<string | undefined>(undefined);
+  const profilePhoto = optimisticPhotoUrl !== undefined ? optimisticPhotoUrl : (currentUser?.photoData ?? null);
+  const photoLoading = false;
   const [docLabel, setDocLabel] = useState('');
 
   const isOwnerOrPartner = currentUser?.role === 'owner' || currentUser?.role === 'partner';
@@ -84,18 +85,14 @@ export function useProfile() {
     setDocuments(currentUser.documents || {});
   }, [currentUser]);
 
-  // Profile photo data is stored directly in Firestore (photoData field)
-  // so it works cross-browser without needing Firebase Storage.
-  useEffect(() => {
-    if (!currentUser?.photoData) { setPhotoLoading(false); return; }
-    setProfilePhoto(currentUser.photoData);
-    setPhotoLoading(false);
-  }, [currentUser?.photoData]);
+  // Profile photo is derived from currentUser + optimistic state.
+  // The optimisticPhotoUrl covers the gap between user action and Firestore sync.
+  // When Firestore syncs, currentUser.photoData is updated and matches the optimistic value.
 
   const handlePhotoUpload = useCallback(async (dataUrl: string) => {
     if (!currentUser) return;
     const compressed = await compressImage(dataUrl, 600, 0.8).catch(() => dataUrl);
-    setProfilePhoto(compressed); // show preview immediately
+    setOptimisticPhotoUrl(compressed); // show preview immediately
 
     // Save photo data directly in Firestore (free Spark plan).
     // The onSnapshot listener picks this up and updates state in all browsers.
@@ -119,7 +116,7 @@ export function useProfile() {
 
   const handleRemovePhoto = async () => {
     if (!currentUser) return;
-    setProfilePhoto(null);
+    setOptimisticPhotoUrl(undefined);
     try {
       await removeProfilePhoto(currentUser.id);
       toast.success('Photo removed');
@@ -187,7 +184,8 @@ export function useProfile() {
     // Photo is managed by saveProfilePhoto() directly — including it here
     // would nullify it if the Firestore onSnapshot hasn't synced the new
     // photoData into currentUser yet (race condition).
-    const { photoData: _, ...userForSave } = currentUser;
+    const { photoData, ...userForSave } = currentUser;
+    void photoData;
 
     dispatch({
       type: 'UPDATE_USER',

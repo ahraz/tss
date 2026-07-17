@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { QuoteVersion } from './quote-version';
-import type { AppNotification, NotificationType } from './notification';
+import type { AppNotification } from './notification';
 
 // --- Enums & Literal Types ---
 
@@ -681,6 +681,7 @@ export type AppAction =
   | { type: 'SET_CALL_LOGS'; payload: CallLogEntry[] }
   | { type: 'ADD_CALL_LOG'; payload: CallLogEntry }
   | { type: 'UPDATE_CALL_LOG'; payload: CallLogEntry }
+  | { type: 'DELETE_CALL_LOG'; payload: string }
   // Email Logs
   | { type: 'SET_EMAIL_LOGS'; payload: EmailLog[] }
   | { type: 'ADD_EMAIL_LOG'; payload: EmailLog }

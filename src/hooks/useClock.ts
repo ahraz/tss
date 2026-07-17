@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { useActiveShift } from './useActiveShift';
@@ -7,15 +7,23 @@ import { compressImage } from '../utils/compressImage';
 import { generateId } from '../utils/storage';
 import type { ChecklistCompletion } from '../types';
 
+interface SummaryData {
+  siteName: string | undefined;
+  duration: number;
+  earnings: number;
+  tasks: number;
+  totalTasks: number;
+}
+
 export function useClock() {
   const { state, dispatch, currentUser } = useApp();
   const activeShift = useActiveShift();
   const [photo, setPhoto] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [checklist, setChecklist] = useState<ChecklistCompletion[]>([]);
+  const [completedOverrides, setCompletedOverrides] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState('');
   const [showSummary, setShowSummary] = useState(false);
-  const [summaryData, setSummaryData] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
   // Break tracking
   const [breakStart, setBreakStart] = useState<Date | null>(null);
@@ -39,22 +47,23 @@ export function useClock() {
   }, [onBreak, breakStart]);
 
   useEffect(() => {
-    if (activeShift) {
-      const interval = setInterval(() => {
-        const totalSeconds = Math.floor((new Date().getTime() - new Date(activeShift.clockInTime).getTime()) / 1000);
-        setElapsed(totalSeconds);
-      }, 1000);
+    if (!activeShift) return;
+    const interval = setInterval(() => {
+      const totalSeconds = Math.floor((new Date().getTime() - new Date(activeShift.clockInTime).getTime()) / 1000);
+      setElapsed(totalSeconds);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeShift]);
 
-      if (checklist.length === 0) {
-        const site = state.sites.find(s => s.id === activeShift.siteId);
-        if (site) {
-          setChecklist(site.checklist.map(i => ({ itemId: i.id, completed: false })));
-        }
-      }
-
-      return () => clearInterval(interval);
-    }
-  }, [activeShift, state.sites]);
+  const checklist: ChecklistCompletion[] = useMemo(() => {
+    if (!activeShift) return [];
+    const site = state.sites.find(s => s.id === activeShift.siteId);
+    if (!site) return [];
+    return site.checklist.map(i => ({
+      itemId: i.id,
+      completed: i.id in completedOverrides ? completedOverrides[i.id] : false,
+    }));
+  }, [activeShift, state.sites, completedOverrides]);
 
   const handleCapture = (dataUrl: string) => {
     setPhoto(dataUrl);
@@ -140,13 +149,16 @@ export function useClock() {
     });
 
     setPhoto(null);
-    setChecklist([]);
+    setCompletedOverrides({});
     setNotes('');
     setShowSummary(true);
   };
 
   const toggleChecklist = (itemId: string) => {
-    setChecklist(prev => prev.map(c => c.itemId === itemId ? { ...c, completed: !c.completed } : c));
+    setCompletedOverrides(prev => ({
+      ...prev,
+      [itemId]: !(itemId in prev ? prev[itemId] : false),
+    }));
   };
 
   // ─── Break Controls ───────────────────────────────────────
@@ -181,7 +193,7 @@ export function useClock() {
       status: 'todo' as const,
       dueDate: null,
       isRecurring: false,
-      recurringFrequency: null as any,
+      recurringFrequency: null,
       completedAt: null,
       createdAt: new Date().toISOString(),
     };

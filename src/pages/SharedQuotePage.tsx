@@ -17,15 +17,15 @@ export function SharedQuotePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) { setError('Invalid link'); setLoading(false); return; }
+    if (!token) return;
+    const tokenVal = token;
 
     async function load() {
       try {
-        const q = query(collection(db, 'quotes'), where('shareToken', '==', token));
+        const q = query(collection(db, 'quotes'), where('shareToken', '==', tokenVal));
         const snap = await getDocs(q);
         if (snap.empty) {
-          if (!token) { setError('Invalid link'); setLoading(false); return; }
-          const contractSnap = await getDoc(doc(db, 'sharedContracts', token as string));
+          const contractSnap = await getDoc(doc(db, 'sharedContracts', tokenVal));
           if (contractSnap.exists()) {
             const data = contractSnap.data();
             setQuote({
@@ -67,7 +67,9 @@ export function SharedQuotePage() {
         };
         try {
           await setDoc(doc(db, 'quoteViews', view.id), sanitizeForFirestore(view));
-        } catch {}
+        } catch {
+          /* noop */
+        }
 
         setLoading(false);
       } catch {
@@ -95,7 +97,9 @@ export function SharedQuotePage() {
           status: 'accepted',
           acceptedAt: new Date().toISOString(),
         }, { merge: true });
-      } catch {}
+      } catch {
+        /* noop */
+      }
 
       setAccepted(true);
       toast.success('Quote accepted! GTA Scrub will be in touch.');
@@ -103,6 +107,18 @@ export function SharedQuotePage() {
       toast.error('Failed to accept. Please try again.');
     }
   };
+
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <Building2 size={48} className="mx-auto mb-4 text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Quote Unavailable</h2>
+          <p className="text-sm text-gray-500">Invalid link</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

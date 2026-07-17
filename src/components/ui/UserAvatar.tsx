@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { getPhoto } from '../../utils/photoStore';
 
@@ -18,30 +18,24 @@ const sizeClasses: Record<AvatarSize, string> = {
 };
 
 export function UserAvatar({ user, size = 'md', className }: UserAvatarProps) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [asyncPhotoUrl, setAsyncPhotoUrl] = useState<string | null>(null);
+
+  const syncPhotoUrl = useMemo(() => {
+    if (user?.photoData) return user.photoData;
+    if (user?.photoId?.startsWith('http')) return user.photoId;
+    return null;
+  }, [user?.photoData, user?.photoId]);
 
   useEffect(() => {
-    if (user?.photoData) {
-      // New: photo data stored directly in Firestore (cross-browser)
-      setPhotoUrl(user.photoData);
-      setLoaded(true);
-    } else if (user?.photoId) {
-      // Legacy: photoId can be a Firebase Storage URL (http) or IndexedDB key
-      if (user.photoId.startsWith('http')) {
-        setPhotoUrl(user.photoId);
-        setLoaded(true);
-      } else {
-        getPhoto(user.photoId).then(url => {
-          setPhotoUrl(url);
-          setLoaded(true);
-        });
-      }
-    } else {
-      setPhotoUrl(null);
-      setLoaded(true);
+    if (syncPhotoUrl) return;
+    if (user?.photoId && !user.photoId.startsWith('http')) {
+      getPhoto(user.photoId).then(url => {
+        setAsyncPhotoUrl(url);
+      });
     }
-  }, [user?.photoData, user?.photoId]);
+  }, [syncPhotoUrl, user?.photoId]);
+
+  const photoUrl = syncPhotoUrl || asyncPhotoUrl;
 
   if (!user) return null;
 

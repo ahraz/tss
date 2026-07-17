@@ -15,12 +15,6 @@ export function Sidebar() {
   const { currentUser, dispatch } = useApp();
   const navigate = useNavigate();
 
-  if (!currentUser) return null;
-
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-  const isOwner = currentUser.role === 'owner';
-  const groups = groupedLinks(isOwnerOrPartner, isOwner, currentUser.role);
-
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });
     navigate('/login');
@@ -36,6 +30,12 @@ export function Sidebar() {
     if (isUserMenuOpen) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isUserMenuOpen]);
+
+  if (!currentUser) return null;
+
+  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
+  const isOwner = currentUser.role === 'owner';
+  const groups = groupedLinks(isOwnerOrPartner, isOwner);
 
   const showSettings = isOwner;
 

@@ -17,7 +17,7 @@ import { TemplateModal } from '../components/inspections/TemplateModal';
 type PageTab = 'perform' | 'history' | 'templates';
 
 export function InspectionsPage() {
-  const { state, currentUser } = useApp();
+  const { state } = useApp();
   const navigate = useNavigate();
   const hook = useInspections();
   const {

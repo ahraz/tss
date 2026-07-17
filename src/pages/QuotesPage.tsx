@@ -38,9 +38,6 @@ export function QuotesPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  if (!currentUser) return null;
-  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
-
   const filteredQuotes = useMemo(() => {
     return state.quotes.filter(q => {
       if (statusFilter !== 'all' && q.status !== statusFilter) return false;
@@ -53,6 +50,9 @@ export function QuotesPage() {
       return true;
     }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [state.quotes, statusFilter, searchQuery]);
+
+  if (!currentUser) return null;
+  const isOwnerOrPartner = currentUser.role === 'owner' || currentUser.role === 'partner';
 
   const handleCreateQuote = () => {
     const result = validateQuoteForm(formData);

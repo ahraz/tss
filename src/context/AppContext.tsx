@@ -210,6 +210,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, callLogs: [...state.callLogs, action.payload] };
     case 'UPDATE_CALL_LOG':
       return { ...state, callLogs: state.callLogs.map(c => c.id === action.payload.id ? action.payload : c) };
+    case 'DELETE_CALL_LOG':
+      return { ...state, callLogs: state.callLogs.filter(c => c.id !== action.payload) };
 
     // Email Logs
     case 'SET_EMAIL_LOGS':
@@ -283,7 +285,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Ref to always hold the latest settings (avoid stale closure in customDispatch)
   const settingsRef = React.useRef(state.settings);
-  settingsRef.current = state.settings;
+  useEffect(() => {
+    settingsRef.current = state.settings;
+  }, [state.settings]);
 
   // Memoized custom dispatch that intercepts modifying actions and sends them to Firestore
   const customDispatch = React.useCallback(
@@ -405,6 +409,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Hook ───────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp(): AppContextValue {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');

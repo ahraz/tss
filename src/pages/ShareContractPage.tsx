@@ -32,10 +32,7 @@ export function ShareContractPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setPageState('notfound');
-      return;
-    }
+    if (!token) return;
 
     const loadContract = async () => {
       try {

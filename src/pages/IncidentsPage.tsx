@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Plus, Building2, User, Calendar, Search, ChevronDown, Flag, FileText } from 'lucide-react';
+import { AlertTriangle, Plus, User, Calendar, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
@@ -11,7 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { generateId } from '../utils/storage';
-import { putPhoto, getPhoto } from '../utils/photoStore';
+import { putPhoto } from '../utils/photoStore';
 import { compressImage } from '../utils/compressImage';
 import type { IncidentReport, IncidentSeverity } from '../types';
 
