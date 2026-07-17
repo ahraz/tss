@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Building2, Phone, Clock, CheckCircle2, RotateCcw,
-  ExternalLink, RefreshCw, Database, Wrench
+  Building2, ExternalLink, RefreshCw, Database, Wrench, Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { StatCard } from '../components/ui/StatCard';
 import { LeadCard } from '../components/leads/LeadCard';
-import { LeadFilters } from '../components/leads/LeadFilters';
 import { CallOutcomeModal } from '../components/leads/CallOutcomeModal';
 import type { Lead, CallLogEntry, CallOutcome, EmailLog } from '../types';
 import { generateId } from '../utils/storage';
@@ -269,15 +266,6 @@ export function LeadsPage() {
 
     return result;
   }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter, areaFilter]);
-
-  const stats = useMemo(() => {
-    const total = leads.length;
-    const notCalled = leads.filter(l => !leadCallFor(l)).length;
-    const calledToday = callLogs.filter(l => todayLeadIds.has(l.leadId)).length;
-    const callbacks = callLogs.filter(l => l.outcome === 'callback' && !todayLeadIds.has(l.leadId)).length;
-    const completed = callLogs.filter(l => l.outcome === 'completed').length;
-    return { total, notCalled, calledToday, callbacks, completed };
-  }, [leads, latestCallsMap, callLogs, todayLeadIds]);
 
   const businessTypes = useMemo(() => {
     const types = new Set(leads.map(l => l.type).filter(Boolean));
@@ -671,28 +659,48 @@ export function LeadsPage() {
     <AppShell pageTitle="Leads Call Center">
       <div className="page-container flex flex-col gap-6 pb-8">
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <StatCard label="Total Leads" value={stats.total.toString()} icon={Building2} iconColor="text-blue-600" iconBg="bg-blue-100" />
-          <StatCard label="Not Called" value={stats.notCalled.toString()} icon={Phone} iconColor="text-red-600" iconBg="bg-red-100" />
-          <StatCard label="Called Today" value={stats.calledToday.toString()} icon={Clock} iconColor="text-green-600" iconBg="bg-green-100" />
-          <StatCard label="Callbacks" value={stats.callbacks.toString()} icon={RotateCcw} iconColor="text-amber-600" iconBg="bg-amber-100" />
-          <StatCard label="Completed" value={stats.completed.toString()} icon={CheckCircle2} iconColor="text-emerald-600" iconBg="bg-emerald-100" />
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { key: 'all' as FilterMode, label: 'All' },
+            { key: 'not_called' as FilterMode, label: 'Not Called' },
+            { key: 'today' as FilterMode, label: 'Today' },
+            { key: 'callback' as FilterMode, label: 'Callback' },
+            { key: 'completed' as FilterMode, label: 'Completed' },
+            { key: 'no_answer' as FilterMode, label: 'No Answer' },
+            { key: 'wrong_number' as FilterMode, label: 'Wrong Number' },
+          ]).map(opt => (
+            <button key={opt.key}
+              onClick={() => setFilter(opt.key)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                filter === opt.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}>
+              {opt.label} ({callStatusCounts[opt.key] || 0})
+            </button>
+          ))}
         </div>
 
-        <LeadFilters
-          filter={filter}
-          typeFilter={typeFilter}
-          areaFilter={areaFilter}
-          searchQuery={searchQuery}
-          businessTypes={businessTypes}
-          areaOptions={areaOptions}
-          callStatusCounts={callStatusCounts}
-          leadCount={leads.length}
-          onFilterChange={setFilter}
-          onTypeFilterChange={setTypeFilter}
-          onAreaFilterChange={setAreaFilter}
-          onSearchChange={setSearchQuery}
-        />
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex gap-2 items-center flex-wrap">
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[160px]">
+              <option value="all">All Types ({leads.length})</option>
+              {businessTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm font-medium bg-white border border-gray-300 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px]">
+              <option value="all">All Areas ({leads.length})</option>
+              {areaOptions.map(([area, count]) => <option key={area} value={area}>{area} ({count})</option>)}
+            </select>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search name, phone, email..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          </div>
+        </div>
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
