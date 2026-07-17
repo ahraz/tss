@@ -84,13 +84,13 @@ export function LeadCard({
 
   function leadTypeToRate(leadType: string): { rate: number; facility: string } {
     const t = (leadType || '').toLowerCase();
-    if (t.includes('dental')) return { rate: 0.22, facility: 'Dental Clinic' };
-    if (t.includes('medical') || t.includes('physio') || t.includes('vet')) return { rate: 0.22, facility: 'Medical Clinic' };
-    if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return { rate: 0.12, facility: 'Office' };
-    if (t.includes('retail')) return { rate: 0.15, facility: 'Retail' };
-    if (t.includes('warehouse')) return { rate: 0.13, facility: 'Warehouse' };
-    if (t.includes('restaurant')) return { rate: 0.30, facility: 'Restaurant' };
-    return { rate: 0.15, facility: 'Commercial' };
+    if (t.includes('dental')) return { rate: 0.55, facility: 'Dental Clinic' };
+    if (t.includes('medical') || t.includes('physio') || t.includes('vet')) return { rate: 0.55, facility: 'Medical Clinic' };
+    if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return { rate: 0.36, facility: 'Office' };
+    if (t.includes('retail')) return { rate: 0.30, facility: 'Retail' };
+    if (t.includes('warehouse')) return { rate: 0.22, facility: 'Warehouse' };
+    if (t.includes('restaurant')) return { rate: 0.44, facility: 'Restaurant' };
+    return { rate: 0.36, facility: 'Commercial' };
   }
 
   const handleQuickQuote = () => {
