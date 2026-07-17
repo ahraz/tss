@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Star, MapPin, Phone, CheckCircle2, XCircle, RotateCcw,
@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import type { Lead, CallLogEntry, CallOutcome, EmailLog, Quote, QuoteLineItem, CleaningFrequency } from '../../types';
 import { generateId } from '../../utils/storage';
 import { useApp } from '../../context/AppContext';
@@ -69,6 +70,8 @@ export function LeadCard({
 }: Props) {
   const navigate = useNavigate();
   const { currentUser, dispatch } = useApp();
+  const [deleteLogId, setDeleteLogId] = useState<string | null>(null);
+  const [showClearData, setShowClearData] = useState(false);
 
   const handleCreateQuote = () => {
     if (!currentUser) return;
@@ -233,46 +236,75 @@ export function LeadCard({
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Call History</h4>
                 <div className="space-y-2">
                   {leadCallLogs.sort((a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()).map(log => (
-                    <div key={log.id} className="flex items-start gap-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 relative group">
-                      <button onClick={() => onSetEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
-                        className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
-                          log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                          : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-                          : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                        }`} title="Click to change outcome">
-                        {log.outcome === 'completed' ? <CheckCircle2 size={14} />
-                          : log.outcome === 'no_answer' ? <XCircle size={14} />
-                          : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
-                          : <RotateCcw size={14} />}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-700">{log.calledByName} — {log.outcome.replace('_', ' ')}</p>
-                        {editingCallLogId === log.id && (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {OUTCOME_OPTIONS.filter(o => o.value !== log.outcome).map(opt => (
-                              <button key={opt.value} onClick={() => onChangeOutcome(log, opt.value)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-medium ${opt.color}`}>{opt.label}</button>
-                            ))}
-                          </div>
-                        )}
-                        <p className="text-gray-400 mt-0.5">
-                          {new Date(log.calledAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                        </p>
-                        {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
+                    <div key={log.id} className="flex items-center gap-2 text-xs text-gray-600">
+                      <div className="flex-1 flex items-start gap-3 bg-gray-50 rounded-lg p-2.5">
+                        <button onClick={() => onSetEditingCallLogId(editingCallLogId === log.id ? null : log.id)}
+                          className={`p-1.5 rounded-full flex-shrink-0 transition-colors ${
+                            log.outcome === 'completed' ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                            : log.outcome === 'no_answer' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                            : log.outcome === 'wrong_number' ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                          }`} title="Click to change outcome">
+                          {log.outcome === 'completed' ? <CheckCircle2 size={14} />
+                            : log.outcome === 'no_answer' ? <XCircle size={14} />
+                            : log.outcome === 'wrong_number' ? <AlertCircle size={14} />
+                            : <RotateCcw size={14} />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-700">{log.calledByName} — {log.outcome.replace('_', ' ')}</p>
+                          {editingCallLogId === log.id && (
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {OUTCOME_OPTIONS.filter(o => o.value !== log.outcome).map(opt => (
+                                <button key={opt.value} onClick={() => onChangeOutcome(log, opt.value)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${opt.color}`}>{opt.label}</button>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-gray-400 mt-0.5">
+                            {new Date(log.calledAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                          {log.notes && <p className="text-gray-500 mt-0.5 italic">"{log.notes}"</p>}
+                        </div>
                       </div>
-                      <button onClick={() => dispatch({ type: 'DELETE_CALL_LOG', payload: log.id })}
-                        className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 size={14} />
+                      <button onClick={() => setDeleteLogId(log.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   ))}
                 </div>
               </>
             )}
+
+            <button onClick={() => setShowClearData(true)}
+              className="w-full flex items-center justify-center gap-2 p-2.5 mt-3 bg-red-50 border-2 border-dashed border-red-200 rounded-xl text-sm font-medium text-red-700 hover:bg-red-100 hover:border-red-300 transition-all">
+              <Trash2 size={15} />Clear All Lead Data
+            </button>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!deleteLogId}
+        onClose={() => setDeleteLogId(null)}
+        title="Delete Call Log"
+        message="Remove this call log entry? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => { if (deleteLogId) dispatch({ type: 'DELETE_CALL_LOG', payload: deleteLogId }); }}
+      />
+
+      <ConfirmModal
+        isOpen={showClearData}
+        onClose={() => setShowClearData(false)}
+        title="Clear Lead Data"
+        message="Delete all call logs and email history for this lead? This cannot be undone."
+        confirmLabel="Clear All"
+        onConfirm={() => {
+          leadCallLogs.forEach(log => dispatch({ type: 'DELETE_CALL_LOG', payload: log.id }));
+          const emailLogs = emailLogsByLead.get(lk);
+          if (emailLogs) emailLogs.forEach(log => dispatch({ type: 'DELETE_EMAIL_LOG', payload: log.id }));
+        }}
+      />
     </Card>
   );
 }
