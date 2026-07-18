@@ -1,4 +1,3 @@
-import os
 import time
 from pathlib import Path
 from flask import Flask, request, jsonify
@@ -39,8 +38,6 @@ def upload():
     return jsonify({'status': 'ok', 'path': str(dest)})
 
 if __name__ == '__main__':
-    import socket
-    hostname = socket.gethostname()
     print(f'TailShare server starting...')
     print(f'Listening on port 7800')
     print(f'Saving files to: {Path(DESKTOP_DIR) / "Pixel10"}')
