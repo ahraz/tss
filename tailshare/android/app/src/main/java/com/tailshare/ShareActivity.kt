@@ -19,10 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.*
+import java.io.File
 
 class ShareActivity : ComponentActivity() {
     private var fileName: String = ""
-    private var fileBytes: ByteArray? = null
+    private var fileUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,18 +35,8 @@ class ShareActivity : ComponentActivity() {
             return
         }
 
+        fileUri = uri
         fileName = getFileName(uri) ?: "unknown_file"
-        fileBytes = try {
-            contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        } catch (e: Exception) {
-            null
-        }
-
-        if (fileBytes == null) {
-            Toast.makeText(this, "Cannot read file", Toast.LENGTH_SHORT).show()
-            finish()
-            return
-        }
 
         setContent {
             ShareDialog(
@@ -108,41 +99,53 @@ class ShareActivity : ComponentActivity() {
     }
 
     private fun sendFile(folder: String) {
-        val ip = TailSharePrefs.getPcIp(this)
+        val uri = fileUri ?: return
+        val ip = TailSharePrefs.getPcIp(applicationContext)
         if (ip.isBlank()) {
-            showNotification("TailShare", "Configure PC IP in settings first")
+            showNotification(applicationContext, "TailShare", "Configure PC IP in settings first")
             return
         }
 
-        val bytes = fileBytes ?: return
-
         FileUploader.upload(
             pcIp = ip,
-            fileBytes = bytes,
+            context = applicationContext,
+            uri = uri,
             fileName = fileName,
             folder = folder.ifBlank { null },
-            onSuccess = { msg -> showNotification("TailShare", msg) },
-            onError = { msg -> showNotification("TailShare", msg) }
+            onSuccess = { msg -> showNotification(applicationContext, "TailShare", msg) },
+            onError = { msg ->
+                val cacheFile = File(applicationContext.cacheDir, fileName)
+                try {
+                    applicationContext.contentResolver.openInputStream(uri)?.use { input ->
+                        cacheFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    showNotification(applicationContext, "TailShare - Retry available", "$msg\nCached at: ${cacheFile.absolutePath}")
+                } catch (e: Exception) {
+                    showNotification(applicationContext, "TailShare", msg)
+                }
+            }
         )
     }
 
-    private fun showNotification(title: String, message: String) {
+    private fun showNotification(context: Context, title: String, message: String) {
         val channelId = "tailshare_uploads"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId, "File Uploads", NotificationManager.IMPORTANCE_DEFAULT
             )
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
         }
 
-        val notification = NotificationCompat.Builder(this, channelId)
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_menu_send)
             .setContentTitle(title)
             .setContentText(message)
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
+        NotificationManagerCompat.from(context).notify(System.currentTimeMillis().toInt(), notification)
     }
 }

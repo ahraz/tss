@@ -34,7 +34,11 @@ def upload():
         timestamp = int(time.time())
         dest = save_dir / f'{stem}_{timestamp}{suffix}'
 
-    file.save(str(dest))
+    try:
+        file.save(str(dest))
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
     return jsonify({'status': 'ok', 'path': str(dest)})
 
 if __name__ == '__main__':
