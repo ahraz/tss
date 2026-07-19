@@ -1,14 +1,23 @@
 import time
 from pathlib import Path
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 
 app = Flask(__name__)
 
 DESKTOP_DIR = Path.home() / 'Desktop'
 
+APK_PATH = Path(__file__).parent / 'TailShare-v1.0.apk'
+
 @app.route('/', methods=['GET'])
 def health():
     return jsonify({'status': 'ok'})
+
+@app.route('/download', methods=['GET'])
+def download_apk():
+    if not APK_PATH.exists():
+        return jsonify({'status': 'error', 'message': 'APK not found'}), 404
+    return send_file(str(APK_PATH), mimetype='application/vnd.android.package-archive',
+                     as_attachment=True, download_name='TailShare-v1.0.apk')
 
 @app.route('/upload', methods=['POST'])
 def upload():
