@@ -65,10 +65,23 @@ export function LeadsPage() {
   const emailLogs = state.emailLogs;
 
   useEffect(() => {
-    if (!hasLeads) {
+  if (!state.isInitialized) {
+    return (
+      <AppShell pageTitle="Leads">
+        <div className="page-container flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <RefreshCw size={32} className="animate-spin" />
+            <p className="text-sm">Loading leads...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasLeads) {
       waitForGis().then(initTokenClient).catch(() => {});
     }
-  }, [hasLeads]);
+  }, [hasLeads, state.isInitialized]);
 
   useEffect(() => {
     const templates = {
@@ -437,8 +450,6 @@ export function LeadsPage() {
       setImportingEmails(false);
     }
   };
-
-
 
   const handleCopyEmail = async (lead: Lead) => {
     const category = getTemplateCategory(lead.type);
