@@ -18,6 +18,7 @@ import {
   initTokenClient,
   ensureHeaderColumns,
   scrapeLeadsFromMaps,
+  importScrapedEmails,
 } from '../lib/googleSheets';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -58,6 +59,7 @@ export function LeadsPage() {
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [scraping, setScraping] = useState(false);
+  const [importingEmails, setImportingEmails] = useState(false);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -406,6 +408,38 @@ export function LeadsPage() {
     }
   };
 
+  const handleImportEmails = async () => {
+    setImportingEmails(true);
+    try {
+      const result = await importScrapedEmails((msg) => {
+        toast(msg, { duration: 3000 });
+      });
+      toast.success(`Imported ${result.updated} emails to sheet`);
+      // Re-import leads from sheet to update state
+      await importLeadsFromSheets();
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'NEEDS_AUTH') {
+        try {
+          await waitForGis();
+          initTokenClient();
+          await signIn();
+          setImportingEmails(true);
+          const result = await importScrapedEmails((msg) => toast(msg, { duration: 3000 }));
+          toast.success(`Imported ${result.updated} emails to sheet`);
+          await importLeadsFromSheets();
+          return;
+        } catch {
+          toast.error('Failed to connect. Please try again.');
+        }
+      } else {
+        toast.error(errMsg || 'Email import failed');
+      }
+    } finally {
+      setImportingEmails(false);
+    }
+  };
+
 
 
   const handleCopyEmail = async (lead: Lead) => {
@@ -549,15 +583,26 @@ export function LeadsPage() {
           <p className="text-sm text-gray-500">
             {mergedLeads.length} of {leads.length} leads
           </p>
-          <button
-            onClick={handleScrapeLeads}
-            disabled={scraping}
-            className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
-            title="Scrape Google Maps for new leads"
-          >
-            <RefreshCw size={14} className={scraping ? 'animate-spin' : ''} />
-            {scraping ? 'Scraping...' : 'Scrape'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleImportEmails}
+              disabled={importingEmails}
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              title="Import scraped emails to sheet"
+            >
+              <RefreshCw size={14} className={importingEmails ? 'animate-spin' : ''} />
+              {importingEmails ? 'Importing...' : 'Import Emails'}
+            </button>
+            <button
+              onClick={handleScrapeLeads}
+              disabled={scraping}
+              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+              title="Scrape Google Maps for new leads"
+            >
+              <RefreshCw size={14} className={scraping ? 'animate-spin' : ''} />
+              {scraping ? 'Scraping...' : 'Scrape'}
+            </button>
+          </div>
         </div>
 
         {mergedLeads.length === 0 ? (
