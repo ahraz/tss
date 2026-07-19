@@ -533,6 +533,9 @@ export interface Lead {
   placeId: string;
   gpsCoordinates: string;
   email?: string;          // user-added email for outreach
+  currentCleaner?: string;
+  competitorNotes?: string;
+  lastContactedAt?: string;
   // Computed / derived
   latestCall?: CallLogEntry | null;
 }
