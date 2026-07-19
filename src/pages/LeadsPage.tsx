@@ -55,7 +55,7 @@ export function LeadsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [emailTemplates, setEmailTemplates] = useState<Record<string, string>>({});
   const [editingEmailFor, setEditingEmailFor] = useState<string | null>(null);
-  const [emailValue, setEmailValue] = useState('');
+  const [emailEditValues, setEmailEditValues] = useState<Record<string, string>>({});
   const [copyingLeadId, setCopyingLeadId] = useState<string | null>(null);
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [scraping, setScraping] = useState(false);
@@ -336,22 +336,20 @@ export function LeadsPage() {
 
   const handleStartEditEmail = (lead: Lead) => {
     setEditingEmailFor(leadKey(lead));
-    setEmailValue(lead.email || '');
+    setEmailEditValues(prev => ({ ...prev, [leadKey(lead)]: lead.email || '' }));
   };
 
   const handleSaveEmail = (leadId: string) => {
-    const trimmed = emailValue.trim();
+    const trimmed = (emailEditValues[leadId] || '').trim();
     if (trimmed) {
       dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: trimmed } });
       toast.success('Email saved');
     }
     setEditingEmailFor(null);
-    setEmailValue('');
   };
 
   const handleCancelEditEmail = () => {
     setEditingEmailFor(null);
-    setEmailValue('');
   };
 
   const handleMarkEmailSent = (lead: Lead) => {
@@ -636,14 +634,14 @@ export function LeadsPage() {
                   leadCallLogs={leadCallLogs}
                   emailLogsByLead={emailLogsByLead}
                   editingEmailFor={editingEmailFor}
-                  emailValue={emailValue}
+                  emailEditValues={emailEditValues}
                   copyingLeadId={copyingLeadId}
                   editingCallLogId={editingCallLogId}
                   onToggleExpand={() => setExpandedId(isExpanded ? null : leadKey(lead))}
                   onStartEditEmail={() => handleStartEditEmail(lead)}
                   onSaveEmail={handleSaveEmail}
                   onCancelEditEmail={handleCancelEditEmail}
-                  onEmailValueChange={setEmailValue}
+                   onEmailValueChange={(leadId, v) => setEmailEditValues(prev => ({ ...prev, [leadId]: v }))}
                   onCopyEmail={handleCopyEmail}
                   onMarkEmailSent={handleMarkEmailSent}
                   onChangeOutcome={handleChangeOutcome}

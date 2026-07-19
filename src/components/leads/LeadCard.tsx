@@ -24,14 +24,14 @@ interface Props {
   leadCallLogs: CallLogEntry[];
   emailLogsByLead: Map<string, EmailLog[]>;
   editingEmailFor: string | null;
-  emailValue: string;
+  emailEditValues: Record<string, string>;
   copyingLeadId: string | null;
   editingCallLogId: string | null;
   onToggleExpand: () => void;
   onStartEditEmail: () => void;
   onSaveEmail: (leadId: string) => void;
   onCancelEditEmail: () => void;
-  onEmailValueChange: (v: string) => void;
+  onEmailValueChange: (leadId: string, v: string) => void;
   onCopyEmail: (lead: Lead) => void;
   onMarkEmailSent: (lead: Lead) => void;
   onChangeOutcome: (log: CallLogEntry, newOutcome: CallOutcome) => void;
@@ -64,9 +64,22 @@ function getLineItemsForType(businessType: string): QuoteLineItem[] {
   return [base('Workstation cleaning'), base('Reception'), base('Floor care'), base('Breakroom')];
 }
 
+const FREQ_MULT: Record<number, number> = { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 };
+
+function leadTypeToRate(leadType: string): { rate: number; facility: string } {
+  const t = (leadType || '').toLowerCase();
+  if (t.includes('dental')) return { rate: 0.55, facility: 'Dental Clinic' };
+  if (t.includes('medical') || t.includes('physio') || t.includes('vet')) return { rate: 0.55, facility: 'Medical Clinic' };
+  if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return { rate: 0.36, facility: 'Office' };
+  if (t.includes('retail')) return { rate: 0.30, facility: 'Retail' };
+  if (t.includes('warehouse')) return { rate: 0.22, facility: 'Warehouse' };
+  if (t.includes('restaurant')) return { rate: 0.44, facility: 'Restaurant' };
+  return { rate: 0.36, facility: 'Commercial' };
+}
+
 export function LeadCard({
   lead, leadKey: lk, latestCall, calledToday, hasBeenEmailed, isExpanded, leadCallLogs, emailLogsByLead,
-  editingEmailFor, emailValue, copyingLeadId, editingCallLogId,
+  editingEmailFor, emailEditValues, copyingLeadId, editingCallLogId,
   onToggleExpand, onStartEditEmail, onSaveEmail, onCancelEditEmail, onEmailValueChange,
   onCopyEmail, onMarkEmailSent, onChangeOutcome, onSetEditingCallLogId, onCallClick,
 }: Props) {
@@ -80,19 +93,6 @@ export function LeadCard({
   const [qqGeneratedQuoteId, setQqGeneratedQuoteId] = useState<string | null>(null);
   const [qqShareUrl, setQqShareUrl] = useState('');
 
-  const freqMult: Record<number, number> = { 1: 0.25, 2: 0.42, 3: 0.58, 4: 0.72, 5: 0.87, 6: 1.0, 7: 1.13 };
-
-  function leadTypeToRate(leadType: string): { rate: number; facility: string } {
-    const t = (leadType || '').toLowerCase();
-    if (t.includes('dental')) return { rate: 0.55, facility: 'Dental Clinic' };
-    if (t.includes('medical') || t.includes('physio') || t.includes('vet')) return { rate: 0.55, facility: 'Medical Clinic' };
-    if (t.includes('law') || t.includes('account') || t.includes('real estate') || t.includes('insurance')) return { rate: 0.36, facility: 'Office' };
-    if (t.includes('retail')) return { rate: 0.30, facility: 'Retail' };
-    if (t.includes('warehouse')) return { rate: 0.22, facility: 'Warehouse' };
-    if (t.includes('restaurant')) return { rate: 0.44, facility: 'Restaurant' };
-    return { rate: 0.36, facility: 'Commercial' };
-  }
-
   const handleQuickQuote = () => {
     if (!currentUser) return;
     setQqSqft(1500);
@@ -105,7 +105,7 @@ export function LeadCard({
   const handleGenerateQuickQuote = () => {
     if (!currentUser) return;
     const { rate, facility } = leadTypeToRate(lead.type);
-    const mul = freqMult[qqDays] || 1.0;
+    const mul = FREQ_MULT[qqDays] || 1.0;
     const baseMonthly = Math.ceil(qqSqft * rate * mul);
     const lineItems: QuoteLineItem[] = [
       { id: generateId(), description: `${facility} cleaning — ${qqSqft} sq ft`, siteId: null, frequency: 'weekly' as CleaningFrequency, amountPerVisit: Math.round(baseMonthly / (qqDays * 4.33)), visitsPerWeek: qqDays, monthlyAmount: baseMonthly },
@@ -195,7 +195,7 @@ export function LeadCard({
               {editingEmailFor === lk ? (
                 <span className="flex items-center gap-1">
                   <Mail size={12} />
-                  <input type="email" value={emailValue} onChange={e => onEmailValueChange(e.target.value)}
+                  <input type="email" value={emailEditValues[lk] || ''} onChange={e => onEmailValueChange(lk, e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') onSaveEmail(lk); if (e.key === 'Escape') onCancelEditEmail(); }}
                     placeholder="email@example.com"
                     className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" autoFocus />
@@ -373,7 +373,7 @@ export function LeadCard({
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Estimated monthly</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  ${(qqSqft * leadTypeToRate(lead.type).rate * (freqMult[qqDays] || 1.0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${(qqSqft * leadTypeToRate(lead.type).rate * (FREQ_MULT[qqDays] || 1.0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   <span className="text-sm font-normal text-gray-500">/mo</span>
                 </p>
               </div>
