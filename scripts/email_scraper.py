@@ -2,6 +2,7 @@ import asyncio
 import csv
 import re
 import argparse
+import traceback
 from urllib.parse import urljoin
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
@@ -16,7 +17,7 @@ PLACEHOLDER_DOMAINS = ['example.com', 'domain.com', 'godaddy.com', 'address.com'
 
 IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico']
 
-CONTACT_PATHS = ['/contact', '/contact-us', '/about', '/about-us', '/reach-us', '/locations']
+CONTACT_PATHS = ['/contact', '/contact-us', '/about', '/about-us', '/reach-us', '/locations', '/team', '/connect']
 
 def is_valid_email(email):
     lower = email.lower()
@@ -37,9 +38,10 @@ def extract_emails(text):
 
 async def scrape_site(crawler, row_num, url, semaphore, deep=False):
     async with semaphore:
+        await asyncio.sleep(0.5)
         try:
-            config = CrawlerRunConfig(cache_mode=CacheMode.DISABLED)
-            result = await crawler.arun(url=url, config=config)
+            config = CrawlerRunConfig(cache_mode=CacheMode.DISABLED, page_timeout=10000)
+            result = await asyncio.wait_for(crawler.arun(url=url, config=config), timeout=15)
             if not result.success:
                 return row_num, url, [], 0, 'site_down'
 
@@ -70,6 +72,7 @@ async def scrape_site(crawler, row_num, url, semaphore, deep=False):
             return row_num, url, unique_emails, pages_scraped, status
 
         except Exception:
+            traceback.print_exc()
             return row_num, url, [], 0, 'error'
 
 async def batch_scrape(args):

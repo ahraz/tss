@@ -1,5 +1,6 @@
 import csv
 import argparse
+import os
 
 def main():
     parser = argparse.ArgumentParser(description='Merge scraped emails back into leads CSV')
@@ -28,16 +29,19 @@ def main():
                 existing = row.get('Email', '').strip()
                 new_emails = scraped_map[r]
                 if existing:
-                    combined = f"{existing}; {new_emails}"
+                    all_emails = list(dict.fromkeys([e.strip() for e in (existing + '; ' + new_emails).split(';') if e.strip()]))
+                    combined = '; '.join(all_emails)
                 else:
                     combined = new_emails
                 row['Email'] = combined
             rows.append(row)
 
-    with open(args.leads, 'w', newline='', encoding='utf-8') as f:
+    tmp_file = args.leads + '.tmp'
+    with open(tmp_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+    os.replace(tmp_file, args.leads)
 
     updated = sum(1 for r in rows if r.get('Email', '').strip())
     print(f"Updated {args.leads}: {updated}/{len(rows)} rows now have emails")
