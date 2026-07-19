@@ -441,7 +441,7 @@ export async function scrapeLeadsFromMaps(
             details.website,                         // H: website
             null,                                    // I: email (empty — user fills later)
             gps,                                     // J: gpsCoordinates
-              null, null, null, null,                   // K-N: legacy tracking (not used)
+            null, null, null, null,                   // K-N: legacy tracking (not used)
             place.place_id,                           // O: stable Google Maps place_id
             null, null, null,                          // P-R: new intel fields
           ]);
