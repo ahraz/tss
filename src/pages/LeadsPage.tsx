@@ -65,23 +65,10 @@ export function LeadsPage() {
   const emailLogs = state.emailLogs;
 
   useEffect(() => {
-  if (!state.isInitialized) {
-    return (
-      <AppShell pageTitle="Leads">
-        <div className="page-container flex items-center justify-center min-h-[50vh]">
-          <div className="flex flex-col items-center gap-3 text-gray-400">
-            <RefreshCw size={32} className="animate-spin" />
-            <p className="text-sm">Loading leads...</p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!hasLeads) {
+    if (!hasLeads) {
       waitForGis().then(initTokenClient).catch(() => {});
     }
-  }, [hasLeads, state.isInitialized]);
+  }, [hasLeads]);
 
   useEffect(() => {
     const templates = {
@@ -353,11 +340,9 @@ export function LeadsPage() {
   };
 
   const handleSaveEmail = (leadId: string) => {
-    const trimmed = (emailEditValues[leadId] || '').trim();
-    if (trimmed) {
-      dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: trimmed } });
-      toast.success('Email saved');
-    }
+    const val = (emailEditValues[leadId] || '').trim();
+    dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: val } });
+    toast.success(val ? 'Email saved' : 'Email cleared');
     setEditingEmailFor(null);
   };
 
@@ -505,6 +490,19 @@ export function LeadsPage() {
           <div className="flex flex-col items-center gap-3 text-gray-400">
             <RefreshCw size={32} className="animate-spin" />
             <p className="text-sm">Importing leads from Google Sheets...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!state.isInitialized) {
+    return (
+      <AppShell pageTitle="Leads">
+        <div className="page-container flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <RefreshCw size={32} className="animate-spin" />
+            <p className="text-sm">Loading leads...</p>
           </div>
         </div>
       </AppShell>

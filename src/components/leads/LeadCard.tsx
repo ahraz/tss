@@ -275,7 +275,7 @@ export function LeadCard({
               <span className="font-medium text-gray-500 w-28 flex-shrink-0">Last contacted</span>
               <span className="text-gray-700">
                 {lead.lastContactedAt
-                  ? new Date(lead.lastContactedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? (() => { try { return new Date(lead.lastContactedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return '—'; } })()
                   : '—'}
               </span>
             </div>
@@ -327,16 +327,10 @@ export function LeadCard({
               </>
             )}
 
-            <div className="flex gap-2 mb-3">
-              <button onClick={handleQuickQuote}
-                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all">
-                <Zap size={15} />Quick Quote
-              </button>
-              <button onClick={handleCreateQuote}
-                className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
-                <FileText size={15} />Full Quote
-              </button>
-            </div>
+            <button onClick={handleCreateQuote}
+              className="w-full flex items-center justify-center gap-2 p-2.5 bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all mb-3">
+              <FileText size={15} />Full Quote
+            </button>
 
             {leadCallLogs.length > 0 && (
               <>
