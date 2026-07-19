@@ -105,7 +105,7 @@ export function LeadCard({
   const handleGenerateQuickQuote = () => {
     if (!currentUser) return;
     const { rate, facility } = leadTypeToRate(lead.type);
-    const mul = FREQ_MULT[qqDays] || 1.0;
+    const mul = FREQ_MULT[qqDays];
     const baseMonthly = Math.ceil(qqSqft * rate * mul);
     const lineItems: QuoteLineItem[] = [
       { id: generateId(), description: `${facility} cleaning — ${qqSqft} sq ft`, siteId: null, frequency: 'weekly' as CleaningFrequency, amountPerVisit: Math.round(baseMonthly / (qqDays * 4.33)), visitsPerWeek: qqDays, monthlyAmount: baseMonthly },
@@ -246,7 +246,7 @@ export function LeadCard({
               onClick={() => setTimeout(() => onCallClick(lead), 500)}>
               <Phone size={14} />Call
             </a>
-            <button title="Quick Quote" onClick={handleQuickQuote}
+            <button title="Quick Quote" aria-label="Quick Quote" onClick={handleQuickQuote}
               className="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
               <Zap size={16} />
             </button>
@@ -408,7 +408,7 @@ export function LeadCard({
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Estimated monthly</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  ${(qqSqft * leadTypeToRate(lead.type).rate * (FREQ_MULT[qqDays] || 1.0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${(qqSqft * leadTypeToRate(lead.type).rate * (FREQ_MULT[qqDays])).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   <span className="text-sm font-normal text-gray-500">/mo</span>
                 </p>
               </div>
