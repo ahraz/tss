@@ -176,7 +176,7 @@ export function LeadCard({
   return (
     <Card className="hover:shadow-md transition-shadow">
       <div className="flex flex-col gap-3">
-        {/* Main row */}
+        {/* Contact info row */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -186,37 +186,48 @@ export function LeadCard({
               {hasBeenEmailed && lead.email && <Badge label="Emailed" variant="info" className="text-[10px]" />}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500">
+            <div className="flex flex-col gap-0.5 mt-1.5 text-xs text-gray-600">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium">
+                <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium">
                   <Phone size={12} />{lead.phone}
                 </a>
               )}
-              {editingEmailFor === lk ? (
-                <span className="flex items-center gap-1">
-                  <Mail size={12} />
-                  <input type="email" value={emailEditValues[lk] || ''} onChange={e => onEmailValueChange(lk, e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') onSaveEmail(lk); if (e.key === 'Escape') onCancelEditEmail(); }}
-                    placeholder="email@example.com"
-                    className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" autoFocus />
-                  <button onClick={() => onSaveEmail(lk)} className="text-green-600 hover:text-green-700 ml-0.5"><CheckCircle2 size={12} /></button>
-                  <button onClick={onCancelEditEmail} className="text-gray-400 hover:text-gray-600"><XCircle size={12} /></button>
-                </span>
-              ) : lead.email ? (
-                <span className="flex items-center gap-1 text-gray-600">
-                  <Mail size={12} /><span className="truncate max-w-[180px]">{lead.email}</span>
-                  <button onClick={onStartEditEmail} className="text-gray-400 hover:text-blue-500 ml-0.5"><ExternalLink size={10} /></button>
-                </span>
-              ) : (
-                <button onClick={onStartEditEmail} className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors">
-                  <Mail size={12} />Add email
-                </button>
-              )}
-              {lead.rating && (
-                <span className="flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400" />{lead.rating}</span>
-              )}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                {editingEmailFor === lk ? (
+                  <span className="flex items-center gap-1">
+                    <Mail size={12} />
+                    <input type="email" value={emailEditValues[lk] || ''} onChange={e => onEmailValueChange(lk, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') onSaveEmail(lk); if (e.key === 'Escape') onCancelEditEmail(); }}
+                      placeholder="email@example.com"
+                      className="w-40 px-1.5 py-0.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" autoFocus />
+                    <button onClick={() => onSaveEmail(lk)} className="text-green-600 hover:text-green-700 ml-0.5"><CheckCircle2 size={12} /></button>
+                    <button onClick={onCancelEditEmail} className="text-gray-400 hover:text-gray-600"><XCircle size={12} /></button>
+                  </span>
+                ) : lead.email ? (
+                  <span className="flex items-center gap-1">
+                    <Mail size={12} /><span className="truncate max-w-[180px]">{lead.email}</span>
+                    <button onClick={onStartEditEmail} className="text-gray-400 hover:text-blue-500 ml-0.5"><ExternalLink size={10} /></button>
+                  </span>
+                ) : (
+                  <button onClick={onStartEditEmail} className="flex items-center gap-1 text-gray-400 hover:text-blue-500 transition-colors">
+                    <Mail size={12} />Add email
+                  </button>
+                )}
+                {lead.website && (
+                  <a href={lead.website} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 truncate max-w-[200px]">
+                    <ExternalLink size={12} />{lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                  </a>
+                )}
+                {lead.rating && (
+                  <span className="flex items-center gap-1 text-amber-500"><Star size={12} className="fill-amber-400" />{lead.rating}</span>
+                )}
+              </div>
               {lead.address && (
-                <span className="flex items-center gap-1 truncate max-w-[200px]"><MapPin size={12} />{lead.address}</span>
+                <span className="flex items-center gap-1.5 text-gray-400 truncate max-w-[400px] sm:max-w-none">
+                  <MapPin size={12} className="flex-shrink-0" />
+                  <span className="truncate sm:text-clip">{lead.address}</span>
+                </span>
               )}
               {lead.type && <span className="text-gray-400">{lead.type}</span>}
             </div>
@@ -235,11 +246,41 @@ export function LeadCard({
               onClick={() => setTimeout(() => onCallClick(lead), 500)}>
               <Phone size={14} />Call
             </a>
+            <button title="Quick Quote" onClick={handleQuickQuote}
+              className="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
+              <Zap size={16} />
+            </button>
             <button onClick={onToggleExpand} className="p-2 text-gray-400 hover:text-gray-600">
               <ChevronDown size={16} className={isExpanded ? 'rotate-180 transition-transform' : 'transition-transform'} />
             </button>
           </div>
         </div>
+
+        {/* Intel section — collapsed by default */}
+        <details className="group text-xs">
+          <summary className="flex items-center gap-1.5 cursor-pointer text-gray-500 hover:text-gray-700 select-none">
+            <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+            <span className="font-medium">Intel</span>
+          </summary>
+          <div className="mt-2 bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-500 w-28 flex-shrink-0">Current cleaner</span>
+              <span className="text-gray-700">{lead.currentCleaner || '—'}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="font-medium text-gray-500 w-28 flex-shrink-0">Notes</span>
+              <span className="text-gray-700">{lead.competitorNotes || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-500 w-28 flex-shrink-0">Last contacted</span>
+              <span className="text-gray-700">
+                {lead.lastContactedAt
+                  ? new Date(lead.lastContactedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : '—'}
+              </span>
+            </div>
+          </div>
+        </details>
 
         {/* Expanded section */}
         {isExpanded && (
@@ -344,7 +385,7 @@ export function LeadCard({
 
             <button onClick={() => setShowClearData(true)}
               className="w-full flex items-center justify-center gap-2 p-2.5 mt-3 bg-red-50 border-2 border-dashed border-red-200 rounded-xl text-sm font-medium text-red-700 hover:bg-red-100 hover:border-red-300 transition-all">
-              <Trash2 size={15} />Clear All Lead Data
+              <Trash2 size={15} />Clear Call Logs
             </button>
           </div>
         )}
@@ -411,7 +452,7 @@ export function LeadCard({
       <ConfirmModal
         isOpen={showClearData}
         onClose={() => setShowClearData(false)}
-        title="Clear Lead Data"
+        title="Clear Call Logs"
         message="Delete all call logs for this lead? Call history cannot be restored. Emails are kept."
         confirmLabel="Clear All"
         onConfirm={() => {
