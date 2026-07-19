@@ -12,12 +12,23 @@ PLACEHOLDER_PATTERNS = [
     'admin@domain.com', 'info@domain.com', 'contact@domain.com',
 ]
 
+PLACEHOLDER_DOMAINS = ['example.com', 'domain.com', 'godaddy.com', 'address.com']
+
+IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico']
+
 CONTACT_PATHS = ['/contact', '/contact-us', '/about', '/about-us', '/reach-us', '/locations']
 
 def is_valid_email(email):
     lower = email.lower()
     for pattern in PLACEHOLDER_PATTERNS:
         if lower.startswith(pattern):
+            return False
+    domain = lower.split('@')[1] if '@' in lower else ''
+    if domain in PLACEHOLDER_DOMAINS:
+        return False
+    name_part = lower.split('@')[0] if '@' in lower else ''
+    for ext in IMAGE_EXTENSIONS:
+        if name_part.endswith(ext) or lower.endswith(ext):
             return False
     return True
 
