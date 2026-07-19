@@ -58,14 +58,13 @@ async def scrape_site(crawler, row_num, url, semaphore, deep=False):
             status = 'ok' if unique_emails else 'no_emails_found'
             return row_num, url, unique_emails, pages_scraped, status
 
-        except Exception as e:
-            return row_num, url, [], 0, f'error'
+        except Exception:
+            return row_num, url, [], 0, 'error'
 
 async def batch_scrape(args):
     leads = []
     with open(args.input, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
         for row in reader:
             leads.append(row)
 
@@ -84,7 +83,7 @@ async def batch_scrape(args):
     results = []
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        tasks = [scrape_site(crawler, rn, u, semaphore, deep=False) for rn, u in targets]
+        tasks = [scrape_site(crawler, rn, u, semaphore, deep=args.deep) for rn, u in targets]
 
         for i, coro in enumerate(asyncio.as_completed(tasks)):
             row_num, url, emails, pages, status = await coro
