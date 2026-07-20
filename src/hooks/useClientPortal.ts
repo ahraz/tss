@@ -25,15 +25,16 @@ export function useClientPortal(token: string | undefined): PortalData {
 
   useEffect(() => {
     if (!token) return;
+    const tokenValue = token;
 
     async function load() {
       try {
         // 1. Find site by shareToken
-        const sitesSnap = await getDocs(query(collection(db, 'sites'), where('shareToken', '==', token)));
+        const sitesSnap = await getDocs(query(collection(db, 'sites'), where('shareToken', '==', tokenValue)));
         if (sitesSnap.empty) {
           const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
           if (isDemo) {
-            const demoData = generateDemoData(token);
+            const demoData = generateDemoData(tokenValue);
             setData({ ...demoData, loading: false, error: null });
             return;
           }
@@ -81,7 +82,7 @@ export function useClientPortal(token: string | undefined): PortalData {
         const payments = paySnap.docs.map(d => ({ id: d.id, ...d.data() } as Payment));
 
         // 7. Load quote from sharedContracts
-        const contractSnap = await getDoc(doc(db, 'sharedContracts', token!));
+        const contractSnap = await getDoc(doc(db, 'sharedContracts', tokenValue));
         const quote = contractSnap.exists()
           ? { id: contractSnap.id, ...contractSnap.data() } as Quote
           : null;
@@ -205,9 +206,9 @@ function generateDemoData(token: string): PortalData {
     prospectPostalCode: 'L6V 1A1',
     prospectPhone: '(905) 555-0123',
     lineItems: [
-      { description: 'Office Cleaning', visitsPerWeek: 3, amountPerVisit: 85, monthlyAmount: 255 },
-      { description: 'Washroom Sanitization', visitsPerWeek: 5, amountPerVisit: 25, monthlyAmount: 125 },
-      { description: 'Floor Care', visitsPerWeek: 1, amountPerVisit: 70, monthlyAmount: 70 },
+      { id: 'demo-line-1', description: 'Office Cleaning', siteId: 'demo-site', frequency: 'weekly', visitsPerWeek: 3, amountPerVisit: 85, monthlyAmount: 255 },
+      { id: 'demo-line-2', description: 'Washroom Sanitization', siteId: 'demo-site', frequency: 'weekly', visitsPerWeek: 5, amountPerVisit: 25, monthlyAmount: 125 },
+      { id: 'demo-line-3', description: 'Floor Care', siteId: 'demo-site', frequency: 'monthly', visitsPerWeek: 1, amountPerVisit: 70, monthlyAmount: 70 },
     ],
     totalMonthly: 450,
     status: 'accepted',
