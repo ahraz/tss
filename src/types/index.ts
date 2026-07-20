@@ -222,6 +222,7 @@ export interface Site {
   checklist: ChecklistItem[];
   clientId: string | null;
   isSubSite: boolean;
+  shareToken?: string;
   createdAt: string;
 }
 

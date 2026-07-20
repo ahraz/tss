@@ -1,5 +1,4 @@
 import type { Site, Inspection } from '../../types';
-import type { Site, Inspection } from '../../types';
 
 interface Props {
   site: Site;
