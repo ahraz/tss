@@ -17,7 +17,10 @@
     "groq": {
       "options": {
         "apiKey": "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"
-      }
+    },
+    "mimocode": {
+      "url": "http://localhost:20128/dashboard/providers/mimocode"
     }
+  }
   }
 }
