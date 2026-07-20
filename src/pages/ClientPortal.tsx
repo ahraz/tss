@@ -50,7 +50,14 @@ export function ClientPortal() {
         <PortalHeader site={site} latestInspection={inspections[0] || null} />
         <CleanCheckCard inspections={inspections} templates={templates} />
         <ScheduleCard site={site} shifts={shifts} />
-        <InvoicesCard payments={payments} />
+        <InvoicesCard
+          payments={payments}
+          nextBilling={
+            payments.length > 0
+              ? new Date(new Date(payments[payments.length - 1].createdAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              : undefined
+          }
+        />
         <QuoteCard quote={quote} />
         <ProfileCard site={site} />
       </div>

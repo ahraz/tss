@@ -1,3 +1,4 @@
+import { useParams } from 'react-router-dom';
 import { FileText, CheckCircle, Clock } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { formatCAD } from '../../utils/formatters';
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function QuoteCard({ quote }: Props) {
+  const { token } = useParams<{ token: string }>();
+
   if (!quote) return null;
 
   return (
@@ -40,6 +43,17 @@ export function QuoteCard({ quote }: Props) {
               )}
             </div>
           </div>
+
+          {token && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <a
+                href={`/quote/${token}`}
+                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                View Full Quote →
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </Card>

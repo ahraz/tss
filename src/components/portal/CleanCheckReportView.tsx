@@ -79,7 +79,7 @@ export function CleanCheckReportView({ inspection, templates }: Props) {
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Photo Evidence ({photos.length})</p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {photos.map((photo, idx) => (
-              <img key={idx} src={photo} alt="" className="rounded-lg object-cover w-full h-24 cursor-pointer" />
+              <img key={idx} src={photo} alt="" className="rounded-lg object-cover w-full h-24 cursor-pointer" onClick={() => window.open(photo, '_blank')} />
             ))}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Star, Shield } from 'lucide-react';
+import type { Site, Inspection } from '../../types';
 import type { Site, Inspection } from '../../types';
 
 interface Props {

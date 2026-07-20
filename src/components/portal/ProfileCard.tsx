@@ -4,10 +4,9 @@ import type { Site } from '../../types';
 
 interface Props {
   site: Site;
-  clientName?: string;
 }
 
-export function ProfileCard({ site, clientName }: Props) {
+export function ProfileCard({ site }: Props) {
   return (
     <Card>
       <div className="flex items-center gap-2 mb-3">

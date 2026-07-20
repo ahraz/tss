@@ -6,15 +6,28 @@ import type { Payment } from '../../types';
 
 interface Props {
   payments: Payment[];
+  nextBilling?: string;
 }
 
-export function InvoicesCard({ payments }: Props) {
+export function InvoicesCard({ payments, nextBilling }: Props) {
   const [expanded, setExpanded] = useState(false);
   const unpaid = payments.filter(p => !p.isPaid);
   const balance = unpaid.reduce((sum, p) => sum + p.amount, 0);
   const lastPaid = payments.filter(p => p.isPaid).sort((a, b) =>
     new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime()
   )[0] || null;
+
+  if (payments.length === 0) {
+    return (
+      <Card>
+        <div className="flex items-center gap-2 mb-3">
+          <DollarSign size={18} className="text-emerald-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Invoices & Payments</h2>
+        </div>
+        <p className="text-sm text-gray-400">No payment history yet.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -35,6 +48,12 @@ export function InvoicesCard({ payments }: Props) {
           {lastPaid && (
             <p className="text-xs text-gray-400">
               Last payment: {formatCAD(lastPaid.amount)} on {formatDate(lastPaid.date || lastPaid.createdAt)}
+            </p>
+          )}
+
+          {nextBilling && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              Next billing: {formatDate(nextBilling)}
             </p>
           )}
         </div>

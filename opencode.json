@@ -4,11 +4,20 @@
     "superpowers@git+https://github.com/obra/superpowers.git"
   ],
   "instructions": ["AGENTS.md", "alex.md"],
+  "model": "groq/llama-3.3-70b-versatile",
+  "small_model": "groq/llama-3.1-8b-instant",
   "permission": {
     "edit": {
       "coach/**": "ask",
       "personal/**": "ask",
       "*": "allow"
+    }
+  },
+  "provider": {
+    "groq": {
+      "options": {
+        "apiKey": "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"
+      }
     }
   }
 }
