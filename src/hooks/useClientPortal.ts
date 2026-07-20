@@ -28,16 +28,21 @@ export function useClientPortal(token: string | undefined): PortalData {
     const tokenValue = token;
 
     async function load() {
+      const searchString = window.location.hash.includes('?') 
+        ? window.location.hash.slice(window.location.hash.indexOf('?')) 
+        : window.location.search;
+      const isDemo = new URLSearchParams(searchString).get('demo') === 'true';
+
+      if (isDemo) {
+        const demoData = generateDemoData(tokenValue);
+        setData({ ...demoData, loading: false, error: null });
+        return;
+      }
+
       try {
         // 1. Find site by shareToken
         const sitesSnap = await getDocs(query(collection(db, 'sites'), where('shareToken', '==', tokenValue)));
         if (sitesSnap.empty) {
-          const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-          if (isDemo) {
-            const demoData = generateDemoData(tokenValue);
-            setData({ ...demoData, loading: false, error: null });
-            return;
-          }
           setData(prev => ({ ...prev, loading: false, error: 'Portal not found. The link may have expired.' }));
           return;
         }
