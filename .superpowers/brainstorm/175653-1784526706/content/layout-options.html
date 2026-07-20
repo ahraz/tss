@@ -1,0 +1,83 @@
+<h2>Portal Layout: Which navigation style?</h2>
+<p class="subtitle">How should the client move between CleanCheck, Schedule, Invoices, Quote, and Profile?</p>
+
+<div class="options">
+  <div class="option" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Sidebar Navigation</h3>
+      <div class="split" style="gap:0.5rem;margin-top:0.5rem">
+        <div style="flex:0 0 80px">
+          <div class="mock-sidebar" style="width:80px;height:120px;font-size:9px;padding:4px">
+            <div style="background:#059669;color:white;padding:2px 4px;border-radius:3px;margin-bottom:3px">...</div>
+            <div style="padding:2px 4px">Reports</div>
+            <div style="padding:2px 4px">Schedule</div>
+            <div style="padding:2px 4px">Invoices</div>
+            <div style="padding:2px 4px">Profile</div>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="mock-content" style="height:120px;font-size:9px;padding:4px">
+            <strong>CleanCheck Reports</strong>
+            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">
+              <div style="background:#e5e7eb;width:30px;height:20px;border-radius:3px"></div>
+              <div style="background:#e5e7eb;width:30px;height:20px;border-radius:3px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:0.5rem;font-size:12px;color:#6b7280">Professional, scalable. All sections always visible.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Top Tab Bar</h3>
+      <div class="mockup" style="margin-top:0.5rem">
+        <div style="font-size:9px;padding:4px">
+          <div style="display:flex;gap:4px;border-bottom:1px solid #e5e7eb;padding-bottom:4px;margin-bottom:4px">
+            <span style="background:#059669;color:white;padding:2px 6px;border-radius:8px;font-size:8px">Reports</span>
+            <span style="padding:2px 6px;font-size:8px">Schedule</span>
+            <span style="padding:2px 6px;font-size:8px">Invoices</span>
+            <span style="padding:2px 6px;font-size:8px">Profile</span>
+          </div>
+          <div><strong>Inspection Report - Mar 15</strong></div>
+          <div style="display:flex;gap:2px;margin-top:2px">
+            <div style="background:#e5e7eb;width:24px;height:16px;border-radius:2px"></div>
+            <div style="background:#e5e7eb;width:24px;height:16px;border-radius:2px"></div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:0.5rem;font-size:12px;color:#6b7280">Clean, mobile-friendly. Simple and intuitive.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="dashboard" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dashboard Hub</h3>
+      <div class="mockup" style="margin-top:0.5rem">
+        <div style="font-size:8px;padding:4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">
+            <div style="border:1px solid #e5e7eb;border-radius:4px;padding:4px">
+              <div style="font-weight:bold;font-size:9px">✓ CleanCheck</div>
+              <div style="color:#6b7280;margin-top:2px">Last: Mar 15</div>
+            </div>
+            <div style="border:1px solid #e5e7eb;border-radius:4px;padding:4px">
+              <div style="font-weight:bold;font-size:9px">📅 Schedule</div>
+              <div style="color:#6b7280;margin-top:2px">Next: Mon 9am</div>
+            </div>
+            <div style="border:1px solid #e5e7eb;border-radius:4px;padding:4px">
+              <div style="font-weight:bold;font-size:9px">💰 Invoices</div>
+              <div style="color:#6b7280;margin-top:2px">Due: $450</div>
+            </div>
+            <div style="border:1px solid #e5e7eb;border-radius:4px;padding:4px">
+              <div style="font-weight:bold;font-size:9px">📄 Quote</div>
+              <div style="color:#6b7280;margin-top:2px">Accepted</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:0.5rem;font-size:12px;color:#6b7280">Single-page overview. Less clicking, all info at a glance. Best for demos.</p>
+    </div>
+  </div>
+</div>

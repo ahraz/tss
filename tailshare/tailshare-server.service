@@ -1,0 +1,15 @@
+[Unit]
+Description=TailShare - Android to PC file receiver
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/python3 -m venv /tmp/tailshare-venv
+ExecStartPre=/tmp/tailshare-venv/bin/pip install flask -q
+ExecStart=/tmp/tailshare-venv/bin/python /home/ahrazmalik/Documents/New\ OpenCode\ Project/tailshare/server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

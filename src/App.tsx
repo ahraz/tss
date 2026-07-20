@@ -53,7 +53,7 @@ export default function App() {
   // Handle auto-logout if session is missing but user is thought to be logged in,
   // or redirect to login if not authenticated and not already there.
   useEffect(() => {
-    if (state.isInitialized && !state.session && location.pathname !== '/login' && !window.location.hash.startsWith('#/share/') && !window.location.hash.startsWith('#/quote/')) {
+    if (state.isInitialized && !state.session && location.pathname !== '/login' && !window.location.hash.startsWith('#/share/') && !window.location.hash.startsWith('#/quote/') && !location.pathname.startsWith('/portal/')) {
        navigate('/login');
     }
   }, [state.isInitialized, state.session, location.pathname, navigate]);
