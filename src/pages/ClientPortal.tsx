@@ -3,6 +3,10 @@ import { useClientPortal } from '../hooks/useClientPortal';
 import { Building2 } from 'lucide-react';
 import { PortalHeader } from '../components/portal/PortalHeader';
 import { CleanCheckCard } from '../components/portal/CleanCheckCard';
+import { ScheduleCard } from '../components/portal/ScheduleCard';
+import { InvoicesCard } from '../components/portal/InvoicesCard';
+import { QuoteCard } from '../components/portal/QuoteCard';
+import { ProfileCard } from '../components/portal/ProfileCard';
 
 export function ClientPortal() {
   const { token } = useParams<{ token: string }>();
@@ -45,6 +49,10 @@ export function ClientPortal() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <PortalHeader site={site} latestInspection={inspections[0] || null} />
         <CleanCheckCard inspections={inspections} templates={templates} />
+        <ScheduleCard site={site} shifts={shifts} />
+        <InvoicesCard payments={payments} />
+        <QuoteCard quote={quote} />
+        <ProfileCard site={site} />
       </div>
     </div>
   );
