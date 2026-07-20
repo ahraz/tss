@@ -7,6 +7,7 @@ import { PwaUpdatePrompt } from './components/ui/PwaUpdatePrompt';
 // Pages (eager — always needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { ShareContractPage } from './pages/ShareContractPage';
+import { ClientPortal } from './pages/ClientPortal';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ClockPage } from './pages/ClockPage';
@@ -73,6 +74,7 @@ export default function App() {
         <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/share/:token" element={<ShareContractPage />} />
+        <Route path="/portal/:token" element={<ClientPortal />} />
         
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
