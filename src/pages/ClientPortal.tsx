@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom';
 import { useClientPortal } from '../hooks/useClientPortal';
 import { Building2 } from 'lucide-react';
+import { PortalHeader } from '../components/portal/PortalHeader';
+import { CleanCheckCard } from '../components/portal/CleanCheckCard';
 
 export function ClientPortal() {
   const { token } = useParams<{ token: string }>();
-  const { site, loading, error } = useClientPortal(token);
+  const { site, client, inspections, templates, shifts, payments, quote, loading, error } = useClientPortal(token);
 
   if (!token) {
     return (
@@ -41,7 +43,8 @@ export function ClientPortal() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-        {/* Cards rendered here — populated in Tasks 3-5 */}
+        <PortalHeader site={site} latestInspection={inspections[0] || null} />
+        <CleanCheckCard inspections={inspections} templates={templates} />
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ export function useClientPortal(token: string | undefined): PortalData {
         const payments = paySnap.docs.map(d => ({ id: d.id, ...d.data() } as Payment));
 
         // 7. Load quote from sharedContracts
-        const contractSnap = await getDoc(doc(db, 'sharedContracts', token));
+        const contractSnap = await getDoc(doc(db, 'sharedContracts', token!));
         const quote = contractSnap.exists()
           ? { id: contractSnap.id, ...contractSnap.data() } as Quote
           : null;
