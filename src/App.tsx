@@ -59,12 +59,11 @@ export default function App() {
     }
   }, [state.isInitialized, state.session, location.pathname, navigate]);
 
-  // Portal is fully public — render it immediately, before Firestore init completes
-  if (location.pathname.startsWith('/portal/')) {
-    return <ClientPortal />;
-  }
+  // Portal is fully public — bypass the Firestore loading spinner to render immediately.
+  // We must let the router match the Route so useParams<{ token: string }>() can extract the token.
+  const isPortalRoute = location.pathname.startsWith('/portal/');
 
-  if (!state.isInitialized) {
+  if (!state.isInitialized && !isPortalRoute) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
