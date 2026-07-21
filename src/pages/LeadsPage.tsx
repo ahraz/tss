@@ -497,11 +497,15 @@ export function LeadsPage() {
       toast.success(
         <span>
           Copied email.{' '}
-          <span className="block text-xs opacity-80 mt-0.5">
+          <span className="block text-xs opacity-80 mt-0.5 mb-1">
             To: {lead.email} · Subject: {subject}
           </span>
+          <button onClick={() => { handleMarkEmailSent(lead); toast.dismiss(); }}
+            className="w-full mt-1 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            Mark as Sent ✓
+          </button>
         </span>,
-        { duration: 4000 }
+        { duration: 30000 }
       );
     } catch {
       toast.error('Failed to copy to clipboard');
