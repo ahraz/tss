@@ -23,7 +23,7 @@ import {
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number' | 'emailed';
+export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number' | 'emailed' | 'not_emailed';
 
 function getTemplateCategory(leadType: string): string {
   const t = leadType.toLowerCase();
@@ -232,6 +232,9 @@ export function LeadsPage() {
       case 'emailed':
         result = result.filter(l => emailLogsByLead.has(leadKey(l)));
         break;
+      case 'not_emailed':
+        result = result.filter(l => !!l.email && !emailLogsByLead.has(leadKey(l)));
+        break;
     }
 
     if (searchQuery.trim()) {
@@ -281,6 +284,7 @@ export function LeadsPage() {
       counts[call.outcome] = (counts[call.outcome] || 0) + 1;
     }
     counts.emailed = emailLogsByLead.size;
+    counts.not_emailed = leads.filter(l => !!l.email && !emailLogsByLead.has(leadKey(l))).length;
     return counts;
   }, [leads, callLogs, todayLeadIds, emailLogsByLead]);
 
@@ -576,6 +580,7 @@ export function LeadsPage() {
             { key: 'no_answer' as FilterMode, label: 'No Answer' },
             { key: 'wrong_number' as FilterMode, label: 'Wrong Number' },
             { key: 'emailed' as FilterMode, label: 'Emailed' },
+            { key: 'not_emailed' as FilterMode, label: 'Not Emailed' },
           ]).map(opt => (
             <button key={opt.key}
               onClick={() => setFilter(opt.key)}
