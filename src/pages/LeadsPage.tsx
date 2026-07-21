@@ -350,9 +350,9 @@ export function LeadsPage() {
     setEmailEditValues(prev => ({ ...prev, [leadKey(lead)]: lead.email || '' }));
   };
 
-  const handleSaveEmail = (leadId: string) => {
+  const handleSaveEmail = async (leadId: string) => {
     const val = (emailEditValues[leadId] || '').trim();
-    dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: val } });
+    await dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: val } });
     toast.success(val ? 'Email saved' : 'Email cleared');
     setEditingEmailFor(null);
   };
@@ -361,7 +361,7 @@ export function LeadsPage() {
     setEditingEmailFor(null);
   };
 
-  const handleMarkEmailSent = (lead: Lead) => {
+  const handleMarkEmailSent = async (lead: Lead) => {
     if (!lead.email || !currentUser) return;
     const entry: EmailLog = {
       id: generateId(),
@@ -374,7 +374,7 @@ export function LeadsPage() {
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
-    dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
+    await dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
     toast.success('Email marked as sent');
   };
 
