@@ -352,9 +352,13 @@ export function LeadsPage() {
 
   const handleSaveEmail = async (leadId: string) => {
     const val = (emailEditValues[leadId] || '').trim();
-    await dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: val } });
-    toast.success(val ? 'Email saved' : 'Email cleared');
-    setEditingEmailFor(null);
+    try {
+      await dispatch({ type: 'UPDATE_LEAD_EMAIL', payload: { leadId, email: val } });
+      toast.success(val ? 'Email saved' : 'Email cleared');
+      setEditingEmailFor(null);
+    } catch {
+      // Error toast already shown by customDispatch
+    }
   };
 
   const handleCancelEditEmail = () => {
@@ -374,8 +378,12 @@ export function LeadsPage() {
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
-    await dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
-    toast.success('Email marked as sent');
+    try {
+      await dispatch({ type: 'ADD_EMAIL_LOG', payload: entry });
+      toast.success('Email marked as sent');
+    } catch {
+      // Error toast already shown by customDispatch
+    }
   };
 
   const handleChangeOutcome = (log: CallLogEntry, newOutcome: CallOutcome) => {

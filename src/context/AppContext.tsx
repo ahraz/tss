@@ -291,15 +291,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Memoized custom dispatch that intercepts modifying actions and sends them to Firestore
   const customDispatch = React.useCallback(
-    (action: AppAction): Promise<void> => {
+    async (action: AppAction): Promise<void> => {
       // 1. Dispatch locally first (optimistic UI update)
       originalDispatch(action);
 
-      // 2. Sync changes to Cloud Firestore and return the promise
-      return syncActionToFirestore(action, settingsRef.current).catch((err) => {
+      // 2. Sync changes to Cloud Firestore
+      try {
+        await syncActionToFirestore(action, settingsRef.current);
+      } catch (err) {
         console.error('Failed to sync action to Firestore:', err);
         toast.error('Sync failed. Check your connection or permissions.');
-      });
+        throw err;
+      }
     },
     [] // stable — never needs to be recreated
   );
