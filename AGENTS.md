@@ -34,10 +34,6 @@ My coaching persona lives in `alex.md` at the project root. Only read it when I 
 
 **IMPORTANT — Write Protection:** The `coach/` folder contains the source of truth for GTA Scrub business coaching. Only Alex (the coaching persona) should write to these files. Editing requires explicit confirmation. Read access is always allowed.
 
-## TSS App Reference
-
-**ALWAYS read `tss-reference.md` first before any TSS work** — it documents all pages, collections, features, and data models so you don't waste tokens re-exploring.
-
 ## TSS Bug History
 
 TSS bug fix documentation moved to `tss-bug-history.md` — reference that file when working on TSS.
