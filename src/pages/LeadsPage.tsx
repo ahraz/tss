@@ -60,6 +60,7 @@ export function LeadsPage() {
   const [editingCallLogId, setEditingCallLogId] = useState<string | null>(null);
   const [scraping, setScraping] = useState(false);
   const [importingEmails, setImportingEmails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const callLogs = state.callLogs;
   const emailLogs = state.emailLogs;
@@ -278,6 +279,16 @@ export function LeadsPage() {
     }
     return counts;
   }, [leads, callLogs, todayLeadIds]);
+
+  const PAGE_SIZE = 20;
+  const totalPages = Math.max(1, Math.ceil(mergedLeads.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedLeads = mergedLeads.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrentPage(1);
+  }, [mergedLeads.length]);
 
   const handleConnect = useCallback(async () => {
     setAuthInProgress(true);
@@ -588,7 +599,9 @@ export function LeadsPage() {
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            {mergedLeads.length} of {leads.length} leads
+            {mergedLeads.length === 0
+              ? '0 leads'
+              : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, mergedLeads.length)} of ${mergedLeads.length} leads`}
           </p>
           <div className="flex gap-2">
             <button
@@ -612,7 +625,7 @@ export function LeadsPage() {
           </div>
         </div>
 
-        {mergedLeads.length === 0 ? (
+        {paginatedLeads.length === 0 ? (
           <Card>
             <div className="text-center py-12 text-gray-400">
               <Building2 size={48} className="mx-auto mb-3 opacity-30" />
@@ -624,7 +637,7 @@ export function LeadsPage() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {mergedLeads.map(lead => {
+            {paginatedLeads.map(lead => {
               const latestCall = lead.latestCall;
               const calledToday = latestCall && todayLeadIds.has(leadKey(lead));
               const isExpanded = expandedId === leadKey(lead);
@@ -659,6 +672,48 @@ export function LeadsPage() {
                 />
               );
             })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              ← Previous
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => {
+                if (totalPages <= 7) return true;
+                if (p === 1 || p === totalPages) return true;
+                return Math.abs(p - safePage) <= 2;
+              })
+              .map((p, idx, arr) => (
+                <span key={p} className="flex items-center gap-0.5">
+                  {idx > 0 && p - arr[idx - 1] > 1 && (
+                    <span className="px-1 text-gray-400 text-xs">...</span>
+                  )}
+                  <button
+                    onClick={() => setCurrentPage(p)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      p === safePage
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>
