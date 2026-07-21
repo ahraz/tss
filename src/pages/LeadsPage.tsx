@@ -23,7 +23,7 @@ import {
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number';
+export type FilterMode = 'all' | 'not_called' | 'today' | 'callback' | 'completed' | 'no_answer' | 'wrong_number' | 'emailed';
 
 function getTemplateCategory(leadType: string): string {
   const t = leadType.toLowerCase();
@@ -229,6 +229,9 @@ export function LeadsPage() {
       case 'wrong_number':
         result = result.filter(l => l.latestCall?.outcome === 'wrong_number');
         break;
+      case 'emailed':
+        result = result.filter(l => emailLogsByLead.has(leadKey(l)));
+        break;
     }
 
     if (searchQuery.trim()) {
@@ -250,7 +253,7 @@ export function LeadsPage() {
     });
 
     return result;
-  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter, areaFilter]);
+  }, [leads, latestCallsMap, filter, searchQuery, todayLeadIds, typeFilter, areaFilter, emailLogsByLead]);
 
   const businessTypes = useMemo(() => {
     const types = new Set(leads.map(l => l.type).filter(Boolean));
@@ -277,8 +280,9 @@ export function LeadsPage() {
       if (todayLeadIds.has(leadKey(lead))) counts.today = (counts.today || 0) + 1;
       counts[call.outcome] = (counts[call.outcome] || 0) + 1;
     }
+    counts.emailed = emailLogsByLead.size;
     return counts;
-  }, [leads, callLogs, todayLeadIds]);
+  }, [leads, callLogs, todayLeadIds, emailLogsByLead]);
 
   const PAGE_SIZE = 20;
   const totalPages = Math.max(1, Math.ceil(mergedLeads.length / PAGE_SIZE));
@@ -571,6 +575,7 @@ export function LeadsPage() {
             { key: 'completed' as FilterMode, label: 'Completed' },
             { key: 'no_answer' as FilterMode, label: 'No Answer' },
             { key: 'wrong_number' as FilterMode, label: 'Wrong Number' },
+            { key: 'emailed' as FilterMode, label: 'Emailed' },
           ]).map(opt => (
             <button key={opt.key}
               onClick={() => setFilter(opt.key)}
