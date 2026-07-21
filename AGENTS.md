@@ -8,7 +8,7 @@ Use claude-mem search tools for manual memory queries.
 
 ## Alex Persona Reference
 
-My coaching persona lives in `alex.md` at the project root. Read it before every session.
+My coaching persona lives in `alex.md` at the project root. Only read it when I explicitly invoke the Alex persona for coaching.
 
 **Current business knowledge:**
 - **Business:** GTA Scrub — commercial cleaning company based in Brampton, ON
@@ -34,67 +34,12 @@ My coaching persona lives in `alex.md` at the project root. Read it before every
 
 **IMPORTANT — Write Protection:** The `coach/` folder contains the source of truth for GTA Scrub business coaching. Only Alex (the coaching persona) should write to these files. Editing requires explicit confirmation. Read access is always allowed.
 
-## Profile form save bug (June 2026)
+## TSS App Reference
 
-**Root cause:** The `useEffect` in `useProfile.ts` that populated form state from `currentUser` had `[currentUser]` as dependency. Any dispatch that updated the user (e.g., document upload via `UPDATE_USER`) changed `currentUser`'s reference, causing the effect to re-run and wipe in-progress form edits.
+**ALWAYS read `tss-reference.md` first before any TSS work** — it documents all pages, collections, features, and data models so you don't waste tokens re-exploring.
 
-**Fix pattern:** Track loaded user ID with `useRef` and only populate form when the user identity changes, not on data syncs:
-```ts
-const loadedUserId = useRef<string | null>(null);
-useEffect(() => {
-  if (!currentUser || loadedUserId.current === currentUser.id) return;
-  loadedUserId.current = currentUser.id;
-  // populate form...
-}, [currentUser]);
-```
+## TSS Bug History
 
-**Document upload pattern:** Never spread `currentUser` in dispatches — send only the fields that changed:
-```
-// BAD: dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, documents } });
-// GOOD: dispatch({ type: 'UPDATE_USER', payload: { id: currentUser.id, documents } });
-```
+TSS bug fix documentation moved to `tss-bug-history.md` — reference that file when working on TSS.
 
-**UPDATE_USER type:** Uses `Partial<User>` in AppAction since both the reducer (`{ ...u, ...payload }`) and Firestore (`merge: true`) support partial updates.
-
-## Employee profile enhancements (June 2026)
-
-### New User fields (in types/index.ts)
-- `dateOfBirth?: string` — ISO date string
-- `driversLicense?: string` — e.g. "G Class - ON"
-- `vehicleInfo?: string` — e.g. "2018 Toyota Corolla - White"
-- `languages?: string[]` — spoken languages
-
-### Availability overhaul
-- Old: morning/afternoon/evening/unavailable string union
-- New: `AvailabilitySlot { start: string; end: string; allDay?: boolean }` per day
-- If a day key is missing from the record → unavailable
-- `allDay: true` means the employee is available the whole day (shown as "All day")
-- UI: checkbox per day to toggle available/unavailable, time inputs for start/end, "All day" checkbox
-- ProfilePage default: each toggled day starts at 09:00-17:00
-
-### Self-rating removed
-- Performance rating field removed from ProfilePage (employees can no longer rate themselves)
-- The field remains in the User type so owners can set it via TeamPage admin
-
-### Document uploads accept any file type
-- Images: compressed via canvas (same as before)
-- PDFs, DOCX, etc.: stored as base64 data URL without compression
-- Admin view: images render inline, PDFs in `<iframe>`, other types as download links
-- ProfilePage now shows document previews (images and download links)
-
-### Admin view modal (TeamPage)
-- Shows time-range availability with green styling, "All day" label for full-day
-- Languages shown as purple pill badges
-- Driver/Vehicle section with Car icon
-- Date of birth displayed
-- PDF iframe preview for PDF documents
-
-### Day key mapping bug (June 2026)
-**Bug:** Admin modal showed dashes for all days even when availability data existed.
-**Root cause:** `TeamPage.tsx` computed day keys via `d.toLowerCase()` (e.g. `'Mon'` → `'mon'`), but the `DayOfWeek` type uses full names (`'monday'`, `'tuesday'`, etc.). The lookup always returned `undefined`, and the code rendered `—` when `slot == null`.
-**Fix:** Added a `DAY_MAP` Record mapping short labels (`'Mon'`) to full keys (`'monday'`).
-
-### Availability save bug (June 2026)
-**Bug:** When a user unchecks days and saves, the unchecked days reappear after refresh.
-**Root cause:** In `useProfile.ts`'s `handleSave()`, the availability record was built with `if (val)` which skipped `null` (unchecked) values. The absent keys were never sent to Firestore during the `setDoc(..., { merge: true })` sync, so the old (checked) values remained.
-**Fix:** Always include all 7 day keys: `availabilityRecord[d.key] = val ?? undefined`. Null values become `null` via `sanitizeForFirestore`, which clears the old values during the merge.
+**Running servers** documented at `~/Desktop/running-servers.txt` — read and execute on reboot request.
