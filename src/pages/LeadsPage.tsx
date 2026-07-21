@@ -479,7 +479,7 @@ export function LeadsPage() {
       .replace(/\{\{city\}\}/g, city)
       .replace(/\{\{unsubscribe_url\}\}/g, 'https://gtascrub.com/unsubscribe');
 
-    const subject = `Quick intro - commercial cleaning for ${lead.businessName}`;
+    const subject = `A free demo clean for ${lead.businessName}?`;
 
     try {
       await navigator.clipboard.write([
