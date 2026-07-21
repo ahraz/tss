@@ -484,12 +484,14 @@ export function LeadsPage() {
       .replace(/\{\{unsubscribe_url\}\}/g, 'https://gtascrub.com/unsubscribe');
 
     const subject = `A free demo clean for ${lead.businessName}?`;
+    const plainText = `Subject: ${subject}\n\n${rendered.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}`;
+    const htmlWithSubject = `<div style="font-size:14px;color:#666;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:8px;"><strong>Subject:</strong> ${subject}</div>${rendered}`;
 
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
-          'text/html': new Blob([rendered], { type: 'text/html' }),
-          'text/plain': new Blob([rendered.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()], { type: 'text/plain' }),
+          'text/html': new Blob([htmlWithSubject], { type: 'text/html' }),
+          'text/plain': new Blob([plainText], { type: 'text/plain' }),
         }),
       ]);
       toast.success(
