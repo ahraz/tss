@@ -205,7 +205,7 @@ export function LeadCard({
                   </span>
                 ) : lead.email ? (
                   <span className="flex items-center gap-1">
-                    <Mail size={12} /><span className="truncate max-w-[180px]">{lead.email}</span>
+                    <Mail size={12} /><a href={`mailto:${lead.email}`} target="_blank" rel="noopener noreferrer" className="truncate max-w-[180px] text-blue-600 hover:text-blue-700">{lead.email}</a>
                     <button onClick={onStartEditEmail} className="text-gray-400 hover:text-blue-500 ml-0.5"><ExternalLink size={10} /></button>
                   </span>
                 ) : (
